@@ -246,6 +246,7 @@ app.get('/api/yarimamuller', async (req, res) => {
       const { data, error } = await supabase
         .from('yarimamuller')
         .select('*')
+        .eq('aktif', true)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -369,6 +370,7 @@ app.get('/api/nihai_urunler', async (req, res) => {
       const { data, error } = await supabase
         .from('nihai_urunler')
         .select('*')
+        .eq('aktif', true)
         .order('created_at', { ascending: false });
 
       if (error) {
