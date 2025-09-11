@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thunder V1 - Üretim Yönetim Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-industry me-2"></i>Thunder V1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-section="hammadde">
+                            <i class="fas fa-boxes me-1"></i>Hammadde Yönetimi
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="yarimamul">
+                            <i class="fas fa-cogs me-1"></i>Yarı Mamul Yönetimi
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="nihai">
+                            <i class="fas fa-cube me-1"></i>Nihai Ürün Yönetimi
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="urun-agaci">
+                            <i class="fas fa-sitemap me-1"></i>Ürün Ağacı
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="production.html">
+                            <i class="fas fa-industry me-1"></i>Üretim Yönetimi
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Hammadde Yönetimi -->
+        <div id="hammadde-section" class="content-section">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-boxes me-2"></i>Hammadde Yönetimi
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-info btn-sm" onclick="exportToCSV('hammadde')">
+                                    <i class="fas fa-download me-1"></i>CSV Export
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="importFromCSV('hammadde')">
+                                    <i class="fas fa-upload me-1"></i>CSV Import
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <form id="hammadde-form">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="hammadde-adi" class="form-label">Hammadde Adı</label>
+                                            <input type="text" class="form-control" id="hammadde-adi" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="hammadde-kodu" class="form-label">Hammadde Kodu</label>
+                                            <input type="text" class="form-control" id="hammadde-kodu" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="hammadde-miktar" class="form-label">Miktar</label>
+                                            <input type="number" class="form-control" id="hammadde-miktar" step="0.01" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="hammadde-birim" class="form-label">Birim</label>
+                                            <select class="form-select" id="hammadde-birim" required>
+                                                <option value="kg">Kilogram (kg)</option>
+                                                <option value="adet">Adet</option>
+                                                <option value="metre">Metre (m)</option>
+                                                <option value="litre">Litre (L)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="hammadde-fiyat" class="form-label">Birim Fiyat (₺)</label>
+                                            <input type="number" class="form-control" id="hammadde-fiyat" step="0.01" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="hammadde-aciklama" class="form-label">Açıklama</label>
+                                    <textarea class="form-control" id="hammadde-aciklama" rows="3"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Hammadde Ekle
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Hammadde Listesi</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Kod</th>
+                                            <th>Ad</th>
+                                            <th>Miktar</th>
+                                            <th>Birim</th>
+                                            <th>Birim Fiyat</th>
+                                            <th>Toplam Değer</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hammadde-listesi">
+                                        <!-- Hammadde listesi buraya gelecek -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yarı Mamul Yönetimi -->
+        <div id="yarimamul-section" class="content-section" style="display: none;">
+            <!-- Yarı Mamul Stok Durumu -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card bg-light">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-chart-bar me-2"></i>Yarı Mamul Stok Durumu
+                                </h6>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-success btn-sm" onclick="updateAllYarimamulCostsFromBOM()" title="Tüm yarı mamul maliyetlerini BOM'dan hesapla">
+                                        <i class="fas fa-calculator me-1"></i>BOM Maliyet Hesapla
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="yarimamul-stock-cards">
+                                <!-- Yarı mamul stok kartları buraya gelecek -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cogs me-2"></i>Yarı Mamul Yönetimi
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-success btn-sm" onclick="updateAllYarimamulCostsFromBOM()">
+                                    <i class="fas fa-calculator me-1"></i>BOM Maliyet Hesapla
+                                </button>
+                                <button class="btn btn-info btn-sm" onclick="exportToCSV('yarimamul')">
+                                    <i class="fas fa-download me-1"></i>CSV Export
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="importFromCSV('yarimamul')">
+                                    <i class="fas fa-upload me-1"></i>CSV Import
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <form id="yarimamul-form">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="yarimamul-adi" class="form-label">Yarı Mamul Adı</label>
+                                            <input type="text" class="form-control" id="yarimamul-adi" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="yarimamul-kodu" class="form-label">Yarı Mamul Kodu</label>
+                                            <input type="text" class="form-control" id="yarimamul-kodu" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="yarimamul-barkod" class="form-label">Üretim Barkodu</label>
+                                            <input type="text" class="form-control" id="yarimamul-barkod" placeholder="8690000000012" required>
+                                            <div class="form-text">Bu barkod üretim sırasında kullanılacak</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="yarimamul-miktar" class="form-label">Üretim Miktarı</label>
+                                            <input type="number" class="form-control" id="yarimamul-miktar" step="0.01" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="yarimamul-birim" class="form-label">Birim</label>
+                                            <select class="form-select" id="yarimamul-birim" required>
+                                                <option value="kg">Kilogram (kg)</option>
+                                                <option value="adet">Adet</option>
+                                                <option value="metre">Metre (m)</option>
+                                                <option value="litre">Litre (L)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="yarimamul-maliyet" class="form-label">Birim Maliyet (₺)</label>
+                                            <input type="number" class="form-control" id="yarimamul-maliyet" step="0.01" min="0.01" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="yarimamul-aciklama" class="form-label">Açıklama</label>
+                                    <textarea class="form-control" id="yarimamul-aciklama" rows="3"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Yarı Mamul Ekle
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Yarı Mamul Listesi</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Kod</th>
+                                            <th>Ad</th>
+                                            <th>Barkod</th>
+                                            <th>Miktar</th>
+                                            <th>Birim</th>
+                                            <th>Birim Maliyet</th>
+                                            <th>Toplam Maliyet</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="yarimamul-listesi">
+                                        <!-- Yarı mamul listesi buraya gelecek -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nihai Ürün Yönetimi -->
+        <div id="nihai-section" class="content-section" style="display: none;">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cube me-2"></i>Nihai Ürün Yönetimi
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-success btn-sm" onclick="updateAllNihaiCostsFromBOM()">
+                                <i class="fas fa-calculator me-1"></i>BOM Maliyet Hesapla
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="exportToCSV('nihai')">
+                                <i class="fas fa-download me-1"></i>CSV Export
+                            </button>
+                            <button class="btn btn-warning btn-sm" onclick="importFromCSV('nihai')">
+                                <i class="fas fa-upload me-1"></i>CSV Import
+                            </button>
+                        </div>
+                    </div>
+                        <div class="card-body">
+                            <form id="nihai-form">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="nihai-adi" class="form-label">Nihai Ürün Adı</label>
+                                            <input type="text" class="form-control" id="nihai-adi" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="nihai-kodu" class="form-label">Nihai Ürün Kodu</label>
+                                            <input type="text" class="form-control" id="nihai-kodu" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="nihai-barkod" class="form-label">Barkod</label>
+                                            <input type="text" class="form-control" id="nihai-barkod" placeholder="Barkod numarası">
+                                            <div class="form-text">Bu barkod üretim sırasında kullanılacak</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="nihai-miktar" class="form-label">Üretim Miktarı</label>
+                                            <input type="number" class="form-control" id="nihai-miktar" step="0.01" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="nihai-birim" class="form-label">Birim</label>
+                                            <select class="form-select" id="nihai-birim" required>
+                                                <option value="adet">Adet</option>
+                                                <option value="kg">Kilogram (kg)</option>
+                                                <option value="metre">Metre (m)</option>
+                                                <option value="litre">Litre (L)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="nihai-fiyat" class="form-label">Satış Fiyatı (₺)</label>
+                                            <input type="number" class="form-control" id="nihai-fiyat" step="0.01" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="nihai-aciklama" class="form-label">Açıklama</label>
+                                    <textarea class="form-control" id="nihai-aciklama" rows="3"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Nihai Ürün Ekle
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nihai Ürün Stok Kartları -->
+            <div class="row mt-4" id="nihai-stock-cards">
+                <!-- Nihai ürün stok kartları buraya gelecek -->
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Nihai Ürün Listesi</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Kod</th>
+                                            <th>Ad</th>
+                                            <th>Barkod</th>
+                                            <th>Miktar</th>
+                                            <th>Birim</th>
+                                            <th>BOM Maliyeti</th>
+                                            <th>Satış Fiyatı</th>
+                                            <th>Toplam Değer</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="nihai-listesi">
+                                        <!-- Nihai ürün listesi buraya gelecek -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ürün Ağacı -->
+        <div id="urun-agaci-section" class="content-section" style="display: none;">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-sitemap me-2"></i>Ürün Ağacı Yönetimi
+                            </h5>
+                            <button class="btn btn-outline-primary btn-sm" onclick="refreshAllData()">
+                                <i class="fas fa-sync-alt me-1"></i>Yenile
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <form id="urun-agaci-form">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="ana-urun" class="form-label">Ana Ürün</label>
+                                            <select class="form-select" id="ana-urun" required>
+                                                <option value="">Seçiniz...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Alt Ürünler</label>
+                                            <div class="form-text">Ana ürün seçildikten sonra mevcut alt ürünler görünecek</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Alt Ürünler Listesi -->
+                                <div id="alt-urunler-container">
+                                    <div class="row mb-3 alt-urun-row">
+                                        <div class="col-md-5">
+                                            <label class="form-label">Alt Ürün</label>
+                                            <select class="form-select alt-urun-select" required>
+                                                <option value="">Seçiniz...</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Gerekli Miktar</label>
+                                            <input type="number" class="form-control alt-urun-miktar" step="0.01" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">&nbsp;</label>
+                                            <div class="d-flex">
+                                                <button type="button" class="btn btn-outline-danger btn-sm me-2" onclick="removeAltUrunRow(this)" title="Satırı Sil">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-info btn-sm" onclick="duplicateAltUrunRow(this)" title="Satırı Kopyala">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <button type="button" class="btn btn-info me-2" onclick="calculateMaterialRequirements()">
+                                            <i class="fas fa-calculator me-1"></i>Malzeme Hesapla
+                                        </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-plus me-1"></i>Ürün Ağacı Ekle
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary ms-2" onclick="clearUrunAgaciForm()">
+                                            <i class="fas fa-eraser me-1"></i>Temizle
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <!-- Malzeme Hesaplama Sonuçları -->
+                            <div id="material-calculation-results" class="mt-4" style="display: none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-list me-2"></i>Gerekli Malzemeler
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Malzeme</th>
+                                                        <th>Tip</th>
+                                                        <th>Gerekli Miktar</th>
+                                                        <th>Mevcut Stok</th>
+                                                        <th>Eksik</th>
+                                                        <th>Birim Fiyat</th>
+                                                        <th>Toplam Maliyet</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="material-calculation-list">
+                                                    <!-- Hesaplama sonuçları buraya gelecek -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="alert alert-info">
+                                                <strong>Toplam Maliyet:</strong> <span id="total-material-cost">₺0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Ürün Ağacı Listesi</h6>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="toggleUrunAgaciFilter()">
+                                        <i class="fas fa-filter me-1"></i>Filtre
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="clearUrunAgaciFilter()">
+                                        <i class="fas fa-times me-1"></i>Temizle
+                                    </button>
+                                    <button class="btn btn-info btn-sm" onclick="exportToCSV('urun-agaci')">
+                                        <i class="fas fa-download me-1"></i>CSV Export
+                                    </button>
+                                    <button class="btn btn-warning btn-sm" onclick="importFromCSV('urun-agaci')">
+                                        <i class="fas fa-upload me-1"></i>CSV Import
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Filtre Bölümü -->
+                        <div id="urun-agaci-filter" class="card-body border-bottom" style="display: none;">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="filter-ana-urun" class="form-label">Ana Ürün</label>
+                                    <select class="form-select" id="filter-ana-urun">
+                                        <option value="">Tümü</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="filter-sadece-aktif">
+                                        <label class="form-check-label" for="filter-sadece-aktif">
+                                            Sadece Aktif Ürünler
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Ana Ürün</th>
+                                            <th>Alt Ürün</th>
+                                            <th>Gerekli Miktar</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="urun-agaci-listesi">
+                                        <!-- Ürün ağacı listesi buraya gelecek -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Filtre Sonuçları Bilgisi -->
+                            <div id="filter-results-info" class="mt-3" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <span id="filter-results-text">Filtre sonuçları gösteriliyor</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- İş Emirleri -->
+        <div id="is-emri-section" class="content-section" style="display: none;">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-clipboard-list me-2"></i>İş Emri Yönetimi
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-primary btn-sm" onclick="showCreateWorkOrderModal()">
+                                    <i class="fas fa-plus me-1"></i>Yeni İş Emri
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="refreshWorkOrders()">
+                                    <i class="fas fa-sync-alt me-1"></i>Yenile
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Filtre Bölümü -->
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label for="filter-status" class="form-label">Durum</label>
+                                    <select class="form-select" id="filter-status">
+                                        <option value="">Tümü</option>
+                                        <option value="pending">Beklemede</option>
+                                        <option value="in_progress">Devam Ediyor</option>
+                                        <option value="completed">Tamamlandı</option>
+                                        <option value="cancelled">İptal Edildi</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="filter-priority" class="form-label">Öncelik</label>
+                                    <select class="form-select" id="filter-priority">
+                                        <option value="">Tümü</option>
+                                        <option value="low">Düşük</option>
+                                        <option value="normal">Normal</option>
+                                        <option value="high">Yüksek</option>
+                                        <option value="urgent">Acil</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="filter-personnel" class="form-label">Personel</label>
+                                    <select class="form-select" id="filter-personnel">
+                                        <option value="">Tümü</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="clearWorkOrderFilters()">
+                                        <i class="fas fa-times me-1"></i>Filtreleri Temizle
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- İş Emri Listesi -->
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>İş Emri No</th>
+                                            <th>Ürün</th>
+                                            <th>Miktar</th>
+                                            <th>Durum</th>
+                                            <th>Öncelik</th>
+                                            <th>Personel</th>
+                                            <th>Başlangıç</th>
+                                            <th>Bitiş</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="work-orders-list">
+                                        <!-- İş emri listesi buraya gelecek -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pop-up Modal -->
+    <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" id="alertModalHeader">
+                    <h5 class="modal-title" id="alertModalTitle">Bildirim</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="alertModalBody">
+                    <!-- Mesaj buraya gelecek -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tamam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <!-- İş Emri Oluşturma Modal -->
+    <div class="modal fade" id="createWorkOrderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni İş Emri Oluştur</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createWorkOrderForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="workOrderProductName" class="form-label">Ürün Adı *</label>
+                                    <input type="text" class="form-control" id="workOrderProductName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="workOrderProductCode" class="form-label">Ürün Kodu</label>
+                                    <input type="text" class="form-control" id="workOrderProductCode">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="workOrderQuantity" class="form-label">Miktar *</label>
+                                    <input type="number" class="form-control" id="workOrderQuantity" min="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="workOrderPriority" class="form-label">Öncelik</label>
+                                    <select class="form-select" id="workOrderPriority">
+                                        <option value="low">Düşük</option>
+                                        <option value="normal" selected>Normal</option>
+                                        <option value="high">Yüksek</option>
+                                        <option value="urgent">Acil</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="workOrderPersonnel" class="form-label">Sorumlu Personel</label>
+                                    <input type="text" class="form-control" id="workOrderPersonnel" placeholder="Personel adı">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="workOrderStartDate" class="form-label">Başlangıç Tarihi</label>
+                                    <input type="date" class="form-control" id="workOrderStartDate">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="workOrderEndDate" class="form-label">Bitiş Tarihi</label>
+                                    <input type="date" class="form-control" id="workOrderEndDate">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="workOrderNotes" class="form-label">Notlar</label>
+                            <textarea class="form-control" id="workOrderNotes" rows="3" placeholder="Özel talimatlar, notlar..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="createWorkOrder()">
+                        <i class="fas fa-plus me-1"></i>İş Emri Oluştur
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gizli file input -->
+    <input type="file" id="csv-file-input" accept=".csv" style="display: none;" onchange="handleCSVFileSelect(event)">
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
