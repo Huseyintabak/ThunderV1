@@ -772,6 +772,458 @@ app.post('/api/reset-mock-data', async (req, res) => {
   }
 });
 
+// ========================================
+// PERFORMANS OPTİMİZASYONU - FAZ 5
+// ========================================
+
+// Basit cache sistemi
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 dakika
+
+function getCached(key) {
+    const item = cache.get(key);
+    if (item && Date.now() - item.timestamp < CACHE_TTL) {
+        return item.data;
+    }
+    cache.delete(key);
+    return null;
+}
+
+function setCached(key, data) {
+    cache.set(key, {
+        data: data,
+        timestamp: Date.now()
+    });
+}
+
+// Rate limiting (basit)
+const rateLimit = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 dakika
+const RATE_LIMIT_MAX = 100; // dakikada maksimum 100 istek
+
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const userRequests = rateLimit.get(ip) || [];
+    
+    // Eski istekleri temizle
+    const recentRequests = userRequests.filter(time => now - time < RATE_LIMIT_WINDOW);
+    
+    if (recentRequests.length >= RATE_LIMIT_MAX) {
+        return false;
+    }
+    
+    recentRequests.push(now);
+    rateLimit.set(ip, recentRequests);
+    return true;
+}
+
+// ========================================
+// YENİ API ENDPOINT'LERİ - FAZ 1
+// ========================================
+
+// Üretim Yönetimi API'leri
+app.post('/api/productions', async (req, res) => {
+    try {
+        const { product_id, product_type, quantity, target_quantity, created_by, notes } = req.body;
+        
+        // Önce tabloların var olup olmadığını kontrol et
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .insert([{
+                product_id,
+                product_type,
+                quantity,
+                target_quantity,
+                created_by: created_by || 'system',
+                notes
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Production creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/productions/active', async (req, res) => {
+    try {
+        // Rate limiting kontrolü
+        const clientIP = req.ip || req.connection.remoteAddress;
+        if (!checkRateLimit(clientIP)) {
+            return res.status(429).json({ error: 'Çok fazla istek. Lütfen bekleyin.' });
+        }
+        
+        // Cache kontrolü
+        const cacheKey = 'active_productions';
+        const cachedData = getCached(cacheKey);
+        if (cachedData) {
+            return res.json(cachedData);
+        }
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .select('*')
+            .eq('status', 'active')
+            .order('start_time', { ascending: false });
+            
+        if (error) throw error;
+        
+        // Cache'e kaydet
+        setCached(cacheKey, data);
+        res.json(data);
+    } catch (error) {
+        console.error('Active productions fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/productions/history', async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .select('*')
+            .order('start_time', { ascending: false });
+            
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Production history fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/productions/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        updates.updated_at = new Date().toISOString();
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .update(updates)
+            .eq('id', id)
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Production update error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/productions/:id/complete', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { notes } = req.body;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .update({
+                status: 'completed',
+                end_time: new Date().toISOString(),
+                notes: notes || null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Production completion error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ========================================
+// BARKOD YÖNETİMİ API'LERİ - FAZ 2
+// ========================================
+
+// Barkod Yönetimi API'leri
+app.post('/api/barcodes/scan', async (req, res) => {
+    try {
+        const { production_id, barcode, operator } = req.body;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Barkod doğrulama (basit)
+        const isValid = barcode && barcode.length >= 8;
+        
+        const { data, error } = await supabase
+            .from('barcode_scans')
+            .insert([{
+                production_id,
+                barcode,
+                success: isValid,
+                operator: operator || 'system'
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json({
+            ...data[0],
+            message: isValid ? 'Barkod başarıyla okutuldu' : 'Geçersiz barkod'
+        });
+    } catch (error) {
+        console.error('Barcode scan error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/barcodes/history/:productionId', async (req, res) => {
+    try {
+        const { productionId } = req.params;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('barcode_scans')
+            .select('*')
+            .eq('production_id', productionId)
+            .order('scan_time', { ascending: false });
+            
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Barcode history fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/barcodes/validate', async (req, res) => {
+    try {
+        const { barcode, product_id, product_type } = req.body;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Ürün barkodunu kontrol et
+        let product;
+        if (product_type === 'yarimamul') {
+            const { data } = await supabase
+                .from('yarimamuller')
+                .select('barkod')
+                .eq('id', product_id)
+                .single();
+            product = data;
+        } else if (product_type === 'nihai') {
+            const { data } = await supabase
+                .from('nihai_urunler')
+                .select('barkod')
+                .eq('id', product_id)
+                .single();
+            product = data;
+        }
+        
+        const isValid = product && product.barkod === barcode;
+        
+        res.json({
+            valid: isValid,
+            message: isValid ? 'Barkod doğru' : 'Barkod eşleşmiyor'
+        });
+    } catch (error) {
+        console.error('Barcode validation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ========================================
+// RAPORLAMA API'LERİ - FAZ 3
+// ========================================
+
+// Raporlama API'leri
+app.get('/api/reports/production-summary', async (req, res) => {
+    try {
+        const { start_date, end_date } = req.query;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        let query = supabase
+            .from('productions')
+            .select('*');
+            
+        if (start_date) {
+            query = query.gte('start_time', start_date);
+        }
+        if (end_date) {
+            query = query.lte('start_time', end_date);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        // İstatistikleri hesapla
+        const summary = {
+            total_productions: data.length,
+            completed: data.filter(p => p.status === 'completed').length,
+            active: data.filter(p => p.status === 'active').length,
+            cancelled: data.filter(p => p.status === 'cancelled').length,
+            total_quantity: data.reduce((sum, p) => sum + p.quantity, 0),
+            total_target: data.reduce((sum, p) => sum + p.target_quantity, 0),
+            efficiency: data.length > 0 ? 
+                (data.filter(p => p.status === 'completed').length / data.length * 100).toFixed(2) : 0,
+            completion_rate: data.length > 0 ? 
+                (data.filter(p => p.status === 'completed').length / data.length * 100).toFixed(2) : 0,
+            average_quantity: data.length > 0 ? 
+                (data.reduce((sum, p) => sum + p.quantity, 0) / data.length).toFixed(2) : 0
+        };
+        
+        res.json(summary);
+    } catch (error) {
+        console.error('Production summary error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/reports/material-usage', async (req, res) => {
+    try {
+        const { period = 'month' } = req.query;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Son 30 günlük veri
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        
+        const { data: productions, error: prodError } = await supabase
+            .from('productions')
+            .select('*')
+            .gte('start_time', startDate.toISOString())
+            .lte('start_time', endDate.toISOString());
+            
+        if (prodError) throw prodError;
+        
+        // Malzeme kullanımını hesapla
+        const materialUsage = {};
+        let totalMaterialCost = 0;
+        
+        productions.forEach(production => {
+            // Basit malzeme kullanım hesaplama
+            if (production.product_type === 'yarimamul') {
+                materialUsage[`yarimamul_${production.product_id}`] = 
+                    (materialUsage[`yarimamul_${production.product_id}`] || 0) + production.quantity;
+            } else if (production.product_type === 'nihai') {
+                materialUsage[`nihai_${production.product_id}`] = 
+                    (materialUsage[`nihai_${production.product_id}`] || 0) + production.quantity;
+            }
+            
+            // Basit maliyet hesaplama (örnek)
+            totalMaterialCost += production.quantity * 10; // Her ürün için 10 TL maliyet varsayımı
+        });
+        
+        res.json({
+            period,
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+            total_productions: productions.length,
+            material_usage: materialUsage,
+            total_material_cost: totalMaterialCost,
+            average_daily_production: (productions.length / 30).toFixed(2)
+        });
+    } catch (error) {
+        console.error('Material usage report error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/reports/efficiency', async (req, res) => {
+    try {
+        const { production_id } = req.query;
+        
+        if (!production_id) {
+            return res.status(400).json({ error: 'Production ID gerekli' });
+        }
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Üretim detaylarını al
+        const { data: production, error: prodError } = await supabase
+            .from('productions')
+            .select('*')
+            .eq('id', production_id)
+            .single();
+            
+        if (prodError) throw prodError;
+        
+        // Barkod taramalarını al
+        const { data: scans, error: scanError } = await supabase
+            .from('barcode_scans')
+            .select('*')
+            .eq('production_id', production_id);
+            
+        if (scanError) throw scanError;
+        
+        // Verimlilik hesapla
+        const totalScans = scans.length;
+        const successfulScans = scans.filter(s => s.success).length;
+        const efficiency = totalScans > 0 ? (successfulScans / totalScans * 100).toFixed(2) : 0;
+        
+        // Zaman hesaplamaları
+        const startTime = new Date(production.start_time);
+        const endTime = production.end_time ? new Date(production.end_time) : new Date();
+        const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+        
+        // Üretim hızı (dakikada üretilen ürün sayısı)
+        const productionRate = durationMinutes > 0 ? (production.quantity / durationMinutes).toFixed(2) : 0;
+        
+        res.json({
+            production_id: parseInt(production_id),
+            total_scans: totalScans,
+            successful_scans: successfulScans,
+            failed_scans: totalScans - successfulScans,
+            efficiency: parseFloat(efficiency),
+            production_status: production.status,
+            target_quantity: production.target_quantity,
+            actual_quantity: production.quantity,
+            completion_percentage: production.target_quantity > 0 ? 
+                ((production.quantity / production.target_quantity) * 100).toFixed(2) : 0,
+            duration_minutes: durationMinutes,
+            production_rate: parseFloat(productionRate),
+            start_time: production.start_time,
+            end_time: production.end_time,
+            created_by: production.created_by
+        });
+    } catch (error) {
+        console.error('Efficiency report error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Server başlatma
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

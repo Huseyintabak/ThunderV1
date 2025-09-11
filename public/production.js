@@ -1615,3 +1615,291 @@ function showAlert(message, type) {
     const modal = new bootstrap.Modal(alertModal);
     modal.show();
 }
+
+// ========================================
+// PERFORMANS OPTİMİZASYONU - FAZ 5
+// ========================================
+
+// Retry mekanizması
+async function retryRequest(requestFunction, maxRetries = 3, delay = 1000) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await requestFunction();
+        } catch (error) {
+            if (i === maxRetries - 1) throw error;
+            
+            console.warn(`İstek başarısız (${i + 1}/${maxRetries}):`, error.message);
+            await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+        }
+    }
+}
+
+// Request timeout
+function fetchWithTimeout(url, options = {}, timeout = 10000) {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('İstek zaman aşımına uğradı')), timeout)
+        )
+    ]);
+}
+
+// ========================================
+// YENİ API FONKSİYONLARI - FAZ 4
+// ========================================
+
+// Üretim oluşturma
+async function createProduction(productionData) {
+    try {
+        const response = await fetch('/api/productions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productionData)
+        });
+        
+        if (!response.ok) throw new Error('Üretim oluşturulamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Production creation error:', error);
+        throw error;
+    }
+}
+
+// Aktif üretimleri getir
+async function getActiveProductions() {
+    return await retryRequest(async () => {
+        const response = await fetchWithTimeout('/api/productions/active');
+        if (!response.ok) {
+            if (response.status === 429) {
+                throw new Error('Çok fazla istek. Lütfen bekleyin.');
+            }
+            throw new Error(`HTTP ${response.status}: Aktif üretimler alınamadı`);
+        }
+        return await response.json();
+    });
+}
+
+// Üretim geçmişini getir
+async function getProductionHistory() {
+    try {
+        const response = await fetch('/api/productions/history');
+        if (!response.ok) throw new Error('Üretim geçmişi alınamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Production history fetch error:', error);
+        throw error;
+    }
+}
+
+// Üretim güncelleme
+async function updateProduction(productionId, updates) {
+    try {
+        const response = await fetch(`/api/productions/${productionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updates)
+        });
+        
+        if (!response.ok) throw new Error('Üretim güncellenemedi');
+        return await response.json();
+    } catch (error) {
+        console.error('Production update error:', error);
+        throw error;
+    }
+}
+
+// Üretim tamamlama
+async function completeProduction(productionId, notes) {
+    try {
+        const response = await fetch(`/api/productions/${productionId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notes })
+        });
+        
+        if (!response.ok) throw new Error('Üretim tamamlanamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Production completion error:', error);
+        throw error;
+    }
+}
+
+// Barkod okutma
+async function scanBarcodeAPI(productionId, barcode, operator) {
+    try {
+        const response = await fetch('/api/barcodes/scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                production_id: productionId,
+                barcode: barcode,
+                operator: operator
+            })
+        });
+        
+        if (!response.ok) throw new Error('Barkod okutulamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Barcode scan error:', error);
+        throw error;
+    }
+}
+
+// Barkod geçmişi
+async function getBarcodeHistory(productionId) {
+    try {
+        const response = await fetch(`/api/barcodes/history/${productionId}`);
+        if (!response.ok) throw new Error('Barkod geçmişi alınamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Barcode history fetch error:', error);
+        throw error;
+    }
+}
+
+// Barkod doğrulama
+async function validateBarcode(barcode, productId, productType) {
+    try {
+        const response = await fetch('/api/barcodes/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                barcode: barcode,
+                product_id: productId,
+                product_type: productType
+            })
+        });
+        
+        if (!response.ok) throw new Error('Barkod doğrulanamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Barcode validation error:', error);
+        throw error;
+    }
+}
+
+// Üretim özeti raporu
+async function getProductionSummary(startDate, endDate) {
+    try {
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        
+        const response = await fetch(`/api/reports/production-summary?${params}`);
+        if (!response.ok) throw new Error('Rapor alınamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Production summary error:', error);
+        throw error;
+    }
+}
+
+// Malzeme kullanım raporu
+async function getMaterialUsageReport(period = 'month') {
+    try {
+        const response = await fetch(`/api/reports/material-usage?period=${period}`);
+        if (!response.ok) throw new Error('Malzeme raporu alınamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Material usage report error:', error);
+        throw error;
+    }
+}
+
+// Verimlilik raporu
+async function getEfficiencyReport(productionId) {
+    try {
+        const response = await fetch(`/api/reports/efficiency?production_id=${productionId}`);
+        if (!response.ok) throw new Error('Verimlilik raporu alınamadı');
+        return await response.json();
+    } catch (error) {
+        console.error('Efficiency report error:', error);
+        throw error;
+    }
+}
+
+// ========================================
+// YENİ UI FONKSİYONLARI - FAZ 4
+// ========================================
+
+// Aktif üretimleri göster
+async function loadActiveProductions() {
+    try {
+        const productions = await getActiveProductions();
+        console.log('Aktif üretimler:', productions);
+        
+        // Aktif üretimleri UI'da göster (isteğe bağlı)
+        if (productions.length > 0) {
+            showAlert(`${productions.length} aktif üretim bulundu`, 'info');
+        }
+        
+        return productions;
+    } catch (error) {
+        console.error('Aktif üretimler yüklenemedi:', error);
+        showAlert('Aktif üretimler yüklenemedi: ' + error.message, 'error');
+        return [];
+    }
+}
+
+// Üretim özeti göster
+async function showProductionSummary() {
+    try {
+        const summary = await getProductionSummary();
+        console.log('Üretim özeti:', summary);
+        
+        // Özet bilgilerini göster
+        const summaryText = `
+            Toplam Üretim: ${summary.total_productions}
+            Tamamlanan: ${summary.completed}
+            Aktif: ${summary.active}
+            İptal Edilen: ${summary.cancelled}
+            Toplam Miktar: ${summary.total_quantity}
+            Hedef Miktar: ${summary.total_target}
+            Verimlilik: %${summary.efficiency}
+        `;
+        
+        showAlert(summaryText, 'info');
+        return summary;
+    } catch (error) {
+        console.error('Üretim özeti alınamadı:', error);
+        showAlert('Üretim özeti alınamadı: ' + error.message, 'error');
+        return null;
+    }
+}
+
+// Verimlilik raporu göster
+async function showEfficiencyReport(productionId) {
+    try {
+        const report = await getEfficiencyReport(productionId);
+        console.log('Verimlilik raporu:', report);
+        
+        // Rapor bilgilerini göster
+        const reportText = `
+            Üretim ID: ${report.production_id}
+            Toplam Tarama: ${report.total_scans}
+            Başarılı Tarama: ${report.successful_scans}
+            Başarısız Tarama: ${report.failed_scans}
+            Verimlilik: %${report.efficiency}
+            Tamamlanma Oranı: %${report.completion_percentage}
+            Üretim Hızı: ${report.production_rate} adet/dakika
+        `;
+        
+        showAlert(reportText, 'info');
+        return report;
+    } catch (error) {
+        console.error('Verimlilik raporu alınamadı:', error);
+        showAlert('Verimlilik raporu alınamadı: ' + error.message, 'error');
+        return null;
+    }
+}
