@@ -44,6 +44,11 @@
                             <i class="fas fa-industry me-1"></i>Üretim Yönetimi
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="barcode.html">
+                            <i class="fas fa-barcode me-1"></i>Barkod Üretimi
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -306,9 +311,6 @@
                             <i class="fas fa-cube me-2"></i>Nihai Ürün Yönetimi
                         </h5>
                         <div class="btn-group" role="group">
-                            <button class="btn btn-success btn-sm" onclick="updateAllNihaiCostsFromBOM()">
-                                <i class="fas fa-calculator me-1"></i>BOM Maliyet Hesapla
-                            </button>
                             <button class="btn btn-info btn-sm" onclick="exportToCSV('nihai')">
                                 <i class="fas fa-download me-1"></i>CSV Export
                             </button>
@@ -380,10 +382,6 @@
                 </div>
             </div>
             
-            <!-- Nihai Ürün Stok Kartları -->
-            <div class="row mt-4" id="nihai-stock-cards">
-                <!-- Nihai ürün stok kartları buraya gelecek -->
-            </div>
             
             <div class="row mt-4">
                 <div class="col-12">
@@ -401,7 +399,6 @@
                                             <th>Barkod</th>
                                             <th>Miktar</th>
                                             <th>Birim</th>
-                                            <th>BOM Maliyeti</th>
                                             <th>Satış Fiyatı</th>
                                             <th>Toplam Değer</th>
                                             <th>İşlemler</th>

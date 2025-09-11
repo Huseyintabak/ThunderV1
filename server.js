@@ -143,9 +143,12 @@ app.get('/api/hammaddeler', async (req, res) => {
 
 app.post('/api/hammaddeler', async (req, res) => {
   try {
+    // Sadece hammadde tablosunda olan sütunları al
+    const { alt_urun_id, ana_urun_id, ana_urun_tipi, alt_urun_tipi, gerekli_miktar, ...hammaddeData } = req.body;
+    
     const hammadde = {
       id: Date.now(),
-      ...req.body,
+      ...hammaddeData,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -175,8 +178,12 @@ app.post('/api/hammaddeler', async (req, res) => {
 app.put('/api/hammaddeler/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    
+    // CSV'den gelen boş timestamp alanlarını ve ürün ağacı sütunlarını filtrele
+    const { created_at, updated_at, alt_urun_id, ana_urun_id, ana_urun_tipi, alt_urun_tipi, gerekli_miktar, ...cleanBody } = req.body;
+    
     const updatedHammadde = {
-      ...req.body,
+      ...cleanBody,
       updated_at: new Date().toISOString()
     };
 
@@ -267,9 +274,12 @@ app.get('/api/yarimamuller', async (req, res) => {
 
 app.post('/api/yarimamuller', async (req, res) => {
   try {
+    // Sadece yarı mamul tablosunda olan sütunları al
+    const { alt_urun_id, ana_urun_id, ana_urun_tipi, alt_urun_tipi, gerekli_miktar, ...yarimamulData } = req.body;
+    
     const yarimamul = {
       id: Date.now(),
-      ...req.body,
+      ...yarimamulData,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -299,8 +309,12 @@ app.post('/api/yarimamuller', async (req, res) => {
 app.put('/api/yarimamuller/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    
+    // CSV'den gelen boş timestamp alanlarını ve ürün ağacı sütunlarını filtrele
+    const { created_at, updated_at, alt_urun_id, ana_urun_id, ana_urun_tipi, alt_urun_tipi, gerekli_miktar, ...cleanBody } = req.body;
+    
     const updatedYarimamul = {
-      ...req.body,
+      ...cleanBody,
       updated_at: new Date().toISOString()
     };
 
@@ -391,9 +405,12 @@ app.get('/api/nihai_urunler', async (req, res) => {
 
 app.post('/api/nihai_urunler', async (req, res) => {
   try {
+    // Sadece nihai ürün tablosunda olan sütunları al
+    const { alt_urun_id, ana_urun_id, ana_urun_tipi, alt_urun_tipi, gerekli_miktar, ...nihaiData } = req.body;
+    
     const nihaiUrun = {
       id: Date.now(),
-      ...req.body,
+      ...nihaiData,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -423,8 +440,12 @@ app.post('/api/nihai_urunler', async (req, res) => {
 app.put('/api/nihai_urunler/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    
+    // CSV'den gelen boş timestamp alanlarını ve ürün ağacı sütunlarını filtrele
+    const { created_at, updated_at, alt_urun_id, ana_urun_id, ana_urun_tipi, alt_urun_tipi, gerekli_miktar, ...cleanBody } = req.body;
+    
     const updatedNihaiUrun = {
-      ...req.body,
+      ...cleanBody,
       updated_at: new Date().toISOString()
     };
 
@@ -514,9 +535,58 @@ app.get('/api/urun_agaci', async (req, res) => {
 
 app.post('/api/urun_agaci', async (req, res) => {
   try {
+    // Eğer ID verilmişse, önce mevcut kaydı kontrol et
+    if (req.body.id) {
+      const { data: existingData, error: checkError } = await supabase
+        .from('urun_agaci')
+        .select('id')
+        .eq('id', req.body.id)
+        .single();
+      
+      if (existingData) {
+        // Kayıt varsa, güncelleme yap
+        const updatedUrunAgaciItem = {
+          ana_urun_id: Number(req.body.ana_urun_id) || 0,
+          alt_urun_id: Number(req.body.alt_urun_id) || 0,
+          ana_urun_tipi: req.body.ana_urun_tipi,
+          alt_urun_tipi: req.body.alt_urun_tipi,
+          gerekli_miktar: Number(req.body.gerekli_miktar) || 0,
+          birim: req.body.birim,
+          maliyet_orani: Number(req.body.maliyet_orani) || 0,
+          sira_no: Number(req.body.sira_no) || 0,
+          aktif: req.body.aktif === 'TRUE' || req.body.aktif === true,
+          updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+          .from('urun_agaci')
+          .update(updatedUrunAgaciItem)
+          .eq('id', req.body.id)
+          .select();
+
+        if (error) {
+          console.error('Supabase urun_agaci update error:', error);
+          res.status(500).json({ error: error.message });
+          return;
+        }
+
+        res.json(data[0]);
+        return;
+      }
+    }
+
+    // Yeni kayıt oluştur
     const urunAgaciItem = {
-      id: Date.now(),
-      ...req.body,
+      id: req.body.id || Date.now(), // CSV'den gelen ID'yi kullan, yoksa yeni üret
+      ana_urun_id: Number(req.body.ana_urun_id) || 0,
+      alt_urun_id: Number(req.body.alt_urun_id) || 0,
+      ana_urun_tipi: req.body.ana_urun_tipi,
+      alt_urun_tipi: req.body.alt_urun_tipi,
+      gerekli_miktar: Number(req.body.gerekli_miktar) || 0,
+      birim: req.body.birim,
+      maliyet_orani: Number(req.body.maliyet_orani) || 0,
+      sira_no: Number(req.body.sira_no) || 0,
+      aktif: req.body.aktif === 'TRUE' || req.body.aktif === true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -546,8 +616,15 @@ app.post('/api/urun_agaci', async (req, res) => {
 app.put('/api/urun_agaci/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    
+    // CSV'den gelen boş timestamp alanlarını filtrele
+    const { created_at, updated_at, ...cleanBody } = req.body;
+    
+    // ID alanlarını integer'a çevir
     const updatedUrunAgaciItem = {
-      ...req.body,
+      ...cleanBody,
+      ana_urun_id: Number(cleanBody.ana_urun_id) || 0,
+      alt_urun_id: Number(cleanBody.alt_urun_id) || 0,
       updated_at: new Date().toISOString()
     };
 
@@ -560,7 +637,11 @@ app.put('/api/urun_agaci/:id', async (req, res) => {
 
       if (error) {
         console.error('Supabase urun_agaci update error:', error);
-        res.status(500).json({ error: error.message });
+        if (error.code === '23505') {
+          res.status(409).json({ error: 'Bu ürün ağacı kombinasyonu zaten mevcut' });
+        } else {
+          res.status(500).json({ error: error.message });
+        }
         return;
       }
 

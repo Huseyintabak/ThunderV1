@@ -86,10 +86,6 @@ function showSection(sectionName) {
         renderYarimamulStockCards();
     }
     
-    // Nihai ürün bölümü gösterildiğinde stok kartlarını render et
-    if (sectionName === 'nihai') {
-        renderNihaiStockCards();
-    }
     
 }
 
@@ -179,87 +175,6 @@ function renderHammaddeListesi() {
     });
 }
 
-// Nihai ürün stok kartlarını göster
-function renderNihaiStockCards() {
-    const container = document.getElementById('nihai-stock-cards');
-    container.innerHTML = '';
-
-    nihaiUrunler.forEach(nihai => {
-        const card = document.createElement('div');
-        card.className = 'col-md-4 mb-3';
-        
-        const stockStatus = nihai.miktar > 0 ? 'success' : 'warning';
-        const stockText = nihai.miktar > 0 ? 'Stokta' : 'Stok Yok';
-        const totalValue = (nihai.miktar * nihai.satis_fiyati).toFixed(2);
-        const bomCost = nihai.bom_maliyet || 0;
-        const bomValue = (nihai.miktar * bomCost).toFixed(2);
-        
-        card.innerHTML = `
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="card-title mb-0">${nihai.ad}</h6>
-                        <span class="badge bg-${stockStatus}">${stockText}</span>
-                    </div>
-                    <p class="card-text small text-muted mb-2">${nihai.kod}</p>
-                    <div class="row text-center">
-                        <div class="col-4">
-                            <div class="border-end">
-                                <div class="h5 mb-0 text-primary">${nihai.miktar}</div>
-                                <small class="text-muted">${nihai.birim}</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="border-end">
-                                <div class="h6 mb-0 text-info">₺${bomCost.toFixed(2)}</div>
-                                <small class="text-muted">BOM Maliyeti</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="h6 mb-0 text-success">₺${nihai.satis_fiyati.toFixed(2)}</div>
-                            <small class="text-muted">Satış Fiyatı</small>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-center">
-                        <small class="text-muted">Toplam Değer: ₺${totalValue}</small>
-                    </div>
-                    <div class="mt-2 text-center">
-                        <small class="text-muted">BOM Değeri: ₺${bomValue}</small>
-                    </div>
-                    <div class="mt-3 d-grid gap-2">
-                        <button class="btn btn-outline-primary btn-sm" onclick="showBOMCostDetails(${nihai.id}, 'nihai')">
-                            <i class="fas fa-calculator me-1"></i>BOM Detay
-                        </button>
-                        <button class="btn btn-outline-success btn-sm" onclick="updateNihaiCostFromBOM(${nihai.id})">
-                            <i class="fas fa-sync me-1"></i>Maliyet Hesapla
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-
-    // Toplam stok değeri kartı
-    const totalValue = nihaiUrunler.reduce((sum, nihai) => sum + (nihai.miktar * nihai.satis_fiyati), 0);
-    const totalBOMValue = nihaiUrunler.reduce((sum, nihai) => sum + (nihai.miktar * (nihai.bom_maliyet || 0)), 0);
-    
-    const totalCard = document.createElement('div');
-    totalCard.className = 'col-md-4 mb-3';
-    totalCard.innerHTML = `
-        <div class="card h-100 border-success">
-            <div class="card-body text-center">
-                <h6 class="card-title text-success">
-                    <i class="fas fa-chart-line me-2"></i>Toplam Stok Değeri
-                </h6>
-                <div class="h4 text-success mb-2">₺${totalValue.toFixed(2)}</div>
-                <div class="h6 text-info mb-2">BOM Değeri: ₺${totalBOMValue.toFixed(2)}</div>
-                <small class="text-muted">${nihaiUrunler.length} nihai ürün</small>
-            </div>
-        </div>
-    `;
-    container.appendChild(totalCard);
-}
 
 // Yarı mamul işlemleri
 async function loadYarimamuller() {
@@ -518,24 +433,15 @@ function renderNihaiListesi() {
         const row = document.createElement('tr');
         const toplamDeger = (nihai.miktar * nihai.satis_fiyati).toFixed(2);
         
-        const bomCost = nihai.bom_maliyet || 0;
-        
         row.innerHTML = `
             <td>${nihai.kod}</td>
             <td>${nihai.ad}</td>
             <td><code>${nihai.barkod || 'Tanımlanmamış'}</code></td>
             <td>${nihai.miktar}</td>
             <td>${nihai.birim}</td>
-            <td>₺${bomCost.toFixed(2)}</td>
             <td>₺${nihai.satis_fiyati.toFixed(2)}</td>
             <td>₺${toplamDeger}</td>
             <td>
-                <button class="btn btn-info btn-sm me-1" onclick="showBOMCostDetails(${nihai.id}, 'nihai')" title="BOM Detay">
-                    <i class="fas fa-calculator"></i>
-                </button>
-                <button class="btn btn-success btn-sm me-1" onclick="updateNihaiCostFromBOM(${nihai.id})" title="Maliyet Hesapla">
-                    <i class="fas fa-sync"></i>
-                </button>
                 <button class="btn btn-warning btn-sm me-1" onclick="editNihai(${nihai.id})" title="Düzenle">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -1612,7 +1518,6 @@ async function updateNihaiCostFromBOM(nihaiId) {
                 
                 // Ekranları güncelle
                 renderNihaiListesi();
-                renderNihaiStockCards();
                 
                 showAlert(`Nihai ürün BOM maliyeti güncellendi: ₺${bomCost.toFixed(2)}`, 'success');
             } else {
@@ -1677,7 +1582,6 @@ async function updateAllNihaiCostsFromBOM() {
         
         // Ekranları güncelle
         renderNihaiListesi();
-        renderNihaiStockCards();
         
         // Sonuç mesajı
         const message = `Maliyet hesaplama tamamlandı! ✅ Başarılı: ${successCount} ürün ❌ Hata: ${errorCount} ürün`;
@@ -2557,45 +2461,121 @@ async function importDataToSystem(data, type) {
         showAlert(`${data.length} kayıt import ediliyor...`, 'info');
         
         let successCount = 0;
+        let updateCount = 0;
         let errorCount = 0;
         
         for (const item of data) {
             try {
                 let response;
+                let isUpdate = false;
+                
+                // ID varsa önce kontrol et (güncelleme için)
+                if (item.id) {
+                    // Mevcut veriyi kontrol et
+                    let existingData = [];
+                switch(type) {
+                    case 'hammadde':
+                            const hammaddeResponse = await fetch('/api/hammaddeler');
+                            if (hammaddeResponse.ok) {
+                                existingData = await hammaddeResponse.json();
+                            }
+                            break;
+                        case 'yarimamul':
+                            const yarimamulResponse = await fetch('/api/yarimamuller');
+                            if (yarimamulResponse.ok) {
+                                existingData = await yarimamulResponse.json();
+                            }
+                            break;
+                        case 'nihai':
+                            const nihaiResponse = await fetch('/api/nihai_urunler');
+                            if (nihaiResponse.ok) {
+                                existingData = await nihaiResponse.json();
+                            }
+                            break;
+                        case 'urun-agaci':
+                            const urunAgaciResponse = await fetch('/api/urun_agaci');
+                            if (urunAgaciResponse.ok) {
+                                existingData = await urunAgaciResponse.json();
+                            }
+                            break;
+                    }
+                    
+                    // Aynı ID'ye sahip kayıt var mı kontrol et
+                    const existingItem = existingData.find(existing => existing.id == item.id);
+                    if (existingItem) {
+                        isUpdate = true;
+                    }
+                }
                 
                 switch(type) {
                     case 'hammadde':
+                        if (isUpdate) {
+                            response = await fetch(`/api/hammaddeler/${item.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item)
+                            });
+                        } else {
                         response = await fetch('/api/hammaddeler', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(item)
                         });
+                        }
                         break;
                     case 'yarimamul':
+                        if (isUpdate) {
+                            response = await fetch(`/api/yarimamuller/${item.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item)
+                            });
+                        } else {
                         response = await fetch('/api/yarimamuller', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(item)
                         });
+                        }
                         break;
                     case 'nihai':
+                        if (isUpdate) {
+                            response = await fetch(`/api/nihai_urunler/${item.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item)
+                            });
+                        } else {
                         response = await fetch('/api/nihai_urunler', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(item)
                         });
+                        }
                         break;
                     case 'urun-agaci':
+                        if (isUpdate) {
+                            response = await fetch(`/api/urun_agaci/${item.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item)
+                            });
+                        } else {
                         response = await fetch('/api/urun_agaci', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(item)
                         });
+                        }
                         break;
                 }
                 
                 if (response && response.ok) {
+                    if (isUpdate) {
+                        updateCount++;
+                    } else {
                     successCount++;
+                    }
                 } else {
                     errorCount++;
                 }
@@ -2610,8 +2590,14 @@ async function importDataToSystem(data, type) {
         await loadAllData();
         
         // Sonuç mesajı
-        const message = `Import tamamlandı! ✅ Başarılı: ${successCount} kayıt ❌ Hata: ${errorCount} kayıt`;
-        showAlert(message, successCount > 0 ? 'success' : 'warning');
+        let message = `Import tamamlandı! ✅ Yeni: ${successCount} kayıt`;
+        if (updateCount > 0) {
+            message += ` 🔄 Güncellenen: ${updateCount} kayıt`;
+        }
+        if (errorCount > 0) {
+            message += ` ❌ Hata: ${errorCount} kayıt`;
+        }
+        showAlert(message, (successCount > 0 || updateCount > 0) ? 'success' : 'warning');
         
     } catch (error) {
         console.error('Import işlemi hatası:', error);

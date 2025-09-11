@@ -6,7 +6,7 @@
     <title>Thunder V1 - Üretim Yönetimi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="styles.css" rel="stylesheet">
+    <link href="styles.css?v=20241220" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -160,7 +160,7 @@
                                         </table>
                                     </div>
                                     <div class="mt-3">
-                                        <div class="alert alert-info">
+                        <div class="alert alert-info">
                                             <strong>Toplam Maliyet:</strong> <span id="yarimamul-total-cost">₺0.00</span>
                                         </div>
                                     </div>
@@ -405,9 +405,19 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="production-product" class="form-label">Üretilecek Ürün *</label>
-                                <select class="form-select" id="production-product" required>
-                                    <option value="">Seçiniz...</option>
-                                </select>
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" id="production-product-autocomplete" 
+                                           placeholder="Ürün kodunu yazın... (örn: TRX)" 
+                                           autocomplete="off" required>
+                                    <div id="production-autocomplete-results" class="autocomplete-results" style="display: none;">
+                                        <!-- Autocomplete sonuçları buraya gelecek -->
+                                    </div>
+                                </div>
+                                <input type="hidden" id="production-product" name="production-product" required>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    En az 3 karakter yazarak ürün arayabilirsiniz
+                                </small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -580,6 +590,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="production.js"></script>
+    <script src="production.js?v=20241220"></script>
 </body>
 </html>

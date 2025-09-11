@@ -38,9 +38,156 @@ async function loadAllData() {
         ]);
         
         updateProductSelects();
+        
+        // Autocomplete sistemini kur (veriler yüklendikten sonra)
+        setupProductionProductAutocomplete();
     } catch (error) {
         console.error('Veri yükleme hatası:', error);
         showAlert('Veriler yüklenirken hata oluştu', 'error');
+    }
+}
+
+
+// Production modal autocomplete sistemi kurulumu
+function setupProductionProductAutocomplete() {
+    const input = document.getElementById('production-product-autocomplete');
+    const results = document.getElementById('production-autocomplete-results');
+    const hiddenInput = document.getElementById('production-product');
+    
+    // Elementlerin varlığını kontrol et
+    if (!input || !results || !hiddenInput) {
+        console.error('Production autocomplete elementleri bulunamadı');
+        return;
+    }
+    
+    console.log('Production autocomplete sistemi kuruluyor...');
+    
+    let selectedIndex = -1;
+    let filteredProducts = [];
+    
+    // Input event listener
+    input.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length < 3) {
+            results.style.display = 'none';
+            hiddenInput.value = '';
+            return;
+        }
+        
+        // Tüm ürünleri birleştir (hammadde, yarı mamul, nihai)
+        const allProducts = [
+            ...hammaddeler.filter(h => h.aktif).map(h => ({...h, type: 'hammadde'})),
+            ...yarimamuller.filter(y => y.aktif).map(y => ({...y, type: 'yarimamul'})),
+            ...nihaiUrunler.filter(n => n.aktif).map(n => ({...n, type: 'nihai'}))
+        ];
+        
+        // Ürünleri filtrele
+        filteredProducts = allProducts.filter(product => 
+            product.kod.toLowerCase().startsWith(query.toLowerCase()) ||
+            product.kod.toLowerCase().includes(query.toLowerCase()) ||
+            product.ad.toLowerCase().includes(query.toLowerCase())
+        ).sort((a, b) => {
+            const aStartsWith = a.kod.toLowerCase().startsWith(query.toLowerCase());
+            const bStartsWith = b.kod.toLowerCase().startsWith(query.toLowerCase());
+            if (aStartsWith && !bStartsWith) return -1;
+            if (!aStartsWith && bStartsWith) return 1;
+            return a.kod.localeCompare(b.kod);
+        });
+        
+        updateProductionAutocompleteResults(filteredProducts);
+        results.style.display = 'block';
+        selectedIndex = -1;
+    });
+    
+    // Klavye navigasyonu
+    input.addEventListener('keydown', function(e) {
+        if (results.style.display === 'none') return;
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, filteredProducts.length - 1);
+                updateProductionSelection();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateProductionSelection();
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0 && selectedIndex < filteredProducts.length) {
+                    selectProductionProduct(filteredProducts[selectedIndex]);
+                }
+                break;
+            case 'Escape':
+                results.style.display = 'none';
+                selectedIndex = -1;
+                break;
+        }
+    });
+    
+    // Dışarı tıklandığında kapat
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+            selectedIndex = -1;
+        }
+    });
+    
+    // Sonuç item'larına tıklama
+    results.addEventListener('click', function(e) {
+        const item = e.target.closest('.autocomplete-item');
+        if (item) {
+            const index = parseInt(item.dataset.index);
+            if (index >= 0 && index < filteredProducts.length) {
+                selectProductionProduct(filteredProducts[index]);
+            }
+        }
+    });
+    
+    // Autocomplete sonuçlarını güncelle
+    function updateProductionAutocompleteResults(products) {
+        if (products.length === 0) {
+            results.innerHTML = '<div class="autocomplete-no-results">Ürün bulunamadı</div>';
+            return;
+        }
+        
+        results.innerHTML = products.slice(0, 10).map((product, index) => `
+            <div class="autocomplete-item" data-index="${index}">
+                <div>
+                    <strong>${product.kod}</strong>
+                    <span class="badge bg-${product.type === 'hammadde' ? 'secondary' : product.type === 'yarimamul' ? 'warning' : 'primary'} ms-2">${product.type}</span><br>
+                    <small>${product.ad}</small>
+                </div>
+                <div>
+                    <small>${product.miktar || 0} ${product.birim}</small>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Seçim güncelleme
+    function updateProductionSelection() {
+        const items = results.querySelectorAll('.autocomplete-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === selectedIndex);
+        });
+    }
+    
+    // Ürün seçimi
+    function selectProductionProduct(product) {
+        input.value = `${product.kod} - ${product.ad}`;
+        hiddenInput.value = product.id;
+        results.style.display = 'none';
+        selectedIndex = -1;
+        
+        // Üretim tipini belirle
+        currentProductionType = product.type;
+        
+        // Malzeme kontrolünü tetikle
+        checkMaterialsForProduction();
     }
 }
 
@@ -65,6 +212,7 @@ function setupEventListeners() {
             calculateNihaiMaterials();
         }
     });
+    
     
     // Barkod okutma sistemi event listener'ları
     document.getElementById('production-product').addEventListener('change', function() {
@@ -185,10 +333,10 @@ function updateProductSelects() {
     
     // Yarı mamul seçeneklerini güncelle
     yarimamulSelect.innerHTML = '<option value="">Seçiniz...</option>';
-            yarimamuller.forEach(yarimamul => {
+    yarimamuller.forEach(yarimamul => {
         if (yarimamul.aktif) {
-                const option = document.createElement('option');
-                option.value = yarimamul.id;
+            const option = document.createElement('option');
+            option.value = yarimamul.id;
             option.textContent = `${yarimamul.kod} - ${yarimamul.ad}`;
             yarimamulSelect.appendChild(option);
         }
@@ -196,10 +344,10 @@ function updateProductSelects() {
     
     // Nihai ürün seçeneklerini güncelle
     nihaiSelect.innerHTML = '<option value="">Seçiniz...</option>';
-            nihaiUrunler.forEach(nihai => {
+    nihaiUrunler.forEach(nihai => {
         if (nihai.aktif) {
-                const option = document.createElement('option');
-                option.value = nihai.id;
+            const option = document.createElement('option');
+            option.value = nihai.id;
             option.textContent = `${nihai.kod} - ${nihai.ad}`;
             nihaiSelect.appendChild(option);
         }
@@ -419,6 +567,7 @@ function clearNihaiMaterials() {
     costAlert.innerHTML = `
         <strong>Toplam Maliyet:</strong> <span id="nihai-total-cost">₺0.00</span>
     `;
+    
 }
 
 // Yarı mamul stok kontrolü
