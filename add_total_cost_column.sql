@@ -11,3 +11,4 @@ WHERE table_name = 'work_orders'
 AND table_schema = 'public'
 AND column_name = 'total_cost';
 
+

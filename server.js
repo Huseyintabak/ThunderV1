@@ -141,6 +141,35 @@ app.get('/api/hammaddeler', async (req, res) => {
   }
 });
 
+// Tek hammadde getirme
+app.get('/api/hammaddeler/:id', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('hammaddeler')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (error) {
+        console.error('Supabase hammaddeler single error:', error);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      res.json(data);
+    } else {
+      const product = hammaddeler.find(p => p.id == productId);
+      res.json(product || {});
+    }
+  } catch (error) {
+    console.error('Hammadde single API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/hammaddeler', async (req, res) => {
   try {
     // Sadece hammadde tablosunda olan sütunları al
@@ -196,7 +225,11 @@ app.put('/api/hammaddeler/:id', async (req, res) => {
 
       if (error) {
         console.error('Supabase hammadde update error:', error);
-        res.status(500).json({ error: error.message });
+        if (error.code === '23505') {
+          res.status(400).json({ error: 'Bu kod zaten kullanılıyor. Lütfen farklı bir kod girin.' });
+        } else {
+          res.status(500).json({ error: error.message });
+        }
         return;
       }
 
@@ -272,6 +305,35 @@ app.get('/api/yarimamuller', async (req, res) => {
   }
 });
 
+// Tek yarı mamul getirme
+app.get('/api/yarimamuller/:id', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('yarimamuller')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (error) {
+        console.error('Supabase yarimamuller single error:', error);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      res.json(data);
+    } else {
+      const product = yarimamuller.find(p => p.id == productId);
+      res.json(product || {});
+    }
+  } catch (error) {
+    console.error('Yarimamul single API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/yarimamuller', async (req, res) => {
   try {
     // Sadece yarı mamul tablosunda olan sütunları al
@@ -327,7 +389,11 @@ app.put('/api/yarimamuller/:id', async (req, res) => {
 
       if (error) {
         console.error('Supabase yarimamul update error:', error);
-        res.status(500).json({ error: error.message });
+        if (error.code === '23505') {
+          res.status(400).json({ error: 'Bu kod zaten kullanılıyor. Lütfen farklı bir kod girin.' });
+        } else {
+          res.status(500).json({ error: error.message });
+        }
         return;
       }
 
@@ -403,6 +469,35 @@ app.get('/api/nihai_urunler', async (req, res) => {
   }
 });
 
+// Tek nihai ürün getirme
+app.get('/api/nihai_urunler/:id', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('nihai_urunler')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (error) {
+        console.error('Supabase nihai_urunler single error:', error);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      res.json(data);
+    } else {
+      const product = nihaiUrunler.find(p => p.id == productId);
+      res.json(product || {});
+    }
+  } catch (error) {
+    console.error('Nihai urun single API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/nihai_urunler', async (req, res) => {
   try {
     // Sadece nihai ürün tablosunda olan sütunları al
@@ -458,7 +553,11 @@ app.put('/api/nihai_urunler/:id', async (req, res) => {
 
       if (error) {
         console.error('Supabase nihai_urun update error:', error);
-        res.status(500).json({ error: error.message });
+        if (error.code === '23505') {
+          res.status(400).json({ error: 'Bu kod zaten kullanılıyor. Lütfen farklı bir kod girin.' });
+        } else {
+          res.status(500).json({ error: error.message });
+        }
         return;
       }
 
@@ -822,9 +921,46 @@ function checkRateLimit(ip) {
 // ========================================
 
 // Üretim Yönetimi API'leri
+app.get('/api/productions', async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+        if (error) {
+            console.error('Üretimler yüklenirken hata:', error);
+            return res.status(500).json({ error: error.message });
+        }
+        
+        res.json(data || []);
+    } catch (error) {
+        console.error('Üretimler yüklenirken hata:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/productions', async (req, res) => {
     try {
         const { product_id, product_type, quantity, target_quantity, created_by, notes } = req.body;
+        
+        // Validation - gerekli alanları kontrol et
+        if (!product_id || product_id === null || product_id === undefined) {
+            return res.status(400).json({ error: 'product_id gerekli' });
+        }
+        if (!product_type || product_type === null || product_type === undefined) {
+            return res.status(400).json({ error: 'product_type gerekli' });
+        }
+        if (quantity === null || quantity === undefined) {
+            return res.status(400).json({ error: 'quantity gerekli' });
+        }
+        if (!target_quantity || target_quantity === null || target_quantity === undefined) {
+            return res.status(400).json({ error: 'target_quantity gerekli' });
+        }
         
         // Önce tabloların var olup olmadığını kontrol et
         if (!supabase) {
@@ -834,12 +970,12 @@ app.post('/api/productions', async (req, res) => {
         const { data, error } = await supabase
             .from('productions')
             .insert([{
-                product_id,
-                product_type,
-                quantity,
-                target_quantity,
+                product_id: parseInt(product_id),
+                product_type: product_type,
+                quantity: parseInt(quantity) || 0,
+                target_quantity: parseInt(target_quantity),
                 created_by: created_by || 'system',
-                notes
+                notes: notes || null
             }])
             .select();
             
@@ -1224,7 +1360,413 @@ app.get('/api/reports/efficiency', async (req, res) => {
     }
 });
 
+// ========================================
+// STOK YÖNETİMİ API'LERİ - STOK GİRİŞİ
+// ========================================
+
+// Stok girişi yapma
+app.post('/api/stock/entry', async (req, res) => {
+    try {
+        const { 
+            urun_id, 
+            urun_tipi, 
+            miktar, 
+            birim, 
+            birim_fiyat, 
+            referans_no, 
+            aciklama, 
+            tedarikci,
+            fatura_no,
+            teslim_tarihi 
+        } = req.body;
+        
+        // Validation
+        if (!urun_id || !urun_tipi || !miktar) {
+            return res.status(400).json({ error: 'Gerekli alanlar eksik' });
+        }
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Stok hareketi kaydet
+        const stokHareketi = {
+            urun_id: parseInt(urun_id),
+            urun_tipi: urun_tipi,
+            hareket_tipi: 'giris',
+            miktar: parseFloat(miktar),
+            birim: birim,
+            birim_fiyat: parseFloat(birim_fiyat) || 0,
+            toplam_tutar: parseFloat(miktar) * (parseFloat(birim_fiyat) || 0),
+            referans_no: referans_no || `STK-${Date.now()}`,
+            aciklama: aciklama || 'Stok girişi',
+            tarih: new Date().toISOString()
+        };
+        
+        const { data: hareketData, error: hareketError } = await supabase
+            .from('stok_hareketleri')
+            .insert([stokHareketi])
+            .select();
+            
+        if (hareketError) throw hareketError;
+        
+        // Ürün stok miktarını güncelle
+        const tableName = urun_tipi === 'hammadde' ? 'hammaddeler' : 
+                          urun_tipi === 'yarimamul' ? 'yarimamuller' : 'nihai_urunler';
+        
+        const { data: currentData, error: currentError } = await supabase
+            .from(tableName)
+            .select('miktar')
+            .eq('id', urun_id)
+            .single();
+            
+        if (currentError) throw currentError;
+        
+        const newMiktar = (currentData.miktar || 0) + parseFloat(miktar);
+        
+        const { data: updateData, error: updateError } = await supabase
+            .from(tableName)
+            .update({ 
+                miktar: newMiktar,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', urun_id)
+            .select();
+            
+        if (updateError) throw updateError;
+        
+        res.json({
+            success: true,
+            stok_hareketi: hareketData[0],
+            yeni_stok_miktari: newMiktar,
+            message: 'Stok girişi başarıyla yapıldı'
+        });
+        
+    } catch (error) {
+        console.error('Stok girişi error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Stok çıkışı yapma
+app.post('/api/stock/exit', async (req, res) => {
+    try {
+        const { 
+            urun_id, 
+            urun_tipi, 
+            miktar, 
+            birim, 
+            referans_no, 
+            aciklama,
+            cikis_tipi // 'uretim', 'tuketim', 'transfer', 'sayim'
+        } = req.body;
+        
+        if (!urun_id || !urun_tipi || !miktar) {
+            return res.status(400).json({ error: 'Gerekli alanlar eksik' });
+        }
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Mevcut stok kontrolü
+        const tableName = urun_tipi === 'hammadde' ? 'hammaddeler' : 
+                          urun_tipi === 'yarimamul' ? 'yarimamuller' : 'nihai_urunler';
+        
+        const { data: currentData, error: currentError } = await supabase
+            .from(tableName)
+            .select('miktar')
+            .eq('id', urun_id)
+            .single();
+            
+        if (currentError) throw currentError;
+        
+        if ((currentData.miktar || 0) < parseFloat(miktar)) {
+            return res.status(400).json({ 
+                error: 'Yetersiz stok! Mevcut stok: ' + (currentData.miktar || 0) 
+            });
+        }
+        
+        // Stok hareketi kaydet
+        const stokHareketi = {
+            urun_id: parseInt(urun_id),
+            urun_tipi: urun_tipi,
+            hareket_tipi: cikis_tipi || 'cikis',
+            miktar: parseFloat(miktar),
+            birim: birim,
+            referans_no: referans_no || `STK-${Date.now()}`,
+            aciklama: aciklama || 'Stok çıkışı',
+            tarih: new Date().toISOString()
+        };
+        
+        const { data: hareketData, error: hareketError } = await supabase
+            .from('stok_hareketleri')
+            .insert([stokHareketi])
+            .select();
+            
+        if (hareketError) throw hareketError;
+        
+        // Ürün stok miktarını güncelle
+        const newMiktar = (currentData.miktar || 0) - parseFloat(miktar);
+        
+        const { data: updateData, error: updateError } = await supabase
+            .from(tableName)
+            .update({ 
+                miktar: newMiktar,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', urun_id)
+            .select();
+            
+        if (updateError) throw updateError;
+        
+        res.json({
+            success: true,
+            stok_hareketi: hareketData[0],
+            yeni_stok_miktari: newMiktar,
+            message: 'Stok çıkışı başarıyla yapıldı'
+        });
+        
+    } catch (error) {
+        console.error('Stok çıkışı error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Stok hareketleri listesi
+app.get('/api/stock/movements', async (req, res) => {
+    try {
+        const { 
+            urun_id, 
+            urun_tipi, 
+            hareket_tipi, 
+            start_date, 
+            end_date,
+            limit = 100,
+            offset = 0
+        } = req.query;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        let query = supabase
+            .from('stok_hareketleri')
+            .select('*')
+            .order('tarih', { ascending: false })
+            .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+            
+        if (urun_id) query = query.eq('urun_id', urun_id);
+        if (urun_tipi) query = query.eq('urun_tipi', urun_tipi);
+        if (hareket_tipi) query = query.eq('hareket_tipi', hareket_tipi);
+        if (start_date) query = query.gte('tarih', start_date);
+        if (end_date) query = query.lte('tarih', end_date);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        res.json(data);
+    } catch (error) {
+        console.error('Stok hareketleri fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Stok durumu raporu
+app.get('/api/stock/status', async (req, res) => {
+    try {
+        const { urun_tipi } = req.query;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        let tableName = 'hammaddeler';
+        if (urun_tipi === 'yarimamul') tableName = 'yarimamuller';
+        if (urun_tipi === 'nihai') tableName = 'nihai_urunler';
+        
+        const { data, error } = await supabase
+            .from(tableName)
+            .select('id, ad, kod, miktar, birim, minimum_stok, maksimum_stok, aktif')
+            .eq('aktif', true)
+            .order('miktar', { ascending: true });
+            
+        if (error) throw error;
+        
+        // Stok durumu analizi
+        const stockAnalysis = data.map(item => {
+            const miktar = parseFloat(item.miktar || 0);
+            const minStok = parseFloat(item.minimum_stok || 0);
+            const maxStok = parseFloat(item.maksimum_stok || 0);
+            
+            let durum = 'normal';
+            if (miktar <= minStok) durum = 'kritik';
+            else if (miktar >= maxStok && maxStok > 0) durum = 'fazla';
+            else if (miktar === 0) durum = 'tukenmis';
+            
+            return {
+                ...item,
+                durum,
+                stok_yuzdesi: maxStok > 0 ? ((miktar / maxStok) * 100).toFixed(2) : null
+            };
+        });
+        
+        res.json(stockAnalysis);
+    } catch (error) {
+        console.error('Stok durumu error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Stok sayımı
+app.post('/api/stock/count', async (req, res) => {
+    try {
+        const { 
+            urun_id, 
+            urun_tipi, 
+            sayim_miktari, 
+            aciklama 
+        } = req.body;
+        
+        if (!urun_id || !urun_tipi || sayim_miktari === undefined) {
+            return res.status(400).json({ error: 'Gerekli alanlar eksik' });
+        }
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Mevcut stok miktarını al
+        const tableName = urun_tipi === 'hammadde' ? 'hammaddeler' : 
+                          urun_tipi === 'yarimamul' ? 'yarimamuller' : 'nihai_urunler';
+        
+        const { data: currentData, error: currentError } = await supabase
+            .from(tableName)
+            .select('miktar')
+            .eq('id', urun_id)
+            .single();
+            
+        if (currentError) throw currentError;
+        
+        const mevcutMiktar = parseFloat(currentData.miktar || 0);
+        const sayimMiktari = parseFloat(sayim_miktari);
+        const fark = sayimMiktari - mevcutMiktar;
+        
+        // Stok hareketi kaydet
+        const stokHareketi = {
+            urun_id: parseInt(urun_id),
+            urun_tipi: urun_tipi,
+            hareket_tipi: 'sayim',
+            miktar: Math.abs(fark),
+            birim: 'adet', // Varsayılan birim
+            referans_no: `SAYIM-${Date.now()}`,
+            aciklama: `${aciklama || 'Stok sayımı'} - Fark: ${fark > 0 ? '+' : ''}${fark}`,
+            tarih: new Date().toISOString()
+        };
+        
+        const { data: hareketData, error: hareketError } = await supabase
+            .from('stok_hareketleri')
+            .insert([stokHareketi])
+            .select();
+            
+        if (hareketError) throw hareketError;
+        
+        // Stok miktarını güncelle
+        const { data: updateData, error: updateError } = await supabase
+            .from(tableName)
+            .update({ 
+                miktar: sayimMiktari,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', urun_id)
+            .select();
+            
+        if (updateError) throw updateError;
+        
+        res.json({
+            success: true,
+            stok_hareketi: hareketData[0],
+            eski_miktar: mevcutMiktar,
+            yeni_miktar: sayimMiktari,
+            fark: fark,
+            message: 'Stok sayımı tamamlandı'
+        });
+        
+    } catch (error) {
+        console.error('Stok sayımı error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Üretim güncelleme API'si
+app.put('/api/productions/:id', async (req, res) => {
+    try {
+        const productionId = req.params.id;
+        const { 
+            target_quantity, 
+            quantity, 
+            status, 
+            priority, 
+            notes,
+            end_time 
+        } = req.body;
+        
+        if (!supabase) {
+            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
+        }
+        
+        // Güncellenecek alanları hazırla
+        const updateData = {
+            updated_at: new Date().toISOString()
+        };
+        
+        if (target_quantity !== undefined) updateData.target_quantity = parseInt(target_quantity);
+        if (quantity !== undefined) updateData.quantity = parseInt(quantity);
+        if (status !== undefined) updateData.status = status;
+        if (priority !== undefined) updateData.priority = priority;
+        if (notes !== undefined) updateData.notes = notes;
+        if (end_time !== undefined) updateData.end_time = end_time;
+        
+        // Eğer durum tamamlandı veya iptal edildi ise bitiş zamanını ayarla
+        if (status === 'completed' || status === 'cancelled') {
+            updateData.end_time = new Date().toISOString();
+        }
+        
+        const { data, error } = await supabase
+            .from('productions')
+            .update(updateData)
+            .eq('id', productionId)
+            .select();
+            
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            return res.status(404).json({ error: 'Üretim bulunamadı' });
+        }
+        
+        res.json({
+            success: true,
+            production: data[0],
+            message: 'Üretim başarıyla güncellendi'
+        });
+        
+    } catch (error) {
+        console.error('Üretim güncelleme error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Hammadde tablosuna barkod sütunu ekle (manuel olarak Supabase'de yapılmalı)
+async function addBarcodeColumnToHammadde() {
+  console.log('Barkod sütunu manuel olarak Supabase\'de eklenmelidir:');
+  console.log('ALTER TABLE hammaddeler ADD COLUMN barkod VARCHAR(50) UNIQUE;');
+  console.log('CREATE INDEX idx_hammaddeler_barkod ON hammaddeler(barkod);');
+}
+
 // Server başlatma
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  
+  // Barkod sütununu ekle
+  addBarcodeColumnToHammadde();
 });

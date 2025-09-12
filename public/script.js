@@ -112,6 +112,7 @@ function handleHammaddeSubmit(e) {
     const hammadde = {
         ad: document.getElementById('hammadde-adi').value,
         kod: document.getElementById('hammadde-kodu').value,
+        barkod: document.getElementById('hammadde-barkod').value || null,
         miktar: parseFloat(document.getElementById('hammadde-miktar').value),
         birim: document.getElementById('hammadde-birim').value,
         birim_fiyat: parseFloat(document.getElementById('hammadde-fiyat').value),
@@ -158,6 +159,7 @@ function renderHammaddeListesi() {
         row.innerHTML = `
             <td>${hammadde.kod}</td>
             <td>${hammadde.ad}</td>
+            <td>${hammadde.barkod || '-'}</td>
             <td>${hammadde.miktar}</td>
             <td>${hammadde.birim}</td>
             <td>₺${hammadde.birim_fiyat.toFixed(2)}</td>
@@ -1271,6 +1273,7 @@ function editHammadde(id) {
         // Form alanlarını doldur
         document.getElementById('hammadde-adi').value = hammadde.ad;
         document.getElementById('hammadde-kodu').value = hammadde.kod;
+        document.getElementById('hammadde-barkod').value = hammadde.barkod || '';
         document.getElementById('hammadde-miktar').value = hammadde.miktar;
         document.getElementById('hammadde-birim').value = hammadde.birim;
         document.getElementById('hammadde-fiyat').value = hammadde.birim_fiyat;
@@ -1373,6 +1376,7 @@ async function updateHammadde(id) {
     const hammadde = {
         ad: document.getElementById('hammadde-adi').value,
         kod: document.getElementById('hammadde-kodu').value,
+        barkod: document.getElementById('hammadde-barkod').value || null,
         miktar: parseFloat(document.getElementById('hammadde-miktar').value),
         birim: document.getElementById('hammadde-birim').value,
         birim_fiyat: parseFloat(document.getElementById('hammadde-fiyat').value),
@@ -2346,8 +2350,15 @@ function downloadCSV(csv, filename) {
 
 // CSV Import
 function importFromCSV(type) {
+    console.log('CSV Import başlatıldı, tip:', type);
     currentImportType = type;
-    document.getElementById('csv-file-input').click();
+    const fileInput = document.getElementById('csv-file-input');
+    if (fileInput) {
+        fileInput.click();
+    } else {
+        console.error('CSV file input bulunamadı');
+        showAlert('CSV import elementi bulunamadı', 'error');
+    }
 }
 
 // CSV dosya seçimi işle

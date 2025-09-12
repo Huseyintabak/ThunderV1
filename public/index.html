@@ -7,6 +7,91 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
+    <style>
+        .dashboard-card {
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
+            height: 100%;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .process-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .inventory-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .production-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .quality-card {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+        .reports-card {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+        .settings-card {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #333;
+        }
+        .quick-action-btn {
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .quick-action-btn:hover {
+            transform: scale(1.05);
+        }
+        .welcome-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -20,43 +105,249 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" data-section="hammadde">
-                            <i class="fas fa-boxes me-1"></i>Hammadde Yönetimi
+                        <a class="nav-link active" href="#" onclick="showDashboard()">
+                            <i class="fas fa-home me-1"></i>Ana Sayfa
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="yarimamul">
-                            <i class="fas fa-cogs me-1"></i>Yarı Mamul Yönetimi
+                        <a class="nav-link" href="#" onclick="showHammaddeSection()">
+                            <i class="fas fa-boxes me-1"></i>Hammadde
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="nihai">
-                            <i class="fas fa-cube me-1"></i>Nihai Ürün Yönetimi
+                        <a class="nav-link" href="#" onclick="showYarimamulSection()">
+                            <i class="fas fa-cogs me-1"></i>Yarı Mamul
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="urun-agaci">
+                        <a class="nav-link" href="#" onclick="showNihaiSection()">
+                            <i class="fas fa-cube me-1"></i>Nihai Ürün
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showUrunAgaciSection()">
                             <i class="fas fa-sitemap me-1"></i>Ürün Ağacı
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="production.html">
-                            <i class="fas fa-industry me-1"></i>Üretim Yönetimi
+                            <i class="fas fa-industry me-1"></i>Üretim
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="barcode.html">
-                            <i class="fas fa-barcode me-1"></i>Barkod Üretimi
+                            <i class="fas fa-barcode me-1"></i>Barkod
                         </a>
                     </li>
                 </ul>
+                <div class="navbar-nav">
+                    <span class="navbar-text">
+                        <i class="fas fa-user me-1"></i>Admin
+                    </span>
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
+        <!-- Ana Dashboard -->
+        <div id="dashboard-section">
+            <!-- Hoş Geldiniz Bölümü -->
+            <div class="welcome-section">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="display-5 fw-bold mb-3">
+                            <i class="fas fa-industry me-3"></i>Thunder V1
+                        </h1>
+                        <h3 class="mb-3">Üretim Yönetim Sistemi</h3>
+                        <p class="lead mb-0">Üretim süreçlerinizi dijitalleştirin, stoklarınızı yönetin ve verimliliğinizi artırın.</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <i class="fas fa-cogs fa-5x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İstatistikler -->
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="total-materials">-</div>
+                    <div class="stat-label">Toplam Hammadde</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="total-semi-products">-</div>
+                    <div class="stat-label">Yarı Mamul</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="total-finished-products">-</div>
+                    <div class="stat-label">Nihai Ürün</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="active-productions">-</div>
+                    <div class="stat-label">Aktif Üretim</div>
+                </div>
+            </div>
+
+            <!-- Süreç Kartları -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h2 class="section-title">
+                        <i class="fas fa-cogs me-2"></i>Üretim Süreçleri
+                    </h2>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-5">
+                <!-- Stok Yönetimi -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card inventory-card h-100" onclick="showStockManagement()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-boxes fa-4x mb-3"></i>
+                            <h4 class="card-title">Stok Yönetimi</h4>
+                            <p class="card-text">Hammadde, yarı mamul ve nihai ürün stoklarını yönetin</p>
+                            <div class="mt-3">
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showStockEntryModal()">
+                                    <i class="fas fa-plus me-1"></i>Stok Girişi
+                                </button>
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showStockExitModal()">
+                                    <i class="fas fa-minus me-1"></i>Stok Çıkışı
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Üretim Planlama -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card production-card h-100" onclick="showProductionManagement()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-industry fa-4x mb-3"></i>
+                            <h4 class="card-title">Üretim Planlama</h4>
+                            <p class="card-text">Üretim süreçlerini planlayın ve takip edin</p>
+                            <div class="mt-3">
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); window.location.href='production.html'">
+                                    <i class="fas fa-play me-1"></i>Üretim Başlat
+                                </button>
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showWorkOrderModal()">
+                                    <i class="fas fa-clipboard-list me-1"></i>İş Emri
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kalite Kontrol -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card quality-card h-100" onclick="showQualityControl()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-4x mb-3"></i>
+                            <h4 class="card-title">Kalite Kontrol</h4>
+                            <p class="card-text">Ürün kalitesini kontrol edin ve raporlayın</p>
+                            <div class="mt-3">
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showQualityCheckModal()">
+                                    <i class="fas fa-search me-1"></i>Kalite Kontrol
+                                </button>
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showQualityReportModal()">
+                                    <i class="fas fa-chart-line me-1"></i>Kalite Raporu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barkod Yönetimi -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card process-card h-100" onclick="showBarcodeManagement()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-barcode fa-4x mb-3"></i>
+                            <h4 class="card-title">Barkod Yönetimi</h4>
+                            <p class="card-text">Barkod oluşturun ve üretim süreçlerinde kullanın</p>
+                            <div class="mt-3">
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); window.location.href='barcode.html'">
+                                    <i class="fas fa-qrcode me-1"></i>Barkod Oluştur
+                                </button>
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showBarcodeScanModal()">
+                                    <i class="fas fa-search me-1"></i>Barkod Tara
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raporlama -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card reports-card h-100" onclick="showReports()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-bar fa-4x mb-3"></i>
+                            <h4 class="card-title">Raporlama</h4>
+                            <p class="card-text">Üretim ve stok raporlarını görüntüleyin</p>
+                            <div class="mt-3">
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showProductionReport()">
+                                    <i class="fas fa-chart-pie me-1"></i>Üretim Raporu
+                                </button>
+                                <button class="btn btn-light quick-action-btn" onclick="event.stopPropagation(); showStockReport()">
+                                    <i class="fas fa-chart-area me-1"></i>Stok Raporu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ayarlar -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card settings-card h-100" onclick="showSettings()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-cog fa-4x mb-3"></i>
+                            <h4 class="card-title">Sistem Ayarları</h4>
+                            <p class="card-text">Sistem konfigürasyonu ve kullanıcı ayarları</p>
+                            <div class="mt-3">
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showUserSettings()">
+                                    <i class="fas fa-user-cog me-1"></i>Kullanıcı Ayarları
+                                </button>
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showSystemSettings()">
+                                    <i class="fas fa-server me-1"></i>Sistem Ayarları
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hızlı Erişim -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h2 class="section-title">
+                        <i class="fas fa-bolt me-2"></i>Hızlı Erişim
+                    </h2>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <button class="btn btn-outline-primary w-100 quick-action-btn" onclick="showHammaddeSection()">
+                        <i class="fas fa-boxes me-2"></i>Hammadde Ekle
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-success w-100 quick-action-btn" onclick="showYarimamulSection()">
+                        <i class="fas fa-cogs me-2"></i>Yarı Mamul Ekle
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-info w-100 quick-action-btn" onclick="showNihaiSection()">
+                        <i class="fas fa-cube me-2"></i>Nihai Ürün Ekle
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-warning w-100 quick-action-btn" onclick="showUrunAgaciSection()">
+                        <i class="fas fa-sitemap me-2"></i>Ürün Ağacı
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Hammadde Yönetimi -->
-        <div id="hammadde-section" class="content-section">
+        <div id="hammadde-section" class="content-section" style="display: none;">
             <div class="row">
                 <div class="col-12">
                     <div class="card">
@@ -76,16 +367,22 @@
                         <div class="card-body">
                             <form id="hammadde-form">
                                 <div class="row">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="mb-3">
                                             <label for="hammadde-adi" class="form-label">Hammadde Adı</label>
                                             <input type="text" class="form-control" id="hammadde-adi" required>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="mb-3">
                                             <label for="hammadde-kodu" class="form-label">Hammadde Kodu</label>
                                             <input type="text" class="form-control" id="hammadde-kodu" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="hammadde-barkod" class="form-label">Barkod</label>
+                                            <input type="text" class="form-control" id="hammadde-barkod" placeholder="Opsiyonel">
                                         </div>
                                     </div>
                                 </div>
@@ -142,6 +439,7 @@
                                         <tr>
                                             <th>Kod</th>
                                             <th>Ad</th>
+                                            <th>Barkod</th>
                                             <th>Miktar</th>
                                             <th>Birim</th>
                                             <th>Birim Fiyat</th>
@@ -601,85 +899,85 @@
                 </div>
             </div>
         </div>
+    </div>
 
-
-        <!-- İş Emirleri -->
-        <div id="is-emri-section" class="content-section" style="display: none;">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-clipboard-list me-2"></i>İş Emri Yönetimi
-                            </h5>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-primary btn-sm" onclick="showCreateWorkOrderModal()">
-                                    <i class="fas fa-plus me-1"></i>Yeni İş Emri
-                                </button>
-                                <button class="btn btn-outline-primary btn-sm" onclick="refreshWorkOrders()">
-                                    <i class="fas fa-sync-alt me-1"></i>Yenile
-                                </button>
+    <!-- Stok Girişi Modal -->
+    <div class="modal fade" id="stockEntryModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Stok Girişi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="stockEntryForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ürün Türü</label>
+                                    <select class="form-select" id="stock-product-type" required>
+                                        <option value="">Seçiniz</option>
+                                        <option value="hammadde">Hammadde</option>
+                                        <option value="yarimamul">Yarı Mamul</option>
+                                        <option value="nihai">Nihai Ürün</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ürün</label>
+                                    <select class="form-select" id="stock-product" required>
+                                        <option value="">Önce ürün türü seçiniz</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <!-- Filtre Bölümü -->
-                            <div class="row mb-3">
-                                <div class="col-md-3">
-                                    <label for="filter-status" class="form-label">Durum</label>
-                                    <select class="form-select" id="filter-status">
-                                        <option value="">Tümü</option>
-                                        <option value="pending">Beklemede</option>
-                                        <option value="in_progress">Devam Ediyor</option>
-                                        <option value="completed">Tamamlandı</option>
-                                        <option value="cancelled">İptal Edildi</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="filter-priority" class="form-label">Öncelik</label>
-                                    <select class="form-select" id="filter-priority">
-                                        <option value="">Tümü</option>
-                                        <option value="low">Düşük</option>
-                                        <option value="normal">Normal</option>
-                                        <option value="high">Yüksek</option>
-                                        <option value="urgent">Acil</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="filter-personnel" class="form-label">Personel</label>
-                                    <select class="form-select" id="filter-personnel">
-                                        <option value="">Tümü</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3 d-flex align-items-end">
-                                    <button class="btn btn-outline-secondary btn-sm" onclick="clearWorkOrderFilters()">
-                                        <i class="fas fa-times me-1"></i>Filtreleri Temizle
-                                    </button>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Miktar</label>
+                                    <input type="number" class="form-control" id="stock-quantity" step="0.01" required>
                                 </div>
                             </div>
-
-                            <!-- İş Emri Listesi -->
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>İş Emri No</th>
-                                            <th>Ürün</th>
-                                            <th>Miktar</th>
-                                            <th>Durum</th>
-                                            <th>Öncelik</th>
-                                            <th>Personel</th>
-                                            <th>Başlangıç</th>
-                                            <th>Bitiş</th>
-                                            <th>İşlemler</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="work-orders-list">
-                                        <!-- İş emri listesi buraya gelecek -->
-                                    </tbody>
-                                </table>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Birim</label>
+                                    <input type="text" class="form-control" id="stock-unit" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Birim Fiyat</label>
+                                    <input type="number" class="form-control" id="stock-unit-price" step="0.01">
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Referans No</label>
+                                    <input type="text" class="form-control" id="stock-reference">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Tedarikçi</label>
+                                    <input type="text" class="form-control" id="stock-supplier">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="stock-description" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="submitStockEntry()">Stok Girişi Yap</button>
                 </div>
             </div>
         </div>
@@ -703,92 +1001,261 @@
         </div>
     </div>
 
-
-
-
-    <!-- İş Emri Oluşturma Modal -->
-    <div class="modal fade" id="createWorkOrderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Yeni İş Emri Oluştur</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="createWorkOrderForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="workOrderProductName" class="form-label">Ürün Adı *</label>
-                                    <input type="text" class="form-control" id="workOrderProductName" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="workOrderProductCode" class="form-label">Ürün Kodu</label>
-                                    <input type="text" class="form-control" id="workOrderProductCode">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="workOrderQuantity" class="form-label">Miktar *</label>
-                                    <input type="number" class="form-control" id="workOrderQuantity" min="1" required>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="workOrderPriority" class="form-label">Öncelik</label>
-                                    <select class="form-select" id="workOrderPriority">
-                                        <option value="low">Düşük</option>
-                                        <option value="normal" selected>Normal</option>
-                                        <option value="high">Yüksek</option>
-                                        <option value="urgent">Acil</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="workOrderPersonnel" class="form-label">Sorumlu Personel</label>
-                                    <input type="text" class="form-control" id="workOrderPersonnel" placeholder="Personel adı">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="workOrderStartDate" class="form-label">Başlangıç Tarihi</label>
-                                    <input type="date" class="form-control" id="workOrderStartDate">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="workOrderEndDate" class="form-label">Bitiş Tarihi</label>
-                                    <input type="date" class="form-control" id="workOrderEndDate">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="workOrderNotes" class="form-label">Notlar</label>
-                            <textarea class="form-control" id="workOrderNotes" rows="3" placeholder="Özel talimatlar, notlar..."></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-primary" onclick="createWorkOrder()">
-                        <i class="fas fa-plus me-1"></i>İş Emri Oluştur
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gizli file input -->
-    <input type="file" id="csv-file-input" accept=".csv" style="display: none;" onchange="handleCSVFileSelect(event)">
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
+    <script>
+        // Dashboard JavaScript fonksiyonları
+        function showDashboard() {
+            hideAllSections();
+            document.getElementById('dashboard-section').style.display = 'block';
+            updateActiveNavLink('dashboard');
+            updateDashboardStats();
+        }
+
+        function hideAllSections() {
+            const sections = document.querySelectorAll('.content-section, #dashboard-section');
+            sections.forEach(section => {
+                section.style.display = 'none';
+            });
+        }
+
+        function showHammaddeSection() {
+            hideAllSections();
+            document.getElementById('hammadde-section').style.display = 'block';
+            updateActiveNavLink('hammadde');
+        }
+
+        function showYarimamulSection() {
+            hideAllSections();
+            document.getElementById('yarimamul-section').style.display = 'block';
+            updateActiveNavLink('yarimamul');
+        }
+
+        function showNihaiSection() {
+            hideAllSections();
+            document.getElementById('nihai-section').style.display = 'block';
+            updateActiveNavLink('nihai');
+        }
+
+        function showUrunAgaciSection() {
+            hideAllSections();
+            document.getElementById('urun-agaci-section').style.display = 'block';
+            updateActiveNavLink('urun-agaci');
+        }
+
+        function updateActiveNavLink(section) {
+            // Tüm nav linklerini pasif yap
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Aktif olanı işaretle
+            if (section === 'dashboard') {
+                document.querySelector('a[onclick="showDashboard()"]').classList.add('active');
+            } else if (section === 'hammadde') {
+                document.querySelector('a[onclick="showHammaddeSection()"]').classList.add('active');
+            } else if (section === 'yarimamul') {
+                document.querySelector('a[onclick="showYarimamulSection()"]').classList.add('active');
+            } else if (section === 'nihai') {
+                document.querySelector('a[onclick="showNihaiSection()"]').classList.add('active');
+            } else if (section === 'urun-agaci') {
+                document.querySelector('a[onclick="showUrunAgaciSection()"]').classList.add('active');
+            }
+        }
+
+        function showStockManagement() {
+            showHammaddeSection();
+        }
+
+        function showProductionManagement() {
+            window.location.href = 'production.html';
+        }
+
+        function showQualityControl() {
+            showAlert('Kalite kontrol modülü yakında eklenecek', 'info');
+        }
+
+        function showBarcodeManagement() {
+            window.location.href = 'barcode.html';
+        }
+
+        function showReports() {
+            showAlert('Raporlama modülü yakında eklenecek', 'info');
+        }
+
+        function showSettings() {
+            showAlert('Ayarlar modülü yakında eklenecek', 'info');
+        }
+
+        function showStockEntryModal() {
+            const modal = new bootstrap.Modal(document.getElementById('stockEntryModal'));
+            modal.show();
+        }
+
+        function showStockExitModal() {
+            showAlert('Stok çıkışı modülü yakında eklenecek', 'info');
+        }
+
+        function showWorkOrderModal() {
+            showAlert('İş emri modülü yakında eklenecek', 'info');
+        }
+
+        function showQualityCheckModal() {
+            showAlert('Kalite kontrol modülü yakında eklenecek', 'info');
+        }
+
+        function showQualityReportModal() {
+            showAlert('Kalite raporu modülü yakında eklenecek', 'info');
+        }
+
+        function showBarcodeScanModal() {
+            showAlert('Barkod tarama modülü yakında eklenecek', 'info');
+        }
+
+        function showProductionReport() {
+            showAlert('Üretim raporu modülü yakında eklenecek', 'info');
+        }
+
+        function showStockReport() {
+            showAlert('Stok raporu modülü yakında eklenecek', 'info');
+        }
+
+        function showUserSettings() {
+            showAlert('Kullanıcı ayarları modülü yakında eklenecek', 'info');
+        }
+
+        function showSystemSettings() {
+            showAlert('Sistem ayarları modülü yakında eklenecek', 'info');
+        }
+
+        // Dashboard istatistiklerini güncelle
+        async function updateDashboardStats() {
+            try {
+                // Hammadde sayısı
+                const hammaddeResponse = await fetch('/api/hammaddeler');
+                const hammaddeler = await hammaddeResponse.json();
+                document.getElementById('total-materials').textContent = hammaddeler.length;
+
+                // Yarı mamul sayısı
+                const yarimamulResponse = await fetch('/api/yarimamuller');
+                const yarimamuller = await yarimamulResponse.json();
+                document.getElementById('total-semi-products').textContent = yarimamuller.length;
+
+                // Nihai ürün sayısı
+                const nihaiResponse = await fetch('/api/nihai_urunler');
+                const nihaiUrunler = await nihaiResponse.json();
+                document.getElementById('total-finished-products').textContent = nihaiUrunler.length;
+
+                // Aktif üretim sayısı
+                const productionResponse = await fetch('/api/productions/active');
+                const productions = await productionResponse.json();
+                document.getElementById('active-productions').textContent = productions.length;
+
+            } catch (error) {
+                console.error('Dashboard istatistikleri yüklenemedi:', error);
+            }
+        }
+
+        // Stok girişi formunu gönder
+        async function submitStockEntry() {
+            const formData = {
+                urun_id: document.getElementById('stock-product').value,
+                urun_tipi: document.getElementById('stock-product-type').value,
+                miktar: document.getElementById('stock-quantity').value,
+                birim: document.getElementById('stock-unit').value,
+                birim_fiyat: document.getElementById('stock-unit-price').value,
+                referans_no: document.getElementById('stock-reference').value,
+                aciklama: document.getElementById('stock-description').value,
+                tedarikci: document.getElementById('stock-supplier').value
+            };
+            
+            // Validation
+            if (!formData.urun_id || !formData.urun_tipi || !formData.miktar) {
+                showAlert('Lütfen gerekli alanları doldurun', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/stock/entry', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Stok girişi başarıyla yapıldı', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('stockEntryModal')).hide();
+                    document.getElementById('stockEntryForm').reset();
+                    
+                    // Dashboard istatistiklerini güncelle
+                    updateDashboardStats();
+                } else {
+                    showAlert(result.error || 'Stok girişi yapılamadı', 'error');
+                }
+            } catch (error) {
+                console.error('Stok girişi error:', error);
+                showAlert('Stok girişi yapılamadı', 'error');
+            }
+        }
+
+        // Ürün türü değiştiğinde ürün listesini güncelle
+        document.getElementById('stock-product-type').addEventListener('change', async function() {
+            const productType = this.value;
+            const productSelect = document.getElementById('stock-product');
+            
+            if (!productType) {
+                productSelect.innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+                return;
+            }
+            
+            try {
+                let products = [];
+                if (productType === 'hammadde') {
+                    const response = await fetch('/api/hammaddeler');
+                    products = await response.json();
+                } else if (productType === 'yarimamul') {
+                    const response = await fetch('/api/yarimamuller');
+                    products = await response.json();
+                } else if (productType === 'nihai') {
+                    const response = await fetch('/api/nihai_urunler');
+                    products = await response.json();
+                }
+                
+                productSelect.innerHTML = '<option value="">Ürün seçiniz</option>';
+                products.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.ad} (${product.kod})`;
+                    option.dataset.unit = product.birim;
+                    option.dataset.unitPrice = product.birim_fiyat || 0;
+                    productSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ürünler yüklenemedi:', error);
+                showAlert('Ürünler yüklenemedi', 'error');
+            }
+        });
+
+        // Ürün seçildiğinde birim ve fiyat bilgilerini güncelle
+        document.getElementById('stock-product').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('stock-unit').value = selectedOption.dataset.unit || '';
+                document.getElementById('stock-unit-price').value = selectedOption.dataset.unitPrice || '';
+            }
+        });
+
+        // Sayfa yüklendiğinde dashboard'u göster
+        document.addEventListener('DOMContentLoaded', function() {
+            showDashboard();
+        });
+    </script>
+
+    <!-- CSV Import için gizli file input -->
+    <input type="file" id="csv-file-input" accept=".csv" style="display: none;" onchange="handleCSVFileSelect(event)">
 </body>
 </html>

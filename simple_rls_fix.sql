@@ -30,3 +30,4 @@ CREATE POLICY "nihai_urunler_all_access" ON nihai_urunler FOR ALL USING (true);
 ALTER TABLE urun_agaci ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "urun_agaci_all_access" ON urun_agaci FOR ALL USING (true);
 
+

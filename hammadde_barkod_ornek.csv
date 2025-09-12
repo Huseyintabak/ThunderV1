@@ -1,0 +1,4 @@
+id,ad,kod,barkod,miktar,birim,birim_fiyat,aciklama,kategori,tedarikci,minimum_stok,maksimum_stok,aktif,created_at,updated_at
+1,Çelik Levha,CL001,1234567890,100.5,kg,25.50,İnşaat çeliği,Çelik,ABC Çelik,10,1000,true,2024-01-01,2024-01-01
+2,Alüminyum Profil,AP002,2345678901,50.0,adet,15.75,Alüminyum profil,Alüminyum,XYZ Metal,5,500,true,2024-01-01,2024-01-01
+3,Bakır Tel,BT003,3456789012,200.0,metre,8.25,Bakır elektrik teli,Bakır,DEF Elektrik,20,2000,true,2024-01-01,2024-01-01

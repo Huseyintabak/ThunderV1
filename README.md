@@ -1,8 +1,15 @@
-# ThunderV1 - Hammadde Yönetim Sistemi
+# ThunderV1 - Üretim Yönetim Sistemi v1.5.0
 
 ## Proje Açıklaması
 
 ThunderV1, hammadde ve üretim yönetimi için geliştirilmiş kapsamlı bir web uygulamasıdır. Sistem, hammaddelerden yarı mamul ürünler ve yarı mamullerden nihai ürünler üretme süreçlerini yönetir.
+
+## 🚀 V1.5.0 Yenilikleri
+- ✅ **Barkod Yönetimi**: Hammadde, yarı mamul ve nihai ürünlerde barkod desteği
+- ✅ **CSV Import/Export**: Toplu veri yükleme ve dışa aktarma
+- ✅ **Stok Yönetimi**: Gelişmiş stok takip ve raporlama
+- ✅ **Üretim Yönetimi**: Aktif üretim takibi ve kontrolü
+- ✅ **Dashboard**: Modern anasayfa ve hızlı erişim
 
 ## Özellikler
 

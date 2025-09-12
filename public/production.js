@@ -304,13 +304,173 @@ async function loadUrunAgaci() {
 
 // Aktif üretimleri yükle
 async function loadActiveProductions() {
+    console.log('loadActiveProductions fonksiyonu çağrıldı');
     try {
-        // Bu fonksiyon backend'de aktif üretimleri getirecek
-        // Şimdilik boş array
-        activeProductions = [];
+        const productions = await getActiveProductions();
+        console.log('Aktif üretimler:', productions);
+
+        // Her üretim için ürün bilgilerini al
+        const enrichedProductions = await Promise.all(productions.map(async (production) => {
+            try {
+                let productInfo = null;
+                console.log(`Ürün bilgisi alınıyor - ID: ${production.product_id}, Tip: ${production.product_type}`);
+                
+                if (production.product_type === 'nihai') {
+                    const response = await fetch(`/api/nihai_urunler/${production.product_id}`);
+                    console.log(`Nihai ürün API response:`, response.status);
+                    if (response.ok) {
+                        productInfo = await response.json();
+                        console.log(`Nihai ürün bilgisi:`, productInfo);
+                    }
+                } else if (production.product_type === 'yarimamul') {
+                    const response = await fetch(`/api/yarimamuller/${production.product_id}`);
+                    console.log(`Yarı mamul API response:`, response.status);
+                    if (response.ok) {
+                        productInfo = await response.json();
+                        console.log(`Yarı mamul bilgisi:`, productInfo);
+                    }
+                } else if (production.product_type === 'hammadde') {
+                    const response = await fetch(`/api/hammaddeler/${production.product_id}`);
+                    console.log(`Hammadde API response:`, response.status);
+                    if (response.ok) {
+                        productInfo = await response.json();
+                        console.log(`Hammadde bilgisi:`, productInfo);
+                    }
+                }
+                
+                const enrichedProduction = {
+                    ...production,
+                    urun_adi: productInfo?.ad || 'Bilinmeyen Ürün',
+                    urun_kodu: productInfo?.kod || 'N/A',
+                    hedef_miktar: production.target_quantity || 0,
+                    uretilen_miktar: production.quantity || 0,
+                    durum: production.status === 'active' ? 'devam_ediyor' : production.status
+                };
+                
+                console.log(`Zenginleştirilmiş üretim:`, enrichedProduction);
+                return enrichedProduction;
+            } catch (error) {
+                console.error(`Ürün bilgisi alınamadı (ID: ${production.product_id}):`, error);
+                return {
+                    ...production,
+                    urun_adi: 'Bilinmeyen Ürün',
+                    urun_kodu: 'N/A',
+                    hedef_miktar: production.target_quantity || 0,
+                    uretilen_miktar: production.quantity || 0,
+                    durum: production.status === 'active' ? 'devam_ediyor' : production.status
+                };
+            }
+        }));
+        
+        activeProductions = enrichedProductions;
+        console.log('displayActiveProductions çağrılıyor...');
         displayActiveProductions();
+        
+        // Aktif üretimleri UI'da göster (isteğe bağlı)
+        if (enrichedProductions.length > 0) {
+            showAlert(`${enrichedProductions.length} aktif üretim bulundu`, 'info');
+        }
+        
+        return enrichedProductions;
     } catch (error) {
         console.error('Aktif üretimler yüklenemedi:', error);
+        showAlert('Aktif üretimler yüklenemedi: ' + error.message, 'error');
+        return [];
+    }
+}
+
+// Aktif üretimleri göster
+function displayActiveProductions() {
+    console.log('displayActiveProductions çağrıldı');
+    console.log('activeProductions:', activeProductions);
+    
+    try {
+        const container = document.getElementById('active-productions-list');
+        const noProductions = document.getElementById('no-active-productions');
+        const countElement = document.getElementById('active-productions-count');
+        
+        console.log('Container elementleri:', {
+            container: container,
+            noProductions: noProductions,
+            countElement: countElement
+        });
+        
+        if (!container || !noProductions || !countElement) {
+            console.error('Aktif üretimler container bulunamadı');
+            return;
+        }
+        
+        // Sayıyı güncelle
+        countElement.textContent = activeProductions.length;
+        
+        if (activeProductions.length === 0) {
+            container.innerHTML = '';
+            noProductions.style.display = 'block';
+            return;
+        }
+        
+        noProductions.style.display = 'none';
+        
+        // Aktif üretimleri göster - eski HTML formatına uygun
+        container.innerHTML = activeProductions.map(production => {
+            const progressPercentage = Math.round(((production.uretilen_miktar || 0) / (production.hedef_miktar || 1)) * 100);
+            const startDate = production.start_time ? new Date(production.start_time).toLocaleString('tr-TR') : 'Bilinmiyor';
+            
+            return `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-box me-2 text-primary"></i>
+                                <div>
+                                    <h6 class="mb-1">${production.urun_adi || 'Bilinmeyen Ürün'}</h6>
+                                    <small class="text-muted">Miktar: ${production.uretilen_miktar || 0}</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-${production.status === 'active' ? 'warning' : production.status === 'paused' ? 'secondary' : production.status === 'completed' ? 'success' : 'danger'}">
+                                ${production.status === 'active' ? 'Üretimde' : 
+                                  production.status === 'paused' ? 'Duraklatıldı' : 
+                                  production.status === 'completed' ? 'Tamamlandı' : 
+                                  production.status === 'cancelled' ? 'İptal Edildi' : 'Bilinmiyor'}
+                            </span>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Başlangıç: ${startDate}</small>
+                        </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: ${progressPercentage}%"
+                                 aria-valuenow="${production.uretilen_miktar || 0}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="${production.hedef_miktar || 1}">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Hedef: ${production.hedef_miktar || 0} | Üretilen: ${production.uretilen_miktar || 0}
+                            </small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="viewProductionDetails(${production.id})" title="Detayları Görüntüle">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-success" onclick="continueProduction(${production.id})" title="Üretime Devam Et">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="pauseProduction(${production.id})" title="Duraklat">
+                                    <i class="fas fa-pause"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="stopProduction(${production.id})" title="Durdur">
+                                    <i class="fas fa-stop"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('displayActiveProductions hatası:', error);
     }
 }
 
@@ -323,6 +483,458 @@ async function loadProductionHistory() {
         displayProductionHistory();
     } catch (error) {
         console.error('Üretim geçmişi yüklenemedi:', error);
+    }
+}
+
+// Global değişken - seçili üretim
+let selectedProduction = null;
+
+// Üretim detaylarını görüntüle
+function viewProductionDetails(productionId) {
+    selectedProduction = activeProductions.find(p => p.id === productionId);
+    if (!selectedProduction) {
+        showAlert('Üretim bulunamadı', 'error');
+        return;
+    }
+    
+    const progressPercentage = Math.round(((selectedProduction.uretilen_miktar || 0) / (selectedProduction.hedef_miktar || 1)) * 100);
+    const remaining = (selectedProduction.hedef_miktar || 0) - (selectedProduction.uretilen_miktar || 0);
+    
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Üretim Bilgileri</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Ürün Adı:</strong> ${selectedProduction.urun_adi || 'Bilinmiyor'}</p>
+                        <p><strong>Ürün Kodu:</strong> ${selectedProduction.urun_kodu || 'N/A'}</p>
+                        <p><strong>Üretim ID:</strong> ${selectedProduction.id}</p>
+                        <p><strong>Ürün Tipi:</strong> ${selectedProduction.product_type || 'N/A'}</p>
+                        <p><strong>Oluşturan:</strong> ${selectedProduction.created_by || 'N/A'}</p>
+                        <p><strong>Başlangıç:</strong> ${selectedProduction.start_time ? new Date(selectedProduction.start_time).toLocaleString('tr-TR') : 'Bilinmiyor'}</p>
+                        ${selectedProduction.end_time ? `<p><strong>Bitiş:</strong> ${new Date(selectedProduction.end_time).toLocaleString('tr-TR')}</p>` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>İlerleme Durumu</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h4 class="text-primary">${selectedProduction.hedef_miktar || 0}</h4>
+                                    <small class="text-muted">Hedef Miktar</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h4 class="text-success">${selectedProduction.uretilen_miktar || 0}</h4>
+                                    <small class="text-muted">Üretilen</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar ${progressPercentage === 100 ? 'bg-success' : progressPercentage > 50 ? 'bg-info' : 'bg-warning'}" 
+                                 role="progressbar" 
+                                 style="width: ${progressPercentage}%">
+                                ${progressPercentage}%
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h5 class="text-warning">${remaining}</h5>
+                                    <small class="text-muted">Kalan</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <span class="badge bg-${selectedProduction.durum === 'tamamlandi' ? 'success' : selectedProduction.durum === 'devam_ediyor' ? 'warning' : 'secondary'} fs-6">
+                                        ${selectedProduction.durum === 'tamamlandi' ? 'Tamamlandı' : 
+                                          selectedProduction.durum === 'devam_ediyor' ? 'Devam Ediyor' : 
+                                          selectedProduction.durum || 'Bilinmiyor'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Notlar</h6>
+                    </div>
+                    <div class="card-body">
+                        <p>${selectedProduction.notes || 'Not bulunmuyor'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('productionDetailContent').innerHTML = content;
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('productionDetailModal'));
+    modal.show();
+}
+
+// Üretime devam et
+async function continueProduction(productionId) {
+    const production = activeProductions.find(p => p.id === productionId);
+    if (!production) {
+        showAlert('Üretim bulunamadı', 'error');
+        return;
+    }
+    
+    if (production.status === 'active') {
+        showAlert('Bu üretim zaten aktif durumda', 'info');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/productions/${productionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'active'
+            })
+        });
+        
+        if (response.ok) {
+            showAlert('Üretim başarıyla devam ettirildi', 'success');
+            
+            // Modal'ları kapat
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
+            if (detailModal) {
+                detailModal.hide();
+            }
+            
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editProductionModal'));
+            if (editModal) {
+                editModal.hide();
+            }
+            
+            // Modal backdrop'ları temizle
+            document.body.classList.remove('modal-open');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Üretim durumunu güncelle
+            const production = activeProductions.find(p => p.id === productionId);
+            if (production) {
+                production.status = 'active';
+            }
+            
+            // UI'yi güncelle
+            displayActiveProductions();
+            
+            console.log('Üretim devam ettirildi, durum:', production?.status);
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Üretim devam ettirilemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Üretim devam ettirme hatası:', error);
+        showAlert('Üretim devam ettirilemedi', 'error');
+    }
+}
+
+// Üretimi duraklat
+async function pauseProduction(productionId) {
+    const production = activeProductions.find(p => p.id === productionId);
+    if (!production) {
+        showAlert('Üretim bulunamadı', 'error');
+        return;
+    }
+    
+    if (production.status === 'paused') {
+        showAlert('Bu üretim zaten duraklatılmış durumda', 'info');
+        return;
+    }
+    
+    if (production.status === 'completed') {
+        showAlert('Tamamlanmış üretim duraklatılamaz', 'error');
+        return;
+    }
+    
+    if (production.status === 'cancelled') {
+        showAlert('İptal edilmiş üretim duraklatılamaz', 'error');
+        return;
+    }
+    
+    if (!confirm(`"${production.urun_adi}" üretimini duraklatmak istediğinizden emin misiniz?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/productions/${productionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'paused'
+            })
+        });
+        
+        if (response.ok) {
+            showAlert('Üretim başarıyla duraklatıldı', 'success');
+            
+            // Modal'ları kapat
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
+            if (detailModal) {
+                detailModal.hide();
+            }
+            
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editProductionModal'));
+            if (editModal) {
+                editModal.hide();
+            }
+            
+            // Modal backdrop'ları temizle
+            document.body.classList.remove('modal-open');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Üretim durumunu güncelle
+            const production = activeProductions.find(p => p.id === productionId);
+            if (production) {
+                production.status = 'paused';
+            }
+            
+            // UI'yi güncelle
+            displayActiveProductions();
+            
+            console.log('Üretim duraklatıldı, durum:', production?.status);
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Üretim duraklatılamadı', 'error');
+        }
+    } catch (error) {
+        console.error('Üretim duraklatma hatası:', error);
+        showAlert('Üretim duraklatılamadı', 'error');
+    }
+}
+
+// Üretimi durdur
+async function stopProduction(productionId) {
+    const production = activeProductions.find(p => p.id === productionId);
+    if (!production) {
+        showAlert('Üretim bulunamadı', 'error');
+        return;
+    }
+    
+    if (production.status === 'completed') {
+        showAlert('Bu üretim zaten tamamlanmış', 'info');
+        return;
+    }
+    
+    if (production.status === 'cancelled') {
+        showAlert('Bu üretim zaten iptal edilmiş', 'info');
+        return;
+    }
+    
+    if (!confirm(`"${production.urun_adi}" üretimini durdurmak istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/productions/${productionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'cancelled',
+                end_time: new Date().toISOString()
+            })
+        });
+        
+        if (response.ok) {
+            showAlert('Üretim başarıyla durduruldu', 'success');
+            
+            // Modal'ları kapat
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
+            if (detailModal) {
+                detailModal.hide();
+            }
+            
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editProductionModal'));
+            if (editModal) {
+                editModal.hide();
+            }
+            
+            // Modal backdrop'ları temizle
+            document.body.classList.remove('modal-open');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Durdurulan üretimi listeden çıkar
+            activeProductions = activeProductions.filter(p => p.id !== productionId);
+            
+            // UI'yi güncelle
+            displayActiveProductions();
+            
+            // Aktif üretim sayısını güncelle
+            const countElement = document.getElementById('active-productions-count');
+            if (countElement) {
+                countElement.textContent = activeProductions.length;
+            }
+            
+            console.log('Üretim durduruldu, aktif üretim sayısı:', activeProductions.length);
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Üretim durdurulamadı', 'error');
+        }
+    } catch (error) {
+        console.error('Üretim durdurma hatası:', error);
+        showAlert('Üretim durdurulamadı', 'error');
+    }
+}
+
+// Üretim düzenleme modalını aç
+function editProduction() {
+    if (!selectedProduction) {
+        showAlert('Seçili üretim bulunamadı', 'error');
+        return;
+    }
+    
+    // Form alanlarını doldur
+    document.getElementById('edit-product-name').value = selectedProduction.urun_adi || '';
+    document.getElementById('edit-product-code').value = selectedProduction.urun_kodu || '';
+    document.getElementById('edit-target-quantity').value = selectedProduction.hedef_miktar || 0;
+    document.getElementById('edit-produced-quantity').value = selectedProduction.uretilen_miktar || 0;
+    document.getElementById('edit-production-status').value = selectedProduction.status || 'active';
+    document.getElementById('edit-production-priority').value = selectedProduction.priority || 'normal';
+    document.getElementById('edit-production-notes').value = selectedProduction.notes || '';
+    
+    // Detay modalını kapat, düzenleme modalını aç
+    bootstrap.Modal.getInstance(document.getElementById('productionDetailModal')).hide();
+    
+    const editModal = new bootstrap.Modal(document.getElementById('editProductionModal'));
+    editModal.show();
+}
+
+// Üretim değişikliklerini kaydet
+async function saveProductionChanges() {
+    if (!selectedProduction) {
+        showAlert('Seçili üretim bulunamadı', 'error');
+        return;
+    }
+    
+    const formData = {
+        target_quantity: parseInt(document.getElementById('edit-target-quantity').value),
+        quantity: parseInt(document.getElementById('edit-produced-quantity').value),
+        status: document.getElementById('edit-production-status').value,
+        priority: document.getElementById('edit-production-priority').value,
+        notes: document.getElementById('edit-production-notes').value
+    };
+    
+    // Validation
+    if (formData.target_quantity < 1) {
+        showAlert('Hedef miktar en az 1 olmalıdır', 'error');
+        return;
+    }
+    
+    if (formData.quantity < 0) {
+        showAlert('Üretilen miktar negatif olamaz', 'error');
+        return;
+    }
+    
+    if (formData.quantity > formData.target_quantity) {
+        showAlert('Üretilen miktar hedef miktardan fazla olamaz', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/productions/${selectedProduction.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            showAlert('Üretim başarıyla güncellendi', 'success');
+            
+            // Düzenleme modalını kapat
+            bootstrap.Modal.getInstance(document.getElementById('editProductionModal')).hide();
+            
+            // Aktif üretimleri yenile
+            await loadActiveProductions();
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Üretim güncellenemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Üretim güncelleme hatası:', error);
+        showAlert('Üretim güncellenemedi', 'error');
+    }
+}
+
+// Üretimi iptal et
+async function cancelProduction() {
+    if (!selectedProduction) {
+        showAlert('Seçili üretim bulunamadı', 'error');
+        return;
+    }
+    
+    if (!confirm(`"${selectedProduction.urun_adi}" üretimini iptal etmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/productions/${selectedProduction.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'cancelled',
+                end_time: new Date().toISOString()
+            })
+        });
+        
+        if (response.ok) {
+            showAlert('Üretim başarıyla iptal edildi', 'success');
+            
+            // Modal'ları kapat
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
+            if (detailModal) {
+                detailModal.hide();
+            }
+            
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editProductionModal'));
+            if (editModal) {
+                editModal.hide();
+            }
+            
+            // Modal backdrop'ları temizle
+            document.body.classList.remove('modal-open');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Aktif üretimleri yenile
+            await loadActiveProductions();
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Üretim iptal edilemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Üretim iptal etme hatası:', error);
+        showAlert('Üretim iptal edilemedi', 'error');
     }
 }
 
@@ -752,25 +1364,7 @@ function completeProduction(production) {
     showAlert('Üretim tamamlandı!', 'success');
 }
 
-// Aktif üretimleri göster
-function displayActiveProductions() {
-    const container = document.getElementById('active-productions-list');
-    const noProductions = document.getElementById('no-active-productions');
-    
-    if (activeProductions.length === 0) {
-        container.innerHTML = '';
-        noProductions.style.display = 'block';
-        return;
-    }
-    
-    noProductions.style.display = 'none';
-    container.innerHTML = '';
-    
-    activeProductions.forEach(production => {
-        const productionCard = createProductionCard(production);
-        container.appendChild(productionCard);
-    });
-}
+// Bu fonksiyon silindi - yukarıda daha iyi versiyonu var
 
 // Üretim kartı oluştur
 function createProductionCard(production) {
@@ -1833,24 +2427,6 @@ async function getEfficiencyReport(productionId) {
 // YENİ UI FONKSİYONLARI - FAZ 4
 // ========================================
 
-// Aktif üretimleri göster
-async function loadActiveProductions() {
-    try {
-        const productions = await getActiveProductions();
-        console.log('Aktif üretimler:', productions);
-        
-        // Aktif üretimleri UI'da göster (isteğe bağlı)
-        if (productions.length > 0) {
-            showAlert(`${productions.length} aktif üretim bulundu`, 'info');
-        }
-        
-        return productions;
-    } catch (error) {
-        console.error('Aktif üretimler yüklenemedi:', error);
-        showAlert('Aktif üretimler yüklenemedi: ' + error.message, 'error');
-        return [];
-    }
-}
 
 // Üretim özeti göster
 async function showProductionSummary() {

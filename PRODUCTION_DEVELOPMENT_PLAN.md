@@ -572,32 +572,354 @@ Bu adımları takip ederek backend API'lerinizi güçlendirebilir ve sisteminizi
             </div>
         </div>
     </div>
-    <!-- Diğer metrikler... -->
+    <div class="col-md-3">
+        <div class="card bg-gradient-success">
+            <div class="card-body">
+                <h5>Haftalık Üretim</h5>
+                <h2 id="weekly-production">0</h2>
+                <small>Bu hafta üretilen adet</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-gradient-info">
+            <div class="card-body">
+                <h5>Verimlilik</h5>
+                <h2 id="efficiency-rate">0%</h2>
+                <small>Hedef vs Gerçekleşen</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-gradient-warning">
+            <div class="card-body">
+                <h5>Aktif Üretimler</h5>
+                <h2 id="active-productions">0</h2>
+                <small>Devam eden üretimler</small>
+            </div>
+        </div>
+    </div>
 </div>
 ```
 
+**Görsel Grafikler:**
+- **Üretim Trend Grafikleri**: Günlük, haftalık, aylık üretim trendleri
+- **Kalite Kontrol Sonuçları**: Başarı oranları ve hata analizleri
+- **Stok Seviyeleri**: Kritik stok uyarıları ve seviye grafikleri
+- **Maliyet Analizleri**: Üretim maliyetleri ve kar marjları
+- **Makine Kullanım Oranları**: Makine verimliliği ve kullanım istatistikleri
+- **Personel Performansı**: Çalışan bazlı üretim performansı
+
 #### 2.2 Gelişmiş Üretim Planlama
-- **Üretim Takvimi**: Haftalık/aylık üretim planları
-- **Kapasite Planlama**: Makine ve personel kapasitesi
-- **Öncelik Sıralaması**: Acil üretimler için öncelik sistemi
-- **Batch Üretim**: Toplu üretim planlama
+
+**Üretim Takvimi:**
+- **Haftalık/Aylık Üretim Planları**: Detaylı üretim programları
+- **Gantt Chart Görünümü**: Görsel üretim zaman çizelgesi
+- **Milestone Takibi**: Önemli aşamaların takibi
+- **Drag & Drop Planlama**: Sürükle-bırak ile plan değişiklikleri
+
+**Kapasite Planlama:**
+- **Makine Kapasitesi Yönetimi**: Makine kullanım planlaması
+- **Personel Atama Sistemi**: Çalışan görev dağılımı
+- **Çalışma Saatleri Planlaması**: Vardiya ve mesai planlaması
+- **Kaynak Optimizasyonu**: En verimli kaynak kullanımı
+
+**Öncelik Sıralaması:**
+- **Acil Üretimler**: Kritik siparişler için öncelik sistemi
+- **Müşteri Sipariş Öncelikleri**: Müşteri bazlı öncelik sıralaması
+- **Kritik Stok Uyarıları**: Stok seviyesi bazlı öncelik
+- **Dinamik Öncelik Güncelleme**: Gerçek zamanlı öncelik değişiklikleri
+
+**Batch Üretim:**
+- **Toplu Üretim Planlama**: Aynı ürünlerin toplu üretimi
+- **Setup Optimizasyonu**: Makine hazırlık sürelerinin minimize edilmesi
+- **Malzeme Hazırlığı**: Toplu üretim için malzeme planlaması
+- **Kalite Kontrol Batch'leri**: Toplu kalite kontrol süreçleri
 
 #### 2.3 Kalite Kontrol Sistemi
+
+**Kalite Kontrol Formları:**
+- **Üretim Aşaması Kontrolleri**: Her aşamada kalite kontrolü
+- **Final Kalite Kontrolü**: Ürün tamamlandığında son kontrol
+- **Hata Kayıt Sistemi**: Tespit edilen hataların detaylı kaydı
+- **Düzeltme Takibi**: Hataların düzeltilme süreçleri
+
 ```javascript
 // Kalite kontrol fonksiyonları
 function addQualityCheck(productionId, checkType, result) {
     // Kalite kontrol kaydı ekleme
+    return fetch('/api/quality-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            production_id: productionId,
+            check_type: checkType,
+            result: result,
+            timestamp: new Date().toISOString()
+        })
+    });
 }
 
 function generateQualityReport(productionId) {
     // Kalite raporu oluşturma
+    return fetch(`/api/reports/quality/${productionId}`)
+        .then(response => response.json());
+}
+
+function getQualityMetrics(period = 'week') {
+    // Kalite metriklerini getirme
+    return fetch(`/api/quality/metrics?period=${period}`)
+        .then(response => response.json());
 }
 ```
 
+**Kalite Raporları:**
+- **Detaylı Kalite Analizleri**: Ürün bazlı kalite performansı
+- **Hata Trend Analizleri**: Zaman içinde hata trendleri
+- **İyileştirme Önerileri**: Kalite artırma önerileri
+- **Tedarikçi Kalite Değerlendirmesi**: Malzeme kalitesi analizi
+- **Müşteri Şikayet Analizi**: Müşteri geri bildirimlerinin analizi
+
 #### 2.4 Gerçek Zamanlı İzleme
-- **WebSocket Entegrasyonu**: Gerçek zamanlı üretim durumu
-- **Live Dashboard**: Canlı üretim metrikleri
-- **Alert Sistemi**: Kritik durumlar için uyarılar
+
+**WebSocket Entegrasyonu:**
+- **Gerçek Zamanlı Üretim Durumu**: Anlık üretim güncellemeleri
+- **Canlı Barkod Tarama**: Barkod okuma işlemlerinin anlık takibi
+- **Makine Durumu**: Makine çalışma durumunun canlı izlenmesi
+- **Personel Aktivitesi**: Çalışan aktivitelerinin gerçek zamanlı takibi
+
+```javascript
+// WebSocket bağlantısı
+const ws = new WebSocket('ws://localhost:3000/ws');
+ws.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    updateProductionStatus(data);
+    updateDashboard(data);
+    showNotification(data);
+};
+```
+
+**Live Dashboard:**
+- **Canlı Üretim Metrikleri**: Anlık üretim sayıları ve verimlilik
+- **Makine Durumu İzleme**: Makine çalışma/arıza durumları
+- **Personel Aktivite Takibi**: Çalışan bazlı aktivite takibi
+- **Stok Seviye İzleme**: Kritik stok seviyelerinin canlı takibi
+
+**Alert Sistemi:**
+- **Kritik Durum Uyarıları**: Acil müdahale gereken durumlar
+- **Stok Uyarıları**: Düşük stok seviyesi bildirimleri
+- **Kalite Uyarıları**: Kalite standartlarının altına düşme uyarıları
+- **Makine Arıza Uyarıları**: Makine durumu değişiklik bildirimleri
+- **Üretim Gecikme Uyarıları**: Planlanan sürelerin aşılması uyarıları
+
+#### 2.5 Kullanıcı Deneyimi İyileştirmeleri
+
+**Responsive Tasarım:**
+- **Mobil Uyumluluk**: Tüm cihazlarda sorunsuz çalışma
+- **Tablet Optimizasyonu**: Tablet ekranları için özel tasarım
+- **Touch-Friendly Arayüz**: Dokunmatik ekranlar için optimize edilmiş kontroller
+- **Adaptive Layout**: Ekran boyutuna göre otomatik düzenleme
+
+**Kullanıcı Arayüzü:**
+- **Modern Tasarım**: Güncel UI/UX trendleri
+- **Koyu/Açık Tema Seçenekleri**: Kullanıcı tercihine göre tema
+- **Özelleştirilebilir Dashboard**: Kişiselleştirilebilir ana sayfa
+- **Kolay Navigasyon**: Sezgisel menü yapısı
+- **Hızlı Erişim**: Sık kullanılan özelliklere hızlı erişim
+
+**Erişilebilirlik:**
+- **Klavye Navigasyonu**: Tam klavye desteği
+- **Ekran Okuyucu Desteği**: Görme engelli kullanıcılar için
+- **Yüksek Kontrast**: Görme zorluğu olan kullanıcılar için
+- **Büyük Yazı Seçenekleri**: Okuma kolaylığı için
+
+**Performans Optimizasyonu:**
+- **Hızlı Yükleme**: Optimize edilmiş sayfa yükleme süreleri
+- **Lazy Loading**: Gerektiğinde içerik yükleme
+- **Caching**: Akıllı önbellekleme sistemi
+- **Offline Desteği**: İnternet bağlantısı olmadan temel işlevler
+
+#### 2.6 Raporlama ve Analitik
+
+**Otomatik Raporlar:**
+- **Günlük Üretim Raporları**: Günlük üretim özetleri ve detayları
+- **Haftalık Performans Raporları**: Haftalık verimlilik ve performans analizi
+- **Aylık Analiz Raporları**: Aylık kapsamlı analiz ve trend raporları
+- **Yıllık Stratejik Raporlar**: Yıllık performans ve stratejik analiz
+- **Özel Dönem Raporları**: Belirli dönemler için özel raporlar
+
+```javascript
+// Rapor oluşturma fonksiyonları
+function generateDailyReport(date) {
+    return fetch(`/api/reports/daily?date=${date}`)
+        .then(response => response.json());
+}
+
+function generateWeeklyReport(weekStart) {
+    return fetch(`/api/reports/weekly?start=${weekStart}`)
+        .then(response => response.json());
+}
+
+function exportReport(reportData, format) {
+    // PDF veya Excel export
+    const blob = new Blob([reportData], { type: format });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `report.${format}`;
+    a.click();
+}
+```
+
+**Veri Görselleştirme:**
+- **Interaktif Grafikler**: Chart.js, D3.js ile dinamik grafikler
+- **Filtrelenebilir Tablolar**: Gelişmiş filtreleme ve sıralama
+- **Export Özellikleri**: PDF, Excel, CSV export seçenekleri
+- **Drill-Down Analiz**: Detaylı veri analizi için derinlemesine inceleme
+- **Karşılaştırmalı Analiz**: Dönemler arası karşılaştırma grafikleri
+
+**Gelişmiş Analitik:**
+- **Makine Öğrenmesi**: Tahminleme ve optimizasyon önerileri
+- **Trend Analizi**: Gelecek tahminleri ve trend analizi
+- **Anomali Tespiti**: Olağandışı durumların otomatik tespiti
+- **Performans Benchmarking**: Endüstri standartları ile karşılaştırma
+
+#### 2.7 Bildirim ve Uyarı Sistemi
+
+**Akıllı Uyarılar:**
+- **Stok Seviyesi Uyarıları**: Kritik stok seviyelerinde otomatik bildirim
+- **Üretim Gecikme Uyarıları**: Planlanan sürelerin aşılması durumunda uyarı
+- **Kalite Sorunu Bildirimleri**: Kalite standartlarının altına düşme uyarıları
+- **Makine Arıza Uyarıları**: Makine durumu değişikliklerinde anında bildirim
+- **Personel Eksikliği Uyarıları**: Yetersiz personel durumunda uyarı
+- **Malzeme Eksikliği Uyarıları**: Gerekli malzemelerin eksik olması durumunda uyarı
+
+```javascript
+// Bildirim sistemi
+class NotificationSystem {
+    constructor() {
+        this.notifications = [];
+        this.setupWebSocket();
+    }
+    
+    setupWebSocket() {
+        this.ws = new WebSocket('ws://localhost:3000/notifications');
+        this.ws.onmessage = (event) => {
+            const notification = JSON.parse(event.data);
+            this.addNotification(notification);
+        };
+    }
+    
+    addNotification(notification) {
+        this.notifications.unshift(notification);
+        this.showToast(notification);
+        this.updateBadge();
+    }
+    
+    showToast(notification) {
+        // Toast bildirimi göster
+        const toast = document.createElement('div');
+        toast.className = `toast alert-${notification.type}`;
+        toast.innerHTML = `
+            <div class="toast-header">
+                <strong>${notification.title}</strong>
+                <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+            <div class="toast-body">${notification.message}</div>
+        `;
+        document.body.appendChild(toast);
+    }
+}
+```
+
+**Bildirim Merkezi:**
+- **Tüm Uyarıları Tek Yerde Görme**: Merkezi bildirim paneli
+- **Öncelik Sıralaması**: Kritiklik seviyesine göre sıralama
+- **Okundu/Okunmadı Durumu**: Bildirim durumu takibi
+- **Filtreleme ve Arama**: Bildirim türüne göre filtreleme
+- **Toplu İşlemler**: Çoklu bildirim yönetimi
+- **Bildirim Geçmişi**: Geçmiş bildirimlerin arşivlenmesi
+
+**Bildirim Türleri:**
+- **Sistem Bildirimleri**: Sistem durumu ve güncellemeler
+- **Üretim Bildirimleri**: Üretim süreci ile ilgili bildirimler
+- **Kalite Bildirimleri**: Kalite kontrol sonuçları
+- **Stok Bildirimleri**: Stok durumu bildirimleri
+- **Personel Bildirimleri**: Personel ile ilgili bildirimler
+
+#### 2.8 Gelişmiş Arama ve Filtreleme
+
+**Gelişmiş Arama:**
+- **Çoklu Kriter Arama**: Birden fazla kriter ile arama
+- **Tarih Aralığı Filtreleme**: Belirli tarih aralıklarında arama
+- **Ürün Kategorisi Filtreleme**: Ürün türüne göre filtreleme
+- **Personel Bazlı Filtreleme**: Çalışan bazlı arama ve filtreleme
+- **Durum Bazlı Filtreleme**: Üretim durumuna göre filtreleme
+- **Fuzzy Search**: Bulanık arama ile yakın sonuçlar
+
+```javascript
+// Gelişmiş arama sistemi
+class AdvancedSearch {
+    constructor() {
+        this.filters = {};
+        this.savedFilters = this.loadSavedFilters();
+    }
+    
+    search(criteria) {
+        const query = this.buildQuery(criteria);
+        return fetch('/api/search/advanced', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(query)
+        }).then(response => response.json());
+    }
+    
+    buildQuery(criteria) {
+        return {
+            text: criteria.text || '',
+            dateRange: criteria.dateRange || null,
+            productType: criteria.productType || null,
+            status: criteria.status || null,
+            operator: criteria.operator || null,
+            sortBy: criteria.sortBy || 'created_at',
+            sortOrder: criteria.sortOrder || 'desc',
+            limit: criteria.limit || 50,
+            offset: criteria.offset || 0
+        };
+    }
+    
+    saveFilter(name, criteria) {
+        this.savedFilters[name] = criteria;
+        localStorage.setItem('savedFilters', JSON.stringify(this.savedFilters));
+    }
+    
+    loadSavedFilters() {
+        const saved = localStorage.getItem('savedFilters');
+        return saved ? JSON.parse(saved) : {};
+    }
+}
+```
+
+**Kayıtlı Filtreler:**
+- **Sık Kullanılan Filtreleri Kaydetme**: Kişisel filtre koleksiyonu
+- **Hızlı Erişim Menüsü**: Kayıtlı filtreler için hızlı erişim
+- **Özelleştirilebilir Görünümler**: Kişiselleştirilebilir arayüz
+- **Filtre Paylaşımı**: Ekip üyeleri ile filtre paylaşımı
+- **Otomatik Filtre Önerileri**: Kullanım geçmişine göre öneriler
+
+**Arama Optimizasyonu:**
+- **Indexleme**: Hızlı arama için veri indexleme
+- **Cache Sistemi**: Arama sonuçlarının önbelleklenmesi
+- **Asenkron Arama**: Sayfa yüklemeden arama
+- **Arama Önerileri**: Yazarken otomatik öneriler
+- **Son Aramalar**: Geçmiş arama geçmişi
+
+**Filtre Türleri:**
+- **Temel Filtreler**: Tarih, durum, tür gibi temel filtreler
+- **Gelişmiş Filtreler**: Karmaşık kriter kombinasyonları
+- **Dinamik Filtreler**: Veriye göre otomatik güncellenen filtreler
+- **Coğrafi Filtreler**: Lokasyon bazlı filtreleme
+- **Zaman Bazlı Filtreler**: Saat, gün, hafta, ay bazlı filtreler
 
 ### 3. **Veritabanı Geliştirmeleri**
 
