@@ -1,14 +1,20 @@
-# ThunderV1 - Üretim Yönetim Sistemi v1.5.0
+# ThunderV1 - Üretim Yönetim Sistemi v1.6.5
 
 ## Proje Açıklaması
 
 ThunderV1, hammadde ve üretim yönetimi için geliştirilmiş kapsamlı bir web uygulamasıdır. Sistem, hammaddelerden yarı mamul ürünler ve yarı mamullerden nihai ürünler üretme süreçlerini yönetir.
 
-## 🚀 V1.5.0 Yenilikleri
+## 🚀 V1.6.5 Yenilikleri
+- ✅ **Entegre İş Süreci Yönetimi**: State Management, Event Bus, Workflow Engine
+- ✅ **Üretim Aşamaları Yönetimi**: Aşama takibi, şablonlar, durum yönetimi
+- ✅ **Kalite Kontrol Sistemi**: Kalite kontrol noktaları, şablonlar, raporlar
+- ✅ **Üretim Planlama ve Zamanlama**: Kaynak yönetimi, sipariş yönetimi, kapasite planlama
+- ✅ **Gerçek Zamanlı İzleme**: Real-time updates, event bus, live dashboard
+- ✅ **Bildirim ve Uyarı Sistemi**: Bildirim türleri, uyarı kuralları, şablonlar
+- ✅ **Raporlama ve Analitik**: Dashboard widget'ları, KPI yönetimi, rapor şablonları
 - ✅ **Barkod Yönetimi**: Hammadde, yarı mamul ve nihai ürünlerde barkod desteği
 - ✅ **CSV Import/Export**: Toplu veri yükleme ve dışa aktarma
 - ✅ **Stok Yönetimi**: Gelişmiş stok takip ve raporlama
-- ✅ **Üretim Yönetimi**: Aktif üretim takibi ve kontrolü
 - ✅ **Dashboard**: Modern anasayfa ve hızlı erişim
 
 ## Özellikler
@@ -246,6 +252,25 @@ ThunderV1/
 Bu proje MIT lisansı altında lisanslanmıştır.
 
 ## Versiyon Geçmişi
+
+### v1.6.5 (2025-09-12)
+- **Entegre İş Süreci Yönetimi**: State Management, Event Bus, Workflow Engine
+- **Üretim Aşamaları Yönetimi**: Aşama takibi, şablonlar, durum yönetimi
+- **Kalite Kontrol Sistemi**: Kalite kontrol noktaları, şablonlar, raporlar
+- **Üretim Planlama ve Zamanlama**: Kaynak yönetimi, sipariş yönetimi, kapasite planlama
+- **Gerçek Zamanlı İzleme**: Real-time updates, event bus, live dashboard
+- **Bildirim ve Uyarı Sistemi**: Bildirim türleri, uyarı kuralları, şablonlar
+- **Raporlama ve Analitik**: Dashboard widget'ları, KPI yönetimi, rapor şablonları
+- **80+ API Endpoint**: Kapsamlı backend API'leri
+- **9 Yeni Veritabanı Tablosu**: Raporlama, analitik, bildirim sistemi
+- **Chart.js Entegrasyonu**: Gelişmiş veri görselleştirme
+
+### v1.5.0 (2024-12-19)
+- Barkod yönetimi
+- CSV import/export
+- Gelişmiş stok yönetimi
+- Modern dashboard
+- Üretim kontrolü
 
 ### v1.0.0 (2024-12-19)
 - İlk sürüm

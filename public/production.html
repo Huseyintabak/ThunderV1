@@ -7,6 +7,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="styles.css?v=20241220" rel="stylesheet">
+    
+    <!-- Faz 0: State Management ve Event Bus -->
+    <script src="state-manager.js?v=20241220"></script>
+    <script src="event-bus.js?v=20241220"></script>
+    <script src="workflow-engine.js?v=20241220"></script>
+    <script src="realtime-updates.js?v=20241220"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -45,11 +51,24 @@
                         </a>
                     </li>
                 </ul>
+                
+                <!-- Faz 0: Workflow Status Göstergesi -->
+                <div class="navbar-nav">
+                    <div class="nav-item">
+                        <span class="navbar-text me-3">
+                            <i class="fas fa-cog me-1"></i>Durum: 
+                            <span id="workflow-status" class="badge bg-secondary">Hazır</span>
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
+        <!-- Faz 0: Notification Container -->
+        <div id="notification-container" class="mb-3"></div>
+        
         <!-- Üretim Yönetimi Başlık -->
         <div class="row mb-4">
             <div class="col-12">
@@ -64,38 +83,401 @@
             </div>
         </div>
 
-        <!-- Üretim Türü Seçimi -->
+        <!-- Üretim Yönetimi Tab Sistemi -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-cogs me-2"></i>Üretim Türü Seçimi
-                        </h5>
+                        <ul class="nav nav-tabs card-header-tabs" id="productionTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="production-start-tab" data-bs-toggle="tab" data-bs-target="#production-start-pane" type="button" role="tab">
+                                    <i class="fas fa-play me-2"></i>Üretim Başlat
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="production-stages-tab" data-bs-toggle="tab" data-bs-target="#production-stages-pane" type="button" role="tab">
+                                    <i class="fas fa-list-ol me-2"></i>Üretim Aşamaları
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="active-productions-tab" data-bs-toggle="tab" data-bs-target="#active-productions-pane" type="button" role="tab">
+                                    <i class="fas fa-industry me-2"></i>Aktif Üretimler
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="production-planning-tab" data-bs-toggle="tab" data-bs-target="#production-planning-pane" type="button" role="tab">
+                                    <i class="fas fa-calendar-alt me-2"></i>Üretim Planlama
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="quality-control-tab" data-bs-toggle="tab" data-bs-target="#quality-control-pane" type="button" role="tab">
+                                    <i class="fas fa-check-circle me-2"></i>Kalite Kontrol
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="production-history-tab" data-bs-toggle="tab" data-bs-target="#production-history-pane" type="button" role="tab">
+                                    <i class="fas fa-history me-2"></i>Üretim Geçmişi
+                                </button>
+                            </li>
+                        </ul>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card h-100 border-primary">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-hammer fa-3x text-primary mb-3"></i>
-                                        <h5 class="card-title">Hammadde → Yarı Mamul</h5>
-                                        <p class="card-text">Hammaddeleri kullanarak yarı mamul ürünler üretin</p>
-                                        <button class="btn btn-primary btn-lg" onclick="startProductionWithBarcode('yarimamul')">
-                                            <i class="fas fa-play me-2"></i>Yarı Mamul Üret
-                                        </button>
+                        <div class="tab-content" id="productionTabContent">
+                            <!-- Üretim Başlat Tab -->
+                            <div class="tab-pane fade show active" id="production-start-pane" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-primary">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-hammer fa-3x text-primary mb-3"></i>
+                                                <h5 class="card-title">Hammadde → Yarı Mamul</h5>
+                                                <p class="card-text">Hammaddeleri kullanarak yarı mamul ürünler üretin</p>
+                                                <button class="btn btn-primary btn-lg" onclick="startProductionWithBarcode('yarimamul')">
+                                                    <i class="fas fa-play me-2"></i>Yarı Mamul Üret
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-success">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-cube fa-3x text-success mb-3"></i>
+                                                <h5 class="card-title">Yarı Mamul → Nihai Ürün</h5>
+                                                <p class="card-text">Yarı mamulleri kullanarak nihai ürünler üretin</p>
+                                                <button class="btn btn-success btn-lg" onclick="startProductionWithBarcode('nihai')">
+                                                    <i class="fas fa-play me-2"></i>Nihai Ürün Üret
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card h-100 border-success">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-cube fa-3x text-success mb-3"></i>
-                                        <h5 class="card-title">Yarı Mamul → Nihai Ürün</h5>
-                                        <p class="card-text">Yarı mamulleri kullanarak nihai ürünler üretin</p>
-                                        <button class="btn btn-success btn-lg" onclick="startProductionWithBarcode('nihai')">
-                                            <i class="fas fa-play me-2"></i>Nihai Ürün Üret
-                                        </button>
+
+                            <!-- Üretim Aşamaları Tab -->
+                            <div class="tab-pane fade" id="production-stages-pane" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-list-ol me-2"></i>Üretim Aşamaları Yönetimi
+                                            </h5>
+                                            <div>
+                                                <button class="btn btn-primary btn-sm" onclick="loadStageTemplates()">
+                                                    <i class="fas fa-sync me-1"></i>Yenile
+                                                </button>
+                                                <button class="btn btn-success btn-sm" onclick="showAddStageTemplateModal()">
+                                                    <i class="fas fa-plus me-1"></i>Yeni Şablon
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Aşama Şablonları -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-templates me-2"></i>Aşama Şablonları
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="stage-templates-container">
+                                                    <div class="text-center py-4">
+                                                        <div class="spinner-border text-primary" role="status">
+                                                            <span class="visually-hidden">Yükleniyor...</span>
+                                                        </div>
+                                                        <p class="mt-2 text-muted">Aşama şablonları yükleniyor...</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Aktif Üretimler Tab -->
+                            <div class="tab-pane fade" id="active-productions-pane" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-industry me-2"></i>Aktif Üretimler
+                                            </h5>
+                                            <div>
+                                                <button class="btn btn-primary btn-sm" onclick="loadActiveProductions()">
+                                                    <i class="fas fa-sync me-1"></i>Yenile
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm ms-2" onclick="loadActiveProductions()">
+                                                    <i class="fas fa-database me-1"></i>API Test
+                                                </button>
+                                                <button class="btn btn-outline-success btn-sm ms-2" onclick="showProductionSummary()">
+                                                    <i class="fas fa-chart-bar me-1"></i>Özet
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="active-productions-container">
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-industry fa-3x text-muted mb-3"></i>
+                                        <h5 class="text-muted">Aktif üretim bulunmuyor</h5>
+                                        <p class="text-muted">Yukarıdaki butonları kullanarak yeni üretim başlatabilirsiniz.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Üretim Planlama Tab -->
+                            <div class="tab-pane fade" id="production-planning-pane" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-calendar-alt me-2"></i>Üretim Planlama ve Zamanlama
+                                            </h5>
+                                            <div>
+                                                <button class="btn btn-primary btn-sm" onclick="loadProductionPlans()">
+                                                    <i class="fas fa-sync me-1"></i>Yenile
+                                                </button>
+                                                <button class="btn btn-success btn-sm" onclick="showAddPlanModal()">
+                                                    <i class="fas fa-plus me-1"></i>Yeni Plan
+                                                </button>
+                                                <button class="btn btn-info btn-sm" onclick="showSchedulingModal()">
+                                                    <i class="fas fa-clock me-1"></i>Zamanlama
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Planlama İstatistikleri -->
+                                <div class="row mb-4">
+                                    <div class="col-md-3">
+                                        <div class="card bg-primary text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="total-plans">0</h5>
+                                                <small>Toplam Plan</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-success text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="active-plans">0</h5>
+                                                <small>Aktif Plan</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-warning text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="total-orders">0</h5>
+                                                <small>Toplam Sipariş</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-info text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="total-value">₺0</h5>
+                                                <small>Toplam Değer</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Üretim Planları -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-list me-2"></i>Üretim Planları
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="production-plans-container">
+                                            <div class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Yükleniyor...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Kaynak Yönetimi -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-cogs me-2"></i>Kaynak Yönetimi
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="resources-container">
+                                            <div class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Yükleniyor...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sipariş Yönetimi -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-shopping-cart me-2"></i>Sipariş Yönetimi
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="orders-container">
+                                            <div class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Yükleniyor...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kalite Kontrol Tab -->
+                            <div class="tab-pane fade" id="quality-control-pane" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-check-circle me-2"></i>Kalite Kontrol Yönetimi
+                                            </h5>
+                                            <div>
+                                                <button class="btn btn-primary btn-sm" onclick="loadQualityCheckpoints()">
+                                                    <i class="fas fa-sync me-1"></i>Yenile
+                                                </button>
+                                                <button class="btn btn-success btn-sm" onclick="showAddCheckpointModal()">
+                                                    <i class="fas fa-plus me-1"></i>Yeni Kontrol Noktası
+                                                </button>
+                                                <button class="btn btn-info btn-sm" onclick="showQualityReports()">
+                                                    <i class="fas fa-chart-bar me-1"></i>Raporlar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Kalite İstatistikleri -->
+                                <div class="row mb-4">
+                                    <div class="col-md-3">
+                                        <div class="card bg-success text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="quality-pass-rate">0%</h5>
+                                                <small>Geçme Oranı</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-danger text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="quality-fail-rate">0%</h5>
+                                                <small>Hata Oranı</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-warning text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="quality-warning-rate">0%</h5>
+                                                <small>Uyarı Oranı</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-info text-white">
+                                            <div class="card-body text-center">
+                                                <h5 id="quality-score">0</h5>
+                                                <small>Kalite Skoru</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Kalite Kontrol Noktaları -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-list-check me-2"></i>Kalite Kontrol Noktaları
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="quality-checkpoints-container">
+                                                    <div class="text-center py-4">
+                                                        <div class="spinner-border text-primary" role="status">
+                                                            <span class="visually-hidden">Yükleniyor...</span>
+                                                        </div>
+                                                        <p class="mt-2 text-muted">Kalite kontrol noktaları yükleniyor...</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Kalite Standartları -->
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-award me-2"></i>Kalite Standartları
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="quality-standards-container">
+                                                    <div class="text-center py-4">
+                                                        <div class="spinner-border text-primary" role="status">
+                                                            <span class="visually-hidden">Yükleniyor...</span>
+                                                        </div>
+                                                        <p class="mt-2 text-muted">Kalite standartları yükleniyor...</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Üretim Geçmişi Tab -->
+                            <div class="tab-pane fade" id="production-history-pane" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-history me-2"></i>Üretim Geçmişi
+                                            </h5>
+                                            <div>
+                                                <button class="btn btn-primary btn-sm" onclick="loadProductionHistory()">
+                                                    <i class="fas fa-sync me-1"></i>Yenile
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm" onclick="getProductionHistory()">
+                                                    <i class="fas fa-database me-1"></i>API Test
+                                                </button>
+                                                <button class="btn btn-outline-warning btn-sm" onclick="showEfficiencyReport(1)">
+                                                    <i class="fas fa-chart-line me-1"></i>Verimlilik
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="production-history-container">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">Üretim geçmişi yükleniyor...</p>
                                     </div>
                                 </div>
                             </div>
@@ -257,149 +639,7 @@
             </div>
         </div>
 
-        <!-- Aktif Üretimler -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-tasks me-2"></i>Aktif Üretimler
-                        </h5>
-                        <button class="btn btn-outline-primary btn-sm" onclick="refreshActiveProductions()">
-                            <i class="fas fa-sync-alt me-1"></i>Yenile
-                        </button>
-                        <button class="btn btn-outline-info btn-sm ms-2" onclick="loadActiveProductions()">
-                            <i class="fas fa-database me-1"></i>API Test
-                        </button>
-                        <button class="btn btn-outline-success btn-sm ms-2" onclick="showProductionSummary()">
-                            <i class="fas fa-chart-bar me-1"></i>Özet
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div id="active-productions-list">
-                            <!-- Aktif üretimler buraya gelecek -->
-                        </div>
-                        <div id="no-active-productions" class="text-center py-5" style="display: none;">
-                            <i class="fas fa-industry fa-3x text-muted mb-3"></i>
-                            <h5 class="text-muted">Aktif üretim bulunmuyor</h5>
-                            <p class="text-muted">Yukarıdaki butonları kullanarak yeni üretim başlatabilirsiniz.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Üretim Geçmişi -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-history me-2"></i>Üretim Geçmişi
-                        </h5>
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-outline-primary btn-sm" onclick="refreshProductionHistory()">
-                                <i class="fas fa-sync-alt me-1"></i>Yenile
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="clearProductionHistory()">
-                                <i class="fas fa-trash me-1"></i>Temizle
-                            </button>
-                            <button class="btn btn-outline-info btn-sm" onclick="getProductionHistory()">
-                                <i class="fas fa-database me-1"></i>API Test
-                            </button>
-                            <button class="btn btn-outline-warning btn-sm" onclick="showEfficiencyReport(1)">
-                                <i class="fas fa-chart-line me-1"></i>Verimlilik
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <!-- İstatistik Kartları -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card bg-primary text-white">
-                                    <div class="card-body text-center">
-                                        <h5 id="total-productions">0</h5>
-                                        <small>Toplam Üretim</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body text-center">
-                                        <h5 id="completed-productions">0</h5>
-                                        <small>Tamamlanan</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-warning text-white">
-                                    <div class="card-body text-center">
-                                        <h5 id="active-productions-count">0</h5>
-                                        <small>Devam Eden</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-info text-white">
-                                    <div class="card-body text-center">
-                                        <h5 id="total-cost">₺0.00</h5>
-                                        <small>Toplam Maliyet</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Filtreleme ve Arama -->
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                    <input type="text" class="form-control" id="production-search" placeholder="Ürün ara...">
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <select class="form-select" id="production-type-filter">
-                                    <option value="">Tüm Tipler</option>
-                                    <option value="yarimamul">Yarı Mamul</option>
-                                    <option value="nihai">Nihai Ürün</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <select class="form-select" id="production-status-filter">
-                                    <option value="">Tüm Durumlar</option>
-                                    <option value="completed">Tamamlandı</option>
-                                    <option value="active">Devam Ediyor</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-                                    <i class="fas fa-times me-1"></i>Temizle
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th><i class="fas fa-clock me-1"></i>Zaman</th>
-                                        <th><i class="fas fa-box me-1"></i>Ürün</th>
-                                        <th><i class="fas fa-calculator me-1"></i>Miktar</th>
-                                        <th><i class="fas fa-tag me-1"></i>Tip</th>
-                                        <th><i class="fas fa-check-circle me-1"></i>Durum</th>
-                                        <th><i class="fas fa-lira-sign me-1"></i>Maliyet</th>
-                                        <th><i class="fas fa-cogs me-1"></i>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="production-history-list">
-                                    <!-- Üretim geçmişi buraya gelecek -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Üretim Seçim Modal -->
@@ -685,6 +925,289 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-primary" onclick="saveProductionChanges()">
                         <i class="fas fa-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aşama Şablonu Ekleme Modal -->
+    <div class="modal fade" id="addStageTemplateModal" tabindex="-1" aria-labelledby="addStageTemplateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="addStageTemplateModalLabel">
+                        <i class="fas fa-plus me-2"></i>Yeni Aşama Şablonu
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addStageTemplateForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="template-product-type" class="form-label">Ürün Tipi *</label>
+                                    <select class="form-select" id="template-product-type" required>
+                                        <option value="">Seçiniz...</option>
+                                        <option value="hammadde">Hammadde</option>
+                                        <option value="yarimamul">Yarı Mamul</option>
+                                        <option value="nihai">Nihai Ürün</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="template-stage-name" class="form-label">Aşama Adı *</label>
+                                    <input type="text" class="form-control" id="template-stage-name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="template-stage-order" class="form-label">Aşama Sırası *</label>
+                                    <input type="number" class="form-control" id="template-stage-order" min="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="template-duration" class="form-label">Tahmini Süre (dakika)</label>
+                                    <input type="number" class="form-control" id="template-duration" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="template-skills" class="form-label">Gerekli Yetenekler</label>
+                                    <input type="text" class="form-control" id="template-skills" placeholder="operatör, teknisyen, kalite_kontrol">
+                                    <small class="form-text text-muted">Virgülle ayırın</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="template-quality-check">
+                                        <label class="form-check-label" for="template-quality-check">
+                                            Kalite kontrolü gerekli
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="template-mandatory" checked>
+                                        <label class="form-check-label" for="template-mandatory">
+                                            Zorunlu aşama
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" onclick="addStageTemplate()">
+                        <i class="fas fa-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Üretim Aşamaları Yönetim Modal -->
+    <div class="modal fade" id="productionStagesModal" tabindex="-1" aria-labelledby="productionStagesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="productionStagesModalLabel">
+                        <i class="fas fa-list-ol me-2"></i>Üretim Aşamaları
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Üretim ID: <span id="stages-production-id">-</span></h6>
+                                <div>
+                                    <button class="btn btn-primary btn-sm" onclick="loadProductionStages()">
+                                        <i class="fas fa-sync me-1"></i>Yenile
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="startNextStage()">
+                                        <i class="fas fa-play me-1"></i>Sonraki Aşama
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Aşamalar Timeline -->
+                    <div id="stages-timeline" class="stages-timeline">
+                        <!-- Aşamalar buraya gelecek -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kalite Kontrol Noktası Ekleme Modal -->
+    <div class="modal fade" id="addCheckpointModal" tabindex="-1" aria-labelledby="addCheckpointModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="addCheckpointModalLabel">
+                        <i class="fas fa-plus me-2"></i>Yeni Kalite Kontrol Noktası
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCheckpointForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="checkpoint-name" class="form-label">Kontrol Noktası Adı *</label>
+                                    <input type="text" class="form-control" id="checkpoint-name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="checkpoint-type" class="form-label">Kontrol Tipi *</label>
+                                    <select class="form-select" id="checkpoint-type" required>
+                                        <option value="">Seçiniz...</option>
+                                        <option value="visual">Görsel Kontrol</option>
+                                        <option value="measurement">Ölçüm</option>
+                                        <option value="test">Test</option>
+                                        <option value="inspection">Muayene</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="checkpoint-product-type" class="form-label">Ürün Tipi *</label>
+                                    <select class="form-select" id="checkpoint-product-type" required>
+                                        <option value="">Seçiniz...</option>
+                                        <option value="hammadde">Hammadde</option>
+                                        <option value="yarimamul">Yarı Mamul</option>
+                                        <option value="nihai">Nihai Ürün</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="checkpoint-frequency" class="form-label">Kontrol Sıklığı</label>
+                                    <select class="form-select" id="checkpoint-frequency">
+                                        <option value="every">Her Üretim</option>
+                                        <option value="random">Rastgele</option>
+                                        <option value="first">İlk Üretim</option>
+                                        <option value="last">Son Üretim</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="checkpoint-description" class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="checkpoint-description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="checkpoint-mandatory" checked>
+                                    <label class="form-check-label" for="checkpoint-mandatory">
+                                        Zorunlu kontrol
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-warning" onclick="addQualityCheckpoint()">
+                        <i class="fas fa-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kalite Kontrol Gerçekleştirme Modal -->
+    <div class="modal fade" id="qualityCheckModal" tabindex="-1" aria-labelledby="qualityCheckModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="qualityCheckModalLabel">
+                        <i class="fas fa-check-circle me-2"></i>Kalite Kontrol Gerçekleştir
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="qualityCheckForm">
+                        <input type="hidden" id="check-production-id">
+                        <input type="hidden" id="check-stage-id">
+                        <input type="hidden" id="check-checkpoint-id">
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <h6 id="checkpoint-name-display">Kontrol Noktası</h6>
+                                <p class="text-muted" id="checkpoint-description-display">Açıklama</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="check-operator" class="form-label">Operatör *</label>
+                                    <input type="text" class="form-control" id="check-operator" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="check-result" class="form-label">Sonuç *</label>
+                                    <select class="form-select" id="check-result" required>
+                                        <option value="">Seçiniz...</option>
+                                        <option value="pass">Geçti</option>
+                                        <option value="fail">Başarısız</option>
+                                        <option value="warning">Uyarı</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row" id="measurement-fields" style="display: none;">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="check-measured-value" class="form-label">Ölçülen Değer</label>
+                                    <input type="number" class="form-control" id="check-measured-value" step="0.01">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="check-expected-value" class="form-label">Beklenen Değer</label>
+                                    <input type="number" class="form-control" id="check-expected-value" step="0.01">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="check-tolerance" class="form-label">Tolerans (±)</label>
+                                    <input type="number" class="form-control" id="check-tolerance" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="check-notes" class="form-label">Notlar</label>
+                            <textarea class="form-control" id="check-notes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="submitQualityCheck()">
+                        <i class="fas fa-check me-1"></i>Kontrolü Tamamla
                     </button>
                 </div>
             </div>

@@ -1009,7 +1009,7 @@ app.get('/api/productions/active', async (req, res) => {
         const { data, error } = await supabase
             .from('productions')
             .select('*')
-            .eq('status', 'active')
+            .in('status', ['active', 'paused'])
             .order('start_time', { ascending: false });
             
         if (error) throw error;
@@ -1095,63 +1095,467 @@ app.post('/api/productions/:id/complete', async (req, res) => {
 });
 
 // ========================================
-// BARKOD YÖNETİMİ API'LERİ - FAZ 2
+// ÜRETİM AŞAMALARI YÖNETİMİ API'LERİ - FAZ 1
 // ========================================
 
-// Barkod Yönetimi API'leri
-app.post('/api/barcodes/scan', async (req, res) => {
+// Üretim aşamalarını listele
+app.get('/api/productions/:id/stages', async (req, res) => {
     try {
-        const { production_id, barcode, operator } = req.body;
-        
-        if (!supabase) {
-            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
-        }
-        
-        // Barkod doğrulama (basit)
-        const isValid = barcode && barcode.length >= 8;
+        const { id } = req.params;
         
         const { data, error } = await supabase
-            .from('barcode_scans')
-            .insert([{
-                production_id,
-                barcode,
-                success: isValid,
-                operator: operator || 'system'
-            }])
-            .select();
-            
-        if (error) throw error;
-        res.json({
-            ...data[0],
-            message: isValid ? 'Barkod başarıyla okutuldu' : 'Geçersiz barkod'
-        });
-    } catch (error) {
-        console.error('Barcode scan error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/barcodes/history/:productionId', async (req, res) => {
-    try {
-        const { productionId } = req.params;
-        
-        if (!supabase) {
-            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
-        }
-        
-        const { data, error } = await supabase
-            .from('barcode_scans')
+            .from('production_stages')
             .select('*')
-            .eq('production_id', productionId)
-            .order('scan_time', { ascending: false });
+            .eq('production_id', id)
+            .order('stage_order', { ascending: true });
             
         if (error) throw error;
         res.json(data);
     } catch (error) {
-        console.error('Barcode history fetch error:', error);
+        console.error('Production stages fetch error:', error);
         res.status(500).json({ error: error.message });
     }
 });
+
+// Üretim aşaması oluştur
+app.post('/api/productions/:id/stages', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { stage_name, stage_order, operator, notes, quality_check_required } = req.body;
+        
+        const { data, error } = await supabase
+            .from('production_stages')
+            .insert([{
+                production_id: parseInt(id),
+                stage_name,
+                stage_order: parseInt(stage_order),
+                operator: operator || 'system',
+                notes,
+                quality_check_required: quality_check_required || false
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Production stage creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Üretim aşamasını güncelle
+app.put('/api/productions/:id/stages/:stageId', async (req, res) => {
+    try {
+        const { id, stageId } = req.params;
+        const updates = req.body;
+        updates.updated_at = new Date().toISOString();
+        
+        const { data, error } = await supabase
+            .from('production_stages')
+            .update(updates)
+            .eq('id', stageId)
+            .eq('production_id', id)
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Production stage update error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Üretim aşamasını tamamla
+app.post('/api/productions/:id/stages/:stageId/complete', async (req, res) => {
+    try {
+        const { id, stageId } = req.params;
+        const { notes } = req.body;
+        
+        const { data, error } = await supabase
+            .from('production_stages')
+            .update({
+                status: 'completed',
+                end_time: new Date().toISOString(),
+                notes: notes || null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', stageId)
+            .eq('production_id', id)
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Production stage completion error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Aşama şablonlarını listele
+app.get('/api/production-stages/templates', async (req, res) => {
+    try {
+        const { product_type } = req.query;
+        
+        let query = supabase
+            .from('production_stage_templates')
+            .select('*')
+            .order('stage_order', { ascending: true });
+            
+        if (product_type) {
+            query = query.eq('product_type', product_type);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Stage templates fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Aşama şablonu oluştur
+app.post('/api/production-stages/templates', async (req, res) => {
+    try {
+        const { product_type, stage_name, stage_order, estimated_duration, required_skills, quality_check_required, is_mandatory } = req.body;
+        
+        const { data, error } = await supabase
+            .from('production_stage_templates')
+            .insert([{
+                product_type,
+                stage_name,
+                stage_order: parseInt(stage_order),
+                estimated_duration: parseInt(estimated_duration) || null,
+                required_skills: required_skills || [],
+                quality_check_required: quality_check_required || false,
+                is_mandatory: is_mandatory !== false
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Stage template creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Aşama şablonu sil
+app.delete('/api/production-stages/templates/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { error } = await supabase
+            .from('production_stage_templates')
+            .delete()
+            .eq('id', id);
+            
+        if (error) throw error;
+        res.json({ message: 'Aşama şablonu başarıyla silindi' });
+    } catch (error) {
+        console.error('Delete stage template error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ========================================
+// KALİTE KONTROL SİSTEMİ API'LERİ - FAZ 2
+// ========================================
+
+// Kalite kontrol noktalarını listele
+app.get('/api/quality/checkpoints', async (req, res) => {
+    try {
+        const { product_type, stage_id } = req.query;
+        
+        let query = supabase
+            .from('quality_checkpoints')
+            .select('*')
+            .order('name', { ascending: true });
+            
+        if (product_type) {
+            query = query.eq('product_type', product_type);
+        }
+        
+        if (stage_id) {
+            query = query.eq('stage_id', stage_id);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Quality checkpoints fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite kontrol noktası oluştur
+app.post('/api/quality/checkpoints', async (req, res) => {
+    try {
+        const { name, description, product_type, stage_id, checkpoint_type, parameters, is_mandatory, frequency } = req.body;
+        
+        const { data, error } = await supabase
+            .from('quality_checkpoints')
+            .insert([{
+                name,
+                description,
+                product_type,
+                stage_id: stage_id ? parseInt(stage_id) : null,
+                checkpoint_type,
+                parameters: parameters || {},
+                is_mandatory: is_mandatory !== false,
+                frequency: frequency || 'every'
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Quality checkpoint creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite kontrol noktasını güncelle
+app.put('/api/quality/checkpoints/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        updates.updated_at = new Date().toISOString();
+        
+        const { data, error } = await supabase
+            .from('quality_checkpoints')
+            .update(updates)
+            .eq('id', id)
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Quality checkpoint update error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite kontrolü gerçekleştir
+app.post('/api/quality/checks', async (req, res) => {
+    try {
+        const { production_id, stage_id, checkpoint_id, operator, result, measured_value, expected_value, tolerance_min, tolerance_max, notes, photos } = req.body;
+        
+        const { data, error } = await supabase
+            .from('quality_checks')
+            .insert([{
+                production_id: parseInt(production_id),
+                stage_id: parseInt(stage_id),
+                checkpoint_id: parseInt(checkpoint_id),
+                operator,
+                result,
+                measured_value: measured_value ? parseFloat(measured_value) : null,
+                expected_value: expected_value ? parseFloat(expected_value) : null,
+                tolerance_min: tolerance_min ? parseFloat(tolerance_min) : null,
+                tolerance_max: tolerance_max ? parseFloat(tolerance_max) : null,
+                notes,
+                photos: photos || []
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Quality check creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Üretim kalite kontrollerini listele
+app.get('/api/productions/:id/quality-checks', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { data, error } = await supabase
+            .from('quality_checks')
+            .select(`
+                *,
+                quality_checkpoints (
+                    name,
+                    checkpoint_type,
+                    parameters
+                )
+            `)
+            .eq('production_id', id)
+            .order('check_time', { ascending: false });
+            
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Production quality checks fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite standartlarını listele
+app.get('/api/quality/standards', async (req, res) => {
+    try {
+        const { product_type, standard_type, active_only } = req.query;
+        
+        let query = supabase
+            .from('quality_standards')
+            .select('*')
+            .order('name', { ascending: true });
+            
+        if (product_type) {
+            query = query.eq('product_type', product_type);
+        }
+        
+        if (standard_type) {
+            query = query.eq('standard_type', standard_type);
+        }
+        
+        if (active_only === 'true') {
+            query = query.eq('is_active', true);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Quality standards fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite raporu oluştur
+app.post('/api/quality/reports', async (req, res) => {
+    try {
+        const { production_id, report_type, report_date, report_data } = req.body;
+        
+        // Kalite skorunu hesapla
+        const { data: checks, error: checksError } = await supabase
+            .from('quality_checks')
+            .select('result')
+            .eq('production_id', production_id);
+            
+        if (checksError) throw checksError;
+        
+        const totalChecks = checks.length;
+        const passedChecks = checks.filter(c => c.result === 'pass').length;
+        const failedChecks = checks.filter(c => c.result === 'fail').length;
+        const warningChecks = checks.filter(c => c.result === 'warning').length;
+        
+        const qualityScore = totalChecks > 0 ? (passedChecks / totalChecks * 100) : 0;
+        
+        const { data, error } = await supabase
+            .from('quality_reports')
+            .insert([{
+                production_id: parseInt(production_id),
+                report_type,
+                report_date,
+                total_checks: totalChecks,
+                passed_checks: passedChecks,
+                failed_checks: failedChecks,
+                warning_checks: warningChecks,
+                quality_score: parseFloat(qualityScore.toFixed(2)),
+                report_data: report_data || {}
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (error) {
+        console.error('Quality report creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite raporlarını listele
+app.get('/api/quality/reports', async (req, res) => {
+    try {
+        const { production_id, report_type, start_date, end_date } = req.query;
+        
+        let query = supabase
+            .from('quality_reports')
+            .select('*')
+            .order('report_date', { ascending: false });
+            
+        if (production_id) {
+            query = query.eq('production_id', production_id);
+        }
+        
+        if (report_type) {
+            query = query.eq('report_type', report_type);
+        }
+        
+        if (start_date) {
+            query = query.gte('report_date', start_date);
+        }
+        
+        if (end_date) {
+            query = query.lte('report_date', end_date);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Quality reports fetch error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kalite istatistikleri
+app.get('/api/quality/statistics', async (req, res) => {
+    try {
+        const { production_id, start_date, end_date } = req.query;
+        
+        let query = supabase
+            .from('quality_checks')
+            .select('result, check_time');
+            
+        if (production_id) {
+            query = query.eq('production_id', production_id);
+        }
+        
+        if (start_date) {
+            query = query.gte('check_time', start_date);
+        }
+        
+        if (end_date) {
+            query = query.lte('check_time', end_date);
+        }
+        
+        const { data: checks, error } = await query;
+        if (error) throw error;
+        
+        const totalChecks = checks.length;
+        const passedChecks = checks.filter(c => c.result === 'pass').length;
+        const failedChecks = checks.filter(c => c.result === 'fail').length;
+        const warningChecks = checks.filter(c => c.result === 'warning').length;
+        
+        const qualityScore = totalChecks > 0 ? (passedChecks / totalChecks * 100) : 0;
+        
+        res.json({
+            total_checks: totalChecks,
+            passed_checks: passedChecks,
+            failed_checks: failedChecks,
+            warning_checks: warningChecks,
+            quality_score: parseFloat(qualityScore.toFixed(2)),
+            pass_rate: totalChecks > 0 ? parseFloat((passedChecks / totalChecks * 100).toFixed(2)) : 0,
+            fail_rate: totalChecks > 0 ? parseFloat((failedChecks / totalChecks * 100).toFixed(2)) : 0
+        });
+    } catch (error) {
+        console.error('Quality statistics error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ========================================
+// BARKOD YÖNETİMİ API'LERİ - FAZ 2
+// ========================================
+
+// Barkod Yönetimi API'leri
+// Barkod tarama - KALDIRILDI (barcode_scans tablosu kullanılmıyor)
+
+// Barkod geçmişi - KALDIRILDI (barcode_scans tablosu kullanılmıyor)
 
 app.post('/api/barcodes/validate', async (req, res) => {
     try {
@@ -1316,13 +1720,8 @@ app.get('/api/reports/efficiency', async (req, res) => {
             
         if (prodError) throw prodError;
         
-        // Barkod taramalarını al
-        const { data: scans, error: scanError } = await supabase
-            .from('barcode_scans')
-            .select('*')
-            .eq('production_id', production_id);
-            
-        if (scanError) throw scanError;
+        // Barkod taramaları - KALDIRILDI (barcode_scans tablosu kullanılmıyor)
+        const scans = []; // Boş array olarak ayarlandı
         
         // Verimlilik hesapla
         const totalScans = scans.length;
@@ -1400,7 +1799,7 @@ app.post('/api/stock/entry', async (req, res) => {
             toplam_tutar: parseFloat(miktar) * (parseFloat(birim_fiyat) || 0),
             referans_no: referans_no || `STK-${Date.now()}`,
             aciklama: aciklama || 'Stok girişi',
-            tarih: new Date().toISOString()
+            operator: 'system'
         };
         
         const { data: hareketData, error: hareketError } = await supabase
@@ -1408,7 +1807,16 @@ app.post('/api/stock/entry', async (req, res) => {
             .insert([stokHareketi])
             .select();
             
-        if (hareketError) throw hareketError;
+        if (hareketError) {
+            if (hareketError.message.includes('Could not find the table')) {
+                return res.status(503).json({ 
+                    error: 'Stok hareketleri tablosu henüz oluşturulmadı',
+                    instructions: 'create_stok_hareketleri_table.sql dosyasındaki SQL\'i Supabase SQL Editor\'da çalıştırın',
+                    sql_file: 'create_stok_hareketleri_table.sql'
+                });
+            }
+            throw hareketError;
+        }
         
         // Ürün stok miktarını güncelle
         const tableName = urun_tipi === 'hammadde' ? 'hammaddeler' : 
@@ -1444,7 +1852,12 @@ app.post('/api/stock/entry', async (req, res) => {
         
     } catch (error) {
         console.error('Stok girişi error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        res.status(500).json({ 
+            error: error.message,
+            details: error.details || null,
+            code: error.code || null
+        });
     }
 });
 
@@ -1496,7 +1909,7 @@ app.post('/api/stock/exit', async (req, res) => {
             birim: birim,
             referans_no: referans_no || `STK-${Date.now()}`,
             aciklama: aciklama || 'Stok çıkışı',
-            tarih: new Date().toISOString()
+            operator: 'system'
         };
         
         const { data: hareketData, error: hareketError } = await supabase
@@ -1553,14 +1966,14 @@ app.get('/api/stock/movements', async (req, res) => {
         let query = supabase
             .from('stok_hareketleri')
             .select('*')
-            .order('tarih', { ascending: false })
+            .order('created_at', { ascending: false })
             .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
             
         if (urun_id) query = query.eq('urun_id', urun_id);
         if (urun_tipi) query = query.eq('urun_tipi', urun_tipi);
         if (hareket_tipi) query = query.eq('hareket_tipi', hareket_tipi);
-        if (start_date) query = query.gte('tarih', start_date);
-        if (end_date) query = query.lte('tarih', end_date);
+        if (start_date) query = query.gte('created_at', start_date);
+        if (end_date) query = query.lte('created_at', end_date);
         
         const { data, error } = await query;
         if (error) throw error;
@@ -1661,7 +2074,7 @@ app.post('/api/stock/count', async (req, res) => {
             birim: 'adet', // Varsayılan birim
             referans_no: `SAYIM-${Date.now()}`,
             aciklama: `${aciklama || 'Stok sayımı'} - Fark: ${fark > 0 ? '+' : ''}${fark}`,
-            tarih: new Date().toISOString()
+            operator: 'system'
         };
         
         const { data: hareketData, error: hareketError } = await supabase
@@ -1763,10 +2176,1059 @@ async function addBarcodeColumnToHammadde() {
   console.log('CREATE INDEX idx_hammaddeler_barkod ON hammaddeler(barkod);');
 }
 
+// Stok hareketleri tablosunu oluştur
+async function createStokHareketleriTable() {
+  try {
+    if (!supabase) {
+      console.log('Supabase bağlantısı yok, stok_hareketleri tablosu oluşturulamadı');
+      return;
+    }
+    
+    // Tablo oluşturma SQL'i
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS stok_hareketleri (
+        id BIGSERIAL PRIMARY KEY,
+        urun_id INTEGER NOT NULL,
+        urun_tipi VARCHAR(20) NOT NULL,
+        hareket_tipi VARCHAR(20) NOT NULL,
+        miktar DECIMAL(15,4) NOT NULL,
+        birim VARCHAR(50) NOT NULL,
+        birim_fiyat DECIMAL(15,4) DEFAULT 0,
+        toplam_tutar DECIMAL(15,4) DEFAULT 0,
+        aciklama TEXT,
+        referans_no VARCHAR(100),
+        operator VARCHAR(100),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+    
+    // Index'leri oluştur
+    const createIndexesSQL = `
+      CREATE INDEX IF NOT EXISTS idx_stok_hareketleri_urun_id ON stok_hareketleri(urun_id);
+      CREATE INDEX IF NOT EXISTS idx_stok_hareketleri_urun_tipi ON stok_hareketleri(urun_tipi);
+      CREATE INDEX IF NOT EXISTS idx_stok_hareketleri_hareket_tipi ON stok_hareketleri(hareket_tipi);
+      CREATE INDEX IF NOT EXISTS idx_stok_hareketleri_created_at ON stok_hareketleri(created_at);
+    `;
+    
+    // RLS politikalarını oluştur
+    const createRLSSQL = `
+      ALTER TABLE stok_hareketleri ENABLE ROW LEVEL SECURITY;
+      
+      CREATE POLICY IF NOT EXISTS "stok_hareketleri_select_policy" ON stok_hareketleri
+        FOR SELECT USING (true);
+      
+      CREATE POLICY IF NOT EXISTS "stok_hareketleri_insert_policy" ON stok_hareketleri
+        FOR INSERT WITH CHECK (true);
+      
+      CREATE POLICY IF NOT EXISTS "stok_hareketleri_update_policy" ON stok_hareketleri
+        FOR UPDATE USING (true);
+      
+      CREATE POLICY IF NOT EXISTS "stok_hareketleri_delete_policy" ON stok_hareketleri
+        FOR DELETE USING (true);
+    `;
+    
+    // Stok hareketleri tablosu zaten setup_all_tables_sequential.sql ile oluşturulmuş
+    console.log('Stok hareketleri tablosu kontrol ediliyor...');
+    
+    // Tablonun var olup olmadığını kontrol et
+    const { data, error } = await supabase
+      .from('stok_hareketleri')
+      .select('*')
+      .limit(1);
+    
+    if (error) {
+      console.log('Stok hareketleri tablosu bulunamadı. Lütfen setup_all_tables_sequential.sql dosyasını çalıştırın.');
+    } else {
+      console.log('Stok hareketleri tablosu mevcut');
+    }
+    
+  } catch (error) {
+    console.log('Stok hareketleri tablosu oluşturma hatası:', error.message);
+  }
+}
+
+// ==================== FAZ 3: ÜRETİM PLANLAMA VE ZAMANLAMA API'LERİ ====================
+
+// Üretim planları API'leri
+app.get('/api/production-plans', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_plans')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Üretim planları fetch error:', error);
+    res.status(500).json({ error: 'Üretim planları yüklenemedi' });
+  }
+});
+
+app.post('/api/production-plans', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_plans')
+      .insert([req.body])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim planı oluşturma error:', error);
+    res.status(500).json({ error: 'Üretim planı oluşturulamadı' });
+  }
+});
+
+app.put('/api/production-plans/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_plans')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim planı güncelleme error:', error);
+    res.status(500).json({ error: 'Üretim planı güncellenemedi' });
+  }
+});
+
+app.delete('/api/production-plans/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('production_plans')
+      .delete()
+      .eq('id', req.params.id);
+    
+    if (error) throw error;
+    res.json({ message: 'Üretim planı silindi' });
+  } catch (error) {
+    console.error('Üretim planı silme error:', error);
+    res.status(500).json({ error: 'Üretim planı silinemedi' });
+  }
+});
+
+// Üretim plan detayları API'leri
+app.get('/api/production-plans/:id/details', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_plan_details')
+      .select('*')
+      .eq('plan_id', req.params.id)
+      .order('priority', { ascending: true });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Plan detayları fetch error:', error);
+    res.status(500).json({ error: 'Plan detayları yüklenemedi' });
+  }
+});
+
+app.post('/api/production-plans/:id/details', async (req, res) => {
+  try {
+    const planDetail = {
+      ...req.body,
+      plan_id: req.params.id
+    };
+    
+    const { data, error } = await supabase
+      .from('production_plan_details')
+      .insert([planDetail])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Plan detayı oluşturma error:', error);
+    res.status(500).json({ error: 'Plan detayı oluşturulamadı' });
+  }
+});
+
+// Kaynak yönetimi API'leri
+app.get('/api/resources', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('resource_management')
+      .select('*')
+      .eq('is_active', true)
+      .order('resource_type', { ascending: true });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Kaynaklar fetch error:', error);
+    res.status(500).json({ error: 'Kaynaklar yüklenemedi' });
+  }
+});
+
+app.post('/api/resources', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('resource_management')
+      .insert([req.body])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Kaynak oluşturma error:', error);
+    res.status(500).json({ error: 'Kaynak oluşturulamadı' });
+  }
+});
+
+// Üretim zamanlaması API'leri
+app.get('/api/production-scheduling', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_scheduling')
+      .select(`
+        *,
+        production_plan_details!inner(*),
+        resource_management!inner(*)
+      `)
+      .order('scheduled_start', { ascending: true });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Zamanlama fetch error:', error);
+    res.status(500).json({ error: 'Zamanlama verileri yüklenemedi' });
+  }
+});
+
+app.post('/api/production-scheduling', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_scheduling')
+      .insert([req.body])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Zamanlama oluşturma error:', error);
+    res.status(500).json({ error: 'Zamanlama oluşturulamadı' });
+  }
+});
+
+// Sipariş yönetimi API'leri
+app.get('/api/orders', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('order_management')
+      .select('*')
+      .order('priority', { ascending: true })
+      .order('delivery_date', { ascending: true });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Siparişler fetch error:', error);
+    res.status(500).json({ error: 'Siparişler yüklenemedi' });
+  }
+});
+
+app.post('/api/orders', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('order_management')
+      .insert([req.body])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Sipariş oluşturma error:', error);
+    res.status(500).json({ error: 'Sipariş oluşturulamadı' });
+  }
+});
+
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('order_management')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Sipariş güncelleme error:', error);
+    res.status(500).json({ error: 'Sipariş güncellenemedi' });
+  }
+});
+
+// Kapasite planlama API'leri
+app.get('/api/capacity-planning', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('capacity_planning')
+      .select(`
+        *,
+        resource_management!inner(*)
+      `)
+      .order('plan_date', { ascending: true });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Kapasite planlama fetch error:', error);
+    res.status(500).json({ error: 'Kapasite planlama verileri yüklenemedi' });
+  }
+});
+
+app.post('/api/capacity-planning', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('capacity_planning')
+      .insert([req.body])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Kapasite planlama oluşturma error:', error);
+    res.status(500).json({ error: 'Kapasite planlama oluşturulamadı' });
+  }
+});
+
+// Üretim planlama istatistikleri
+app.get('/api/production-planning/statistics', async (req, res) => {
+  try {
+    const [plansResult, ordersResult, resourcesResult] = await Promise.all([
+      supabase.from('production_plans').select('id, status'),
+      supabase.from('order_management').select('id, status, total_amount'),
+      supabase.from('resource_management').select('id, resource_type, is_active')
+    ]);
+
+    const plans = plansResult.data || [];
+    const orders = ordersResult.data || [];
+    const resources = resourcesResult.data || [];
+
+    const statistics = {
+      total_plans: plans.length,
+      active_plans: plans.filter(p => p.status === 'active').length,
+      total_orders: orders.length,
+      pending_orders: orders.filter(o => o.status === 'pending').length,
+      total_value: orders.reduce((sum, o) => sum + (o.total_amount || 0), 0),
+      total_resources: resources.length,
+      active_resources: resources.filter(r => r.is_active).length,
+      machine_count: resources.filter(r => r.resource_type === 'machine' && r.is_active).length,
+      operator_count: resources.filter(r => r.resource_type === 'operator' && r.is_active).length
+    };
+
+    res.json(statistics);
+  } catch (error) {
+    console.error('Planlama istatistikleri error:', error);
+    res.status(500).json({ error: 'İstatistikler yüklenemedi' });
+  }
+});
+
+// ==================== BİLDİRİM VE UYARI SİSTEMİ API'LERİ ====================
+
+// Bildirim türlerini listele
+app.get('/api/notifications/types', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('notification_types')
+      .select('*')
+      .eq('is_active', true)
+      .order('type_name');
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Bildirim türleri error:', error);
+    res.status(500).json({ error: 'Bildirim türleri yüklenemedi' });
+  }
+});
+
+// Bildirimleri listele
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const { status, limit = 50, offset = 0 } = req.query;
+    
+    let query = supabase
+      .from('notifications')
+      .select(`
+        *,
+        notification_types(type_name, display_name, icon, color)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Bildirimler error:', error);
+    res.status(500).json({ error: 'Bildirimler yüklenemedi' });
+  }
+});
+
+// Bildirim oluştur
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const { type_id, title, message, priority = 'medium', recipient_type = 'all', recipient_id, related_entity_type, related_entity_id, action_url, expires_at } = req.body;
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([{
+        type_id,
+        title,
+        message,
+        priority,
+        recipient_type,
+        recipient_id,
+        related_entity_type,
+        related_entity_id,
+        action_url,
+        expires_at,
+        created_by: 'system'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Bildirim oluşturma error:', error);
+    res.status(500).json({ error: 'Bildirim oluşturulamadı' });
+  }
+});
+
+// Bildirimi okundu olarak işaretle
+app.put('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { read_by } = req.body;
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({
+        status: 'read',
+        read_at: new Date().toISOString(),
+        read_by
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Bildirim okundu işaretleme error:', error);
+    res.status(500).json({ error: 'Bildirim güncellenemedi' });
+  }
+});
+
+// Uyarı kurallarını listele
+app.get('/api/alerts/rules', async (req, res) => {
+  try {
+    const { entity_type, is_active } = req.query;
+    
+    let query = supabase
+      .from('alert_rules')
+      .select(`
+        *,
+        notification_types(type_name, display_name, icon, color)
+      `)
+      .order('rule_name');
+
+    if (entity_type) {
+      query = query.eq('entity_type', entity_type);
+    }
+    if (is_active !== undefined) {
+      query = query.eq('is_active', is_active === 'true');
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Uyarı kuralları error:', error);
+    res.status(500).json({ error: 'Uyarı kuralları yüklenemedi' });
+  }
+});
+
+// Uyarı kuralı oluştur
+app.post('/api/alerts/rules', async (req, res) => {
+  try {
+    const { rule_name, description, entity_type, condition_field, condition_operator, condition_value, notification_type_id, priority = 'medium', is_active = true } = req.body;
+
+    const { data, error } = await supabase
+      .from('alert_rules')
+      .insert([{
+        rule_name,
+        description,
+        entity_type,
+        condition_field,
+        condition_operator,
+        condition_value,
+        notification_type_id,
+        priority,
+        is_active,
+        created_by: 'system'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Uyarı kuralı oluşturma error:', error);
+    res.status(500).json({ error: 'Uyarı kuralı oluşturulamadı' });
+  }
+});
+
+// Uyarı geçmişini listele
+app.get('/api/alerts/history', async (req, res) => {
+  try {
+    const { entity_type, entity_id, status, limit = 50, offset = 0 } = req.query;
+    
+    let query = supabase
+      .from('alert_history')
+      .select(`
+        *,
+        alert_rules(rule_name, description),
+        notifications(title, message, priority)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (entity_type) {
+      query = query.eq('entity_type', entity_type);
+    }
+    if (entity_id) {
+      query = query.eq('entity_id', entity_id);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Uyarı geçmişi error:', error);
+    res.status(500).json({ error: 'Uyarı geçmişi yüklenemedi' });
+  }
+});
+
+// Uyarıyı onayla
+app.put('/api/alerts/:id/acknowledge', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { acknowledged_by } = req.body;
+
+    const { data, error } = await supabase
+      .from('alert_history')
+      .update({
+        status: 'acknowledged',
+        acknowledged_by,
+        acknowledged_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Uyarı onaylama error:', error);
+    res.status(500).json({ error: 'Uyarı onaylanamadı' });
+  }
+});
+
+// Bildirim istatistikleri
+app.get('/api/notifications/statistics', async (req, res) => {
+  try {
+    const { data: notifications, error: notifError } = await supabase
+      .from('notifications')
+      .select('status, priority, created_at');
+
+    const { data: alerts, error: alertError } = await supabase
+      .from('alert_history')
+      .select('status, created_at');
+
+    if (notifError) throw notifError;
+    if (alertError) throw alertError;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+    const todayNotifications = notifications.filter(n => new Date(n.created_at) >= today);
+    const todayAlerts = alerts.filter(a => new Date(a.created_at) >= today);
+
+    const statistics = {
+      total_notifications: notifications.length,
+      unread_notifications: notifications.filter(n => n.status === 'unread').length,
+      today_notifications: todayNotifications.length,
+      critical_notifications: notifications.filter(n => n.priority === 'critical').length,
+      total_alerts: alerts.length,
+      active_alerts: alerts.filter(a => a.status === 'triggered').length,
+      acknowledged_alerts: alerts.filter(a => a.status === 'acknowledged').length,
+      today_alerts: todayAlerts.length
+    };
+
+    res.json(statistics);
+  } catch (error) {
+    console.error('Bildirim istatistikleri error:', error);
+    res.status(500).json({ error: 'İstatistikler yüklenemedi' });
+  }
+});
+
+// Test bildirimi oluştur
+app.post('/api/notifications/test', async (req, res) => {
+  try {
+    const { type_name, title, message, priority = 'medium' } = req.body;
+
+    // Bildirim türünü bul
+    const { data: typeData, error: typeError } = await supabase
+      .from('notification_types')
+      .select('id')
+      .eq('type_name', type_name)
+      .single();
+
+    if (typeError || !typeData) {
+      return res.status(400).json({ error: 'Bildirim türü bulunamadı' });
+    }
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([{
+        type_id: typeData.id,
+        title: title || 'Test Bildirimi',
+        message: message || 'Bu bir test bildirimidir.',
+        priority,
+        recipient_type: 'all',
+        created_by: 'test_user'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Test bildirimi oluşturma error:', error);
+    res.status(500).json({ error: 'Test bildirimi oluşturulamadı' });
+  }
+});
+
+// ==================== RAPORLAMA VE ANALİTİK API'LERİ ====================
+
+// Dashboard widget'larını listele
+app.get('/api/dashboard/widgets', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('dashboard_widgets')
+      .select('*')
+      .eq('is_active', true)
+      .order('position_y, position_x');
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Dashboard widget\'ları error:', error);
+    res.status(500).json({ error: 'Widget\'lar yüklenemedi' });
+  }
+});
+
+// Dashboard widget oluştur
+app.post('/api/dashboard/widgets', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('dashboard_widgets')
+      .insert([req.body])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Dashboard widget oluşturma error:', error);
+    res.status(500).json({ error: 'Widget oluşturulamadı' });
+  }
+});
+
+// Dashboard widget güncelle
+app.put('/api/dashboard/widgets/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('dashboard_widgets')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Dashboard widget güncelleme error:', error);
+    res.status(500).json({ error: 'Widget güncellenemedi' });
+  }
+});
+
+// Rapor şablonlarını listele
+app.get('/api/reports/templates', async (req, res) => {
+  try {
+    const { report_type, is_public } = req.query;
+    
+    let query = supabase
+      .from('report_templates')
+      .select('*')
+      .eq('is_active', true)
+      .order('template_name');
+
+    if (report_type) {
+      query = query.eq('report_type', report_type);
+    }
+    if (is_public !== undefined) {
+      query = query.eq('is_public', is_public === 'true');
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Rapor şablonları error:', error);
+    res.status(500).json({ error: 'Rapor şablonları yüklenemedi' });
+  }
+});
+
+// Rapor şablonu oluştur
+app.post('/api/reports/templates', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('report_templates')
+      .insert([req.body])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Rapor şablonu oluşturma error:', error);
+    res.status(500).json({ error: 'Rapor şablonu oluşturulamadı' });
+  }
+});
+
+// Rapor oluştur
+app.post('/api/reports/generate', async (req, res) => {
+  try {
+    const { template_id, parameters, report_name } = req.body;
+
+    // Şablon bilgilerini al
+    const { data: template, error: templateError } = await supabase
+      .from('report_templates')
+      .select('*')
+      .eq('id', template_id)
+      .single();
+
+    if (templateError || !template) {
+      return res.status(400).json({ error: 'Rapor şablonu bulunamadı' });
+    }
+
+    // Rapor geçmişine kaydet
+    const { data: reportHistory, error: historyError } = await supabase
+      .from('report_history')
+      .insert([{
+        template_id,
+        report_name: report_name || template.template_name,
+        parameters_used: parameters,
+        generated_by: 'system',
+        status: 'generating'
+      }])
+      .select()
+      .single();
+
+    if (historyError) throw historyError;
+
+    // Rapor oluşturma işlemi (şimdilik mock)
+    const reportData = {
+      id: reportHistory.id,
+      template_name: template.template_name,
+      report_name: report_name || template.template_name,
+      status: 'completed',
+      generated_at: new Date().toISOString(),
+      download_url: `/api/reports/download/${reportHistory.id}`
+    };
+
+    // Geçmişi güncelle
+    await supabase
+      .from('report_history')
+      .update({
+        status: 'completed',
+        file_path: `/reports/${reportHistory.id}.${template.output_format}`
+      })
+      .eq('id', reportHistory.id);
+
+    res.json(reportData);
+  } catch (error) {
+    console.error('Rapor oluşturma error:', error);
+    res.status(500).json({ error: 'Rapor oluşturulamadı' });
+  }
+});
+
+// Rapor geçmişini listele
+app.get('/api/reports/history', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    
+    const { data, error } = await supabase
+      .from('report_history')
+      .select(`
+        *,
+        report_templates(template_name, report_type)
+      `)
+      .order('generated_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Rapor geçmişi error:', error);
+    res.status(500).json({ error: 'Rapor geçmişi yüklenemedi' });
+  }
+});
+
+// KPI tanımlarını listele
+app.get('/api/kpi/definitions', async (req, res) => {
+  try {
+    const { category, is_active } = req.query;
+    
+    let query = supabase
+      .from('kpi_definitions')
+      .select('*')
+      .order('kpi_name');
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (is_active !== undefined) {
+      query = query.eq('is_active', is_active === 'true');
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('KPI tanımları error:', error);
+    res.status(500).json({ error: 'KPI tanımları yüklenemedi' });
+  }
+});
+
+// KPI değerlerini listele
+app.get('/api/kpi/values', async (req, res) => {
+  try {
+    const { kpi_id, start_date, end_date, limit = 100 } = req.query;
+    
+    let query = supabase
+      .from('kpi_values')
+      .select(`
+        *,
+        kpi_definitions(kpi_name, category, unit)
+      `)
+      .order('period_start', { ascending: false })
+      .limit(limit);
+
+    if (kpi_id) {
+      query = query.eq('kpi_id', kpi_id);
+    }
+    if (start_date) {
+      query = query.gte('period_start', start_date);
+    }
+    if (end_date) {
+      query = query.lte('period_end', end_date);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('KPI değerleri error:', error);
+    res.status(500).json({ error: 'KPI değerleri yüklenemedi' });
+  }
+});
+
+// KPI hesapla
+app.post('/api/kpi/calculate', async (req, res) => {
+  try {
+    const { kpi_id, period_start, period_end } = req.body;
+
+    // KPI tanımını al
+    const { data: kpi, error: kpiError } = await supabase
+      .from('kpi_definitions')
+      .select('*')
+      .eq('id', kpi_id)
+      .single();
+
+    if (kpiError || !kpi) {
+      return res.status(400).json({ error: 'KPI tanımı bulunamadı' });
+    }
+
+    // KPI değerini hesapla (şimdilik mock)
+    const actualValue = Math.random() * 100;
+    const targetValue = kpi.target_value || 0;
+    const variance = actualValue - targetValue;
+    const variancePercentage = targetValue > 0 ? (variance / targetValue) * 100 : 0;
+
+    // KPI değerini kaydet
+    const { data, error } = await supabase
+      .from('kpi_values')
+      .insert([{
+        kpi_id,
+        period_start: period_start || new Date().toISOString(),
+        period_end: period_end || new Date().toISOString(),
+        actual_value: actualValue,
+        target_value: targetValue,
+        variance,
+        variance_percentage: variancePercentage,
+        status: variancePercentage > 10 ? 'warning' : variancePercentage > 20 ? 'critical' : 'normal'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('KPI hesaplama error:', error);
+    res.status(500).json({ error: 'KPI hesaplanamadı' });
+  }
+});
+
+// Analitik olayları kaydet
+app.post('/api/analytics/events', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('analytics_events')
+      .insert([{
+        ...req.body,
+        timestamp: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Analitik olay kaydetme error:', error);
+    res.status(500).json({ error: 'Olay kaydedilemedi' });
+  }
+});
+
+// Performans metrikleri
+app.get('/api/analytics/performance', async (req, res) => {
+  try {
+    const { metric_name, start_date, end_date, limit = 100 } = req.query;
+    
+    let query = supabase
+      .from('performance_metrics')
+      .select('*')
+      .order('measured_at', { ascending: false })
+      .limit(limit);
+
+    if (metric_name) {
+      query = query.eq('metric_name', metric_name);
+    }
+    if (start_date) {
+      query = query.gte('measured_at', start_date);
+    }
+    if (end_date) {
+      query = query.lte('measured_at', end_date);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Performans metrikleri error:', error);
+    res.status(500).json({ error: 'Performans metrikleri yüklenemedi' });
+  }
+});
+
+// Dashboard istatistikleri
+app.get('/api/dashboard/statistics', async (req, res) => {
+  try {
+    const [productionsResult, qualityResult, notificationsResult, resourcesResult] = await Promise.all([
+      supabase.from('productions').select('id, status, created_at'),
+      supabase.from('quality_checks').select('id, result, check_time'),
+      supabase.from('notifications').select('id, status, priority, created_at'),
+      supabase.from('resource_management').select('id, resource_type, is_active')
+    ]);
+
+    const productions = productionsResult.data || [];
+    const qualityChecks = qualityResult.data || [];
+    const notifications = notificationsResult.data || [];
+    const resources = resourcesResult.data || [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+    const todayProductions = productions.filter(p => new Date(p.created_at) >= today);
+    const todayQualityChecks = qualityChecks.filter(q => new Date(q.check_time) >= today);
+    const todayNotifications = notifications.filter(n => new Date(n.created_at) >= today);
+
+    const statistics = {
+      productions: {
+        total: productions.length,
+        today: todayProductions.length,
+        active: productions.filter(p => p.status === 'active').length,
+        completed: productions.filter(p => p.status === 'completed').length
+      },
+      quality: {
+        total_checks: qualityChecks.length,
+        today_checks: todayQualityChecks.length,
+        pass_rate: qualityChecks.length > 0 ? 
+          (qualityChecks.filter(q => q.result === 'pass').length / qualityChecks.length * 100).toFixed(2) : 0
+      },
+      notifications: {
+        total: notifications.length,
+        today: todayNotifications.length,
+        unread: notifications.filter(n => n.status === 'unread').length,
+        critical: notifications.filter(n => n.priority === 'critical').length
+      },
+      resources: {
+        total: resources.length,
+        active: resources.filter(r => r.is_active).length,
+        machines: resources.filter(r => r.resource_type === 'machine' && r.is_active).length,
+        operators: resources.filter(r => r.resource_type === 'operator' && r.is_active).length
+      }
+    };
+
+    res.json(statistics);
+  } catch (error) {
+    console.error('Dashboard istatistikleri error:', error);
+    res.status(500).json({ error: 'İstatistikler yüklenemedi' });
+  }
+});
+
 // Server başlatma
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   
   // Barkod sütununu ekle
   addBarcodeColumnToHammadde();
+  
+  // Stok hareketleri tablosunu oluştur
+  createStokHareketleriTable();
 });

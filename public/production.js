@@ -1,4 +1,5 @@
 // Üretim Yönetimi JavaScript
+// Faz 0: State Management ve Event Bus entegrasyonu
 
 // Global değişkenler
 let hammaddeler = [];
@@ -7,6 +8,44 @@ let nihaiUrunler = [];
 let urunAgaci = [];
 let activeProductions = [];
 let productionHistory = [];
+let currentProductionId = null;
+
+// Faz 0: State Manager kontrolü - window.stateManager kullanılıyor
+
+// State Manager, Event Bus, Workflow Engine ve Real-time Updates'ı başlat
+function initializeStateManagement() {
+    if (typeof window.stateManager !== 'undefined') {
+        console.log('State Manager initialized');
+    } else {
+        console.warn('State Manager not found');
+    }
+    
+    if (typeof window.eventBus !== 'undefined') {
+        console.log('Event Bus initialized');
+    } else {
+        console.warn('Event Bus not found');
+    }
+    
+    if (typeof window.workflowEngine !== 'undefined') {
+        console.log('Workflow Engine initialized');
+        setupWorkflowEventListeners();
+    } else {
+        console.warn('Workflow Engine not found');
+    }
+    
+    if (typeof window.realTimeUpdates !== 'undefined') {
+        console.log('Real-time Updates initialized');
+        setupRealTimeEventListeners();
+    } else {
+        console.warn('Real-time Updates not found');
+    }
+}
+
+// Faz 3: Üretim Planlama değişkenleri
+let productionPlans = [];
+let resources = [];
+let orders = [];
+let planningStatistics = {};
 
 // Barkod okutma sistemi değişkenleri
 let currentProduction = null;
@@ -21,6 +60,9 @@ let productionStats = {
 
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', function() {
+    // Faz 0: State Management'ı başlat
+    initializeStateManagement();
+    
     loadAllData();
     setupEventListeners();
 });
@@ -191,8 +233,218 @@ function setupProductionProductAutocomplete() {
     }
 }
 
+// Faz 0: Workflow event listener'larını ayarla
+function setupWorkflowEventListeners() {
+    if (!window.eventBus || !window.workflowEngine) {
+        return;
+    }
+
+    // Workflow başlatıldığında
+    window.eventBus.on('workflow-started', (data) => {
+        console.log('Workflow başlatıldı:', data);
+        updateWorkflowStatus(data.workflowId);
+    });
+
+    // Adım tamamlandığında
+    window.eventBus.on('step-completed', (data) => {
+        console.log('Adım tamamlandı:', data);
+        updateWorkflowStatus(data.workflowId);
+    });
+
+    // Workflow tamamlandığında
+    window.eventBus.on('workflow-completed', (data) => {
+        console.log('Workflow tamamlandı:', data);
+        updateWorkflowStatus(data.workflowId);
+        showWorkflowCompletionNotification(data.workflowId);
+    });
+
+    // Workflow duraklatıldığında
+    window.eventBus.on('workflow-paused', (data) => {
+        console.log('Workflow duraklatıldı:', data);
+        updateWorkflowStatus(data.workflowId);
+    });
+
+    // Workflow devam ettirildiğinde
+    window.eventBus.on('workflow-resumed', (data) => {
+        console.log('Workflow devam ettirildi:', data);
+        updateWorkflowStatus(data.workflowId);
+    });
+}
+
+// Workflow durumunu güncelle
+function updateWorkflowStatus(workflowId) {
+    if (!window.workflowEngine) return;
+
+    const status = window.workflowEngine.getWorkflowStatus(workflowId);
+    if (!status) return;
+
+    // Navbar'daki workflow status'u güncelle
+    const statusElement = document.getElementById('workflow-status');
+    if (statusElement) {
+        statusElement.textContent = status.name;
+        statusElement.className = `badge ${getWorkflowStatusClass(status.status)}`;
+    }
+
+    // State Manager'ı güncelle
+    if (window.stateManager) {
+        window.stateManager.updateState('currentWorkflow', status);
+    }
+}
+
+// Workflow durumuna göre CSS class'ı al
+function getWorkflowStatusClass(status) {
+    switch(status) {
+        case 'idle': return 'bg-secondary';
+        case 'running': return 'bg-success';
+        case 'paused': return 'bg-warning';
+        case 'completed': return 'bg-info';
+        case 'error': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+// Workflow tamamlama bildirimi göster
+function showWorkflowCompletionNotification(workflowId) {
+    if (window.stateManager) {
+        window.stateManager.addNotification(`Workflow '${workflowId}' tamamlandı!`, 'success');
+    }
+}
+
+// Faz 0: Real-time event listener'larını ayarla
+function setupRealTimeEventListeners() {
+    if (!window.eventBus || !window.realTimeUpdates) {
+        return;
+    }
+
+    // Veri güncellendiğinde
+    window.eventBus.on('data-updated', (data) => {
+        console.log('Veri güncellendi:', data.dataType);
+        handleDataUpdate(data.dataType, data.data);
+    });
+
+    // Sistem durumu güncellendiğinde
+    window.eventBus.on('system-status-updated', (status) => {
+        updateSystemStatusDisplay(status);
+    });
+
+    console.log('Real-time event listeners kuruldu');
+}
+
+// Veri güncellemesini işle
+function handleDataUpdate(dataType, data) {
+    switch(dataType) {
+        case 'active-productions':
+            activeProductions = data;
+            displayActiveProductions();
+            break;
+        case 'production-history':
+            productionHistory = data;
+            displayProductionHistory();
+            break;
+        case 'production-stages':
+            // Stage templates güncellendi
+            if (typeof loadStageTemplates === 'function') {
+                loadStageTemplates();
+            }
+            break;
+        case 'quality-checkpoints':
+            // Quality checkpoints güncellendi
+            if (typeof loadQualityCheckpoints === 'function') {
+                loadQualityCheckpoints();
+            }
+            break;
+        case 'production-plans':
+            productionPlans = data;
+            if (typeof loadProductionPlans === 'function') {
+                loadProductionPlans();
+            }
+            break;
+    }
+}
+
+// Sistem durumu görüntüsünü güncelle
+function updateSystemStatusDisplay(status) {
+    // Navbar'da sistem durumu göstergesi
+    const statusElement = document.getElementById('workflow-status');
+    if (statusElement && !statusElement.textContent.includes('Workflow')) {
+        const statusText = status.isOnline ? 'Çevrimiçi' : 'Çevrimdışı';
+        const statusClass = status.isOnline ? 'bg-success' : 'bg-danger';
+        statusElement.textContent = statusText;
+        statusElement.className = `badge ${statusClass}`;
+    }
+}
+
+// Faz 0: Tab event listener'larını ayarla
+function setupTabEventListeners() {
+    // Tab değişim event'lerini dinle
+    const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
+    
+    tabElements.forEach(tabElement => {
+        tabElement.addEventListener('shown.bs.tab', function(event) {
+            const targetTab = event.target.getAttribute('data-bs-target');
+            const tabId = event.target.id;
+            
+            console.log('Tab changed to:', tabId, targetTab);
+            
+            // State Manager'ı güncelle
+            if (window.stateManager) {
+                window.stateManager.updateState('activeTab', tabId);
+            }
+            
+            // Event Bus'a bildir
+            if (window.eventBus) {
+                window.eventBus.emit('tab-changed', {
+                    tabId: tabId,
+                    targetTab: targetTab,
+                    timestamp: new Date()
+                });
+            }
+            
+            // Tab'a özel veri yükleme
+            loadTabData(tabId);
+        });
+    });
+}
+
+// Tab'a özel veri yükleme
+function loadTabData(tabId) {
+    switch(tabId) {
+        case 'production-start-tab':
+            // Üretim başlatma verileri zaten yüklü
+            break;
+        case 'production-stages-tab':
+            if (typeof loadStageTemplates === 'function') {
+                loadStageTemplates();
+            }
+            break;
+        case 'active-productions-tab':
+            if (typeof loadActiveProductions === 'function') {
+                loadActiveProductions();
+            }
+            break;
+        case 'production-planning-tab':
+            if (typeof loadProductionPlans === 'function') {
+                loadProductionPlans();
+            }
+            break;
+        case 'quality-control-tab':
+            if (typeof loadQualityCheckpoints === 'function') {
+                loadQualityCheckpoints();
+            }
+            break;
+        case 'production-history-tab':
+            if (typeof loadProductionHistory === 'function') {
+                loadProductionHistory();
+            }
+            break;
+    }
+}
+
 // Event listener'ları ayarla
 function setupEventListeners() {
+    // Faz 0: Tab değişim event'lerini ekle
+    setupTabEventListeners();
+    
     // Yarı mamul üretim formu
     document.getElementById('yarimamul-production-form-element').addEventListener('submit', handleYarimamulProduction);
     
@@ -219,6 +471,24 @@ function setupEventListeners() {
         if (this.value) {
             checkMaterialsForProduction();
         }
+    });
+    
+    // Tab değişim event'leri
+    document.getElementById('production-stages-tab').addEventListener('shown.bs.tab', function() {
+        loadStageTemplates();
+    });
+    
+    document.getElementById('production-planning-tab').addEventListener('shown.bs.tab', function() {
+        loadProductionPlans();
+        loadResources();
+        loadOrders();
+        loadPlanningStatistics();
+    });
+    
+    document.getElementById('quality-control-tab').addEventListener('shown.bs.tab', function() {
+        loadQualityCheckpoints();
+        loadQualityStandards();
+        loadQualityStatistics();
     });
     
     document.getElementById('production-quantity').addEventListener('input', function() {
@@ -249,9 +519,20 @@ function setupEventListeners() {
     });
     
     // Filtreleme event listener'ları
-    document.getElementById('production-search').addEventListener('input', filterProductionHistory);
-    document.getElementById('production-type-filter').addEventListener('change', filterProductionHistory);
-    document.getElementById('production-status-filter').addEventListener('change', filterProductionHistory);
+    const searchElement = document.getElementById('production-search');
+    if (searchElement) {
+        searchElement.addEventListener('input', filterProductionHistory);
+    }
+    
+    const typeFilterElement = document.getElementById('production-type-filter');
+    if (typeFilterElement) {
+        typeFilterElement.addEventListener('change', filterProductionHistory);
+    }
+    
+    const statusFilterElement = document.getElementById('production-status-filter');
+    if (statusFilterElement) {
+        statusFilterElement.addEventListener('change', filterProductionHistory);
+    }
 }
 
 // Hammaddeleri yükle
@@ -385,7 +666,7 @@ function displayActiveProductions() {
     console.log('activeProductions:', activeProductions);
     
     try {
-        const container = document.getElementById('active-productions-list');
+        const container = document.getElementById('active-productions-container');
         const noProductions = document.getElementById('no-active-productions');
         const countElement = document.getElementById('active-productions-count');
         
@@ -395,21 +676,27 @@ function displayActiveProductions() {
             countElement: countElement
         });
         
-        if (!container || !noProductions || !countElement) {
+        if (!container) {
             console.error('Aktif üretimler container bulunamadı');
             return;
         }
         
-        // Sayıyı güncelle
-        countElement.textContent = activeProductions.length;
+        // Sayıyı güncelle (eğer element varsa)
+        if (countElement) {
+            countElement.textContent = activeProductions.length;
+        }
         
         if (activeProductions.length === 0) {
             container.innerHTML = '';
-            noProductions.style.display = 'block';
+            if (noProductions) {
+                noProductions.style.display = 'block';
+            }
             return;
         }
         
-        noProductions.style.display = 'none';
+        if (noProductions) {
+            noProductions.style.display = 'none';
+        }
         
         // Aktif üretimleri göster - eski HTML formatına uygun
         container.innerHTML = activeProductions.map(production => {
@@ -1405,7 +1692,11 @@ function createProductionCard(production) {
 
 // Üretim geçmişini göster
 function displayProductionHistory() {
-    const container = document.getElementById('production-history-list');
+    const container = document.getElementById('production-history-container');
+    if (!container) {
+        console.error('Production history container bulunamadı');
+        return;
+    }
     container.innerHTML = '';
     
     if (productionHistory.length === 0) {
@@ -1513,10 +1804,25 @@ function updateProductionStatistics() {
     });
     
     // UI'yi güncelle
-    document.getElementById('total-productions').textContent = totalProductions;
-    document.getElementById('completed-productions').textContent = completedProductions;
-    document.getElementById('active-productions-count').textContent = activeProductions;
-    document.getElementById('total-cost').textContent = `₺${totalCost.toFixed(2)}`;
+    const totalProductionsElement = document.getElementById('total-productions');
+    if (totalProductionsElement) {
+        totalProductionsElement.textContent = totalProductions;
+    }
+    
+    const completedProductionsElement = document.getElementById('completed-productions');
+    if (completedProductionsElement) {
+        completedProductionsElement.textContent = completedProductions;
+    }
+    
+    const activeProductionsCountElement = document.getElementById('active-productions-count');
+    if (activeProductionsCountElement) {
+        activeProductionsCountElement.textContent = activeProductions;
+    }
+    
+    const totalCostElement = document.getElementById('total-cost');
+    if (totalCostElement) {
+        totalCostElement.textContent = `₺${totalCost.toFixed(2)}`;
+    }
 }
 
 // Üretim detaylarını görüntüle
@@ -1960,6 +2266,31 @@ function startProduction() {
         quantity: quantity,
         startTime: new Date().toISOString()
     };
+    
+    // Faz 0: State Manager'ı güncelle
+    if (window.stateManager) {
+        window.stateManager.updateState('activeProduction', currentProduction);
+        window.stateManager.updateState('workflowStatus', 'producing');
+        window.stateManager.addNotification('Üretim başlatıldı', 'success');
+    }
+    
+    // Faz 0: Event Bus'a bildir
+    if (window.eventBus) {
+        window.eventBus.emit('production-started', currentProduction);
+    }
+    
+    // Faz 0: Workflow Engine ile üretim workflow'unu başlat
+    if (window.workflowEngine) {
+        try {
+            window.workflowEngine.startWorkflow('production-start', {
+                product: currentProduction.product,
+                quantity: currentProduction.quantity,
+                type: currentProduction.type
+            });
+        } catch (error) {
+            console.error('Workflow başlatılamadı:', error);
+        }
+    }
     
     // İstatistikleri sıfırla
     productionStats = {
@@ -2478,4 +2809,1061 @@ async function showEfficiencyReport(productionId) {
         showAlert('Verimlilik raporu alınamadı: ' + error.message, 'error');
         return null;
     }
+}
+
+// ========================================
+// ÜRETİM AŞAMALARI YÖNETİMİ - FAZ 1
+// ========================================
+
+// Aşama şablonlarını yükle
+async function loadStageTemplates() {
+    try {
+        const response = await fetch('/api/production-stages/templates');
+        if (!response.ok) throw new Error('Aşama şablonları yüklenemedi');
+        
+        const templates = await response.json();
+        displayStageTemplates(templates);
+        return templates;
+    } catch (error) {
+        console.error('Stage templates load error:', error);
+        showAlert('Aşama şablonları yüklenemedi: ' + error.message, 'error');
+        return [];
+    }
+}
+
+// Aşama şablonlarını göster
+function displayStageTemplates(templates) {
+    const container = document.getElementById('stage-templates-container');
+    if (!container) return;
+    
+    if (templates.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-templates fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aşama şablonu bulunmuyor</h5>
+                <p class="text-muted">Yeni aşama şablonu eklemek için "Yeni Şablon" butonunu kullanın.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Ürün tipine göre grupla
+    const groupedTemplates = templates.reduce((acc, template) => {
+        if (!acc[template.product_type]) {
+            acc[template.product_type] = [];
+        }
+        acc[template.product_type].push(template);
+        return acc;
+    }, {});
+    
+    let html = '';
+    Object.keys(groupedTemplates).forEach(productType => {
+        const typeTemplates = groupedTemplates[productType];
+        const typeName = {
+            'hammadde': 'Hammadde',
+            'yarimamul': 'Yarı Mamul',
+            'nihai': 'Nihai Ürün'
+        }[productType] || productType;
+        
+        html += `
+            <div class="mb-4">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-cube me-2"></i>${typeName} Aşamaları
+                </h6>
+                <div class="row">
+        `;
+        
+        typeTemplates.forEach(template => {
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="stage-template-card">
+                        <div class="stage-template-header">
+                            <h6 class="stage-template-title">${template.stage_name}</h6>
+                            <span class="stage-template-type">${typeName}</span>
+                        </div>
+                        <div class="stage-template-details">
+                            <div class="stage-template-detail">
+                                <i class="fas fa-sort-numeric-up"></i>
+                                Sıra: ${template.stage_order}
+                            </div>
+                            <div class="stage-template-detail">
+                                <i class="fas fa-clock"></i>
+                                Süre: ${template.estimated_duration || 'Belirtilmemiş'} dk
+                            </div>
+                            <div class="stage-template-detail">
+                                <i class="fas fa-users"></i>
+                                Yetenekler: ${template.required_skills.join(', ') || 'Yok'}
+                            </div>
+                            <div class="stage-template-detail">
+                                <i class="fas fa-check-circle"></i>
+                                Kalite: ${template.quality_check_required ? 'Gerekli' : 'Gerekli Değil'}
+                            </div>
+                            <div class="stage-template-detail">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Zorunlu: ${template.is_mandatory ? 'Evet' : 'Hayır'}
+                            </div>
+                        </div>
+                        <div class="stage-template-actions">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editStageTemplate(${template.id})">
+                                <i class="fas fa-edit me-1"></i>Düzenle
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteStageTemplate(${template.id})">
+                                <i class="fas fa-trash me-1"></i>Sil
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Yeni aşama şablonu modal'ını göster
+function showAddStageTemplateModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addStageTemplateModal'));
+    modal.show();
+}
+
+// Aşama şablonu ekle
+async function addStageTemplate() {
+    try {
+        const form = document.getElementById('addStageTemplateForm');
+        const formData = new FormData(form);
+        
+        const templateData = {
+            product_type: document.getElementById('template-product-type').value,
+            stage_name: document.getElementById('template-stage-name').value,
+            stage_order: parseInt(document.getElementById('template-stage-order').value),
+            estimated_duration: parseInt(document.getElementById('template-duration').value) || null,
+            required_skills: document.getElementById('template-skills').value
+                .split(',')
+                .map(skill => skill.trim())
+                .filter(skill => skill.length > 0),
+            quality_check_required: document.getElementById('template-quality-check').checked,
+            is_mandatory: document.getElementById('template-mandatory').checked
+        };
+        
+        const response = await fetch('/api/production-stages/templates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(templateData)
+        });
+        
+        if (!response.ok) throw new Error('Aşama şablonu eklenemedi');
+        
+        const newTemplate = await response.json();
+        showAlert('Aşama şablonu başarıyla eklendi!', 'success');
+        
+        // Modal'ı kapat ve formu temizle
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addStageTemplateModal'));
+        modal.hide();
+        form.reset();
+        
+        // Şablonları yenile
+        await loadStageTemplates();
+        
+        return newTemplate;
+    } catch (error) {
+        console.error('Add stage template error:', error);
+        showAlert('Aşama şablonu eklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Üretim aşamalarını yükle
+async function loadProductionStages(productionId) {
+    try {
+        const response = await fetch(`/api/productions/${productionId}/stages`);
+        if (!response.ok) throw new Error('Üretim aşamaları yüklenemedi');
+        
+        const stages = await response.json();
+        displayProductionStages(stages);
+        return stages;
+    } catch (error) {
+        console.error('Production stages load error:', error);
+        showAlert('Üretim aşamaları yüklenemedi: ' + error.message, 'error');
+        return [];
+    }
+}
+
+// Üretim aşamalarını göster
+function displayProductionStages(stages) {
+    const container = document.getElementById('stages-timeline');
+    if (!container) return;
+    
+    if (stages.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-list-ol fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aşama bulunmuyor</h5>
+                <p class="text-muted">Bu üretim için henüz aşama tanımlanmamış.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    stages.forEach((stage, index) => {
+        const statusClass = stage.status;
+        const statusText = {
+            'pending': 'Bekliyor',
+            'active': 'Aktif',
+            'completed': 'Tamamlandı',
+            'skipped': 'Atlandı'
+        }[stage.status] || stage.status;
+        
+        const statusColor = {
+            'pending': 'secondary',
+            'active': 'primary',
+            'completed': 'success',
+            'skipped': 'warning'
+        }[stage.status] || 'secondary';
+        
+        html += `
+            <div class="stage-item ${statusClass}">
+                <div class="stage-header">
+                    <div class="d-flex align-items-center">
+                        <div class="stage-order">${stage.stage_order}</div>
+                        <h5 class="stage-title">${stage.stage_name}</h5>
+                    </div>
+                    <div class="stage-status">
+                        <span class="badge bg-${statusColor}">${statusText}</span>
+                    </div>
+                </div>
+                
+                <div class="stage-details">
+                    <div class="stage-detail-item">
+                        <i class="fas fa-user"></i>
+                        Operatör: ${stage.operator || 'Belirtilmemiş'}
+                    </div>
+                    <div class="stage-detail-item">
+                        <i class="fas fa-clock"></i>
+                        Başlangıç: ${stage.start_time ? new Date(stage.start_time).toLocaleString('tr-TR') : 'Belirtilmemiş'}
+                    </div>
+                    <div class="stage-detail-item">
+                        <i class="fas fa-flag-checkered"></i>
+                        Bitiş: ${stage.end_time ? new Date(stage.end_time).toLocaleString('tr-TR') : 'Devam ediyor'}
+                    </div>
+                    <div class="stage-detail-item">
+                        <i class="fas fa-check-circle"></i>
+                        Kalite: ${stage.quality_check_required ? 'Gerekli' : 'Gerekli Değil'}
+                    </div>
+                </div>
+                
+                ${stage.notes ? `
+                    <div class="mt-3">
+                        <strong>Notlar:</strong>
+                        <p class="text-muted mb-0">${stage.notes}</p>
+                    </div>
+                ` : ''}
+                
+                <div class="stage-actions">
+                    ${stage.status === 'pending' ? `
+                        <button class="btn btn-primary btn-sm" onclick="startStage(${stage.id})">
+                            <i class="fas fa-play me-1"></i>Başlat
+                        </button>
+                    ` : ''}
+                    ${stage.status === 'active' ? `
+                        <button class="btn btn-success btn-sm" onclick="completeStage(${stage.id})">
+                            <i class="fas fa-check me-1"></i>Tamamla
+                        </button>
+                        <button class="btn btn-warning btn-sm" onclick="pauseStage(${stage.id})">
+                            <i class="fas fa-pause me-1"></i>Duraklat
+                        </button>
+                    ` : ''}
+                    ${stage.status === 'completed' ? `
+                        <button class="btn btn-info btn-sm" onclick="viewStageDetails(${stage.id})">
+                            <i class="fas fa-eye me-1"></i>Detaylar
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Aşama başlat
+async function startStage(stageId) {
+    try {
+        const response = await fetch(`/api/productions/${currentProductionId}/stages/${stageId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'active',
+                start_time: new Date().toISOString()
+            })
+        });
+        
+        if (!response.ok) throw new Error('Aşama başlatılamadı');
+        
+        showAlert('Aşama başarıyla başlatıldı!', 'success');
+        await loadProductionStages(currentProductionId);
+    } catch (error) {
+        console.error('Start stage error:', error);
+        showAlert('Aşama başlatılamadı: ' + error.message, 'error');
+    }
+}
+
+// Aşama tamamla
+async function completeStage(stageId) {
+    try {
+        const response = await fetch(`/api/productions/${currentProductionId}/stages/${stageId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                notes: ''
+            })
+        });
+        
+        if (!response.ok) throw new Error('Aşama tamamlanamadı');
+        
+        showAlert('Aşama başarıyla tamamlandı!', 'success');
+        await loadProductionStages(currentProductionId);
+    } catch (error) {
+        console.error('Complete stage error:', error);
+        showAlert('Aşama tamamlanamadı: ' + error.message, 'error');
+    }
+}
+
+// Global değişkenler (zaten yukarıda tanımlanmış)
+
+// Üretim aşamaları modal'ını göster
+function showProductionStagesModal(productionId) {
+    currentProductionId = productionId;
+    document.getElementById('stages-production-id').textContent = productionId;
+    
+    const modal = new bootstrap.Modal(document.getElementById('productionStagesModal'));
+    modal.show();
+    
+    // Aşamaları yükle
+    loadProductionStages(productionId);
+}
+
+// Tab değiştiğinde aşama şablonlarını yükle
+document.addEventListener('DOMContentLoaded', function() {
+    const stagesTab = document.getElementById('production-stages-tab');
+    if (stagesTab) {
+        stagesTab.addEventListener('shown.bs.tab', function() {
+            loadStageTemplates();
+        });
+    }
+    
+    const qualityTab = document.getElementById('quality-control-tab');
+    if (qualityTab) {
+        qualityTab.addEventListener('shown.bs.tab', function() {
+            loadQualityCheckpoints();
+            loadQualityStandards();
+            loadQualityStatistics();
+        });
+    }
+});
+
+// ========================================
+// ==================== FAZ 3: ÜRETİM PLANLAMA VE ZAMANLAMA SİSTEMİ ====================
+
+// Üretim planları yükleme
+async function loadProductionPlans() {
+    try {
+        const response = await fetch('/api/production-plans');
+        const data = await response.json();
+        
+        if (response.ok) {
+            productionPlans = data;
+            displayProductionPlans(productionPlans);
+        } else {
+            console.error('Üretim planları yüklenemedi:', data.error);
+            showAlert('Üretim planları yüklenemedi: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Üretim planları fetch error:', error);
+        showAlert('Üretim planları yüklenirken hata oluştu', 'error');
+    }
+}
+
+// Üretim planlarını görüntüleme
+function displayProductionPlans(plans) {
+    const container = document.getElementById('production-plans-container');
+    
+    if (!plans || plans.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz üretim planı bulunmuyor</h5>
+                <p class="text-muted">Yeni bir üretim planı oluşturmak için "Yeni Plan" butonuna tıklayın.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = plans.map(plan => `
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="card-title mb-1">${plan.plan_name}</h6>
+                        <p class="card-text text-muted mb-2">
+                            <i class="fas fa-calendar me-1"></i>
+                            ${new Date(plan.start_date).toLocaleDateString('tr-TR')} - 
+                            ${new Date(plan.end_date).toLocaleDateString('tr-TR')}
+                        </p>
+                        <div class="d-flex gap-2">
+                            <span class="badge bg-${getStatusColor(plan.status)}">${getStatusText(plan.status)}</span>
+                            <span class="badge bg-info">${plan.plan_type}</span>
+                            <span class="badge bg-secondary">${plan.total_orders} Sipariş</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewPlanDetails(${plan.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="editPlan(${plan.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePlan(${plan.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Kaynakları yükleme
+async function loadResources() {
+    try {
+        const response = await fetch('/api/resources');
+        const data = await response.json();
+        
+        if (response.ok) {
+            resources = data;
+            displayResources(resources);
+        } else {
+            console.error('Kaynaklar yüklenemedi:', data.error);
+            showAlert('Kaynaklar yüklenemedi: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Kaynaklar fetch error:', error);
+        showAlert('Kaynaklar yüklenirken hata oluştu', 'error');
+    }
+}
+
+// Kaynakları görüntüleme
+function displayResources(resources) {
+    const container = document.getElementById('resources-container');
+    
+    if (!resources || resources.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz kaynak bulunmuyor</h5>
+                <p class="text-muted">Yeni kaynak eklemek için "Yeni Kaynak" butonuna tıklayın.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Kaynakları türlerine göre grupla
+    const groupedResources = resources.reduce((acc, resource) => {
+        if (!acc[resource.resource_type]) {
+            acc[resource.resource_type] = [];
+        }
+        acc[resource.resource_type].push(resource);
+        return acc;
+    }, {});
+    
+    container.innerHTML = Object.entries(groupedResources).map(([type, typeResources]) => `
+        <div class="mb-4">
+            <h6 class="text-capitalize mb-3">
+                <i class="fas fa-${getResourceIcon(type)} me-2"></i>
+                ${getResourceTypeText(type)} (${typeResources.length})
+            </h6>
+            <div class="row">
+                ${typeResources.map(resource => `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">${resource.resource_name}</h6>
+                                <p class="card-text">
+                                    <small class="text-muted">${resource.resource_code}</small><br>
+                                    <strong>Kapasite:</strong> ${resource.capacity}<br>
+                                    <strong>Kullanım:</strong> ${resource.current_usage}/${resource.capacity}<br>
+                                    <strong>Maliyet:</strong> ₺${resource.cost_per_hour}/saat
+                                </p>
+                                <div class="progress mb-2" style="height: 6px;">
+                                    <div class="progress-bar" style="width: ${(resource.current_usage / resource.capacity) * 100}%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="badge bg-${resource.is_active ? 'success' : 'secondary'}">
+                                        ${resource.is_active ? 'Aktif' : 'Pasif'}
+                                    </span>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editResource(${resource.id})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteResource(${resource.id})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Siparişleri yükleme
+async function loadOrders() {
+    try {
+        const response = await fetch('/api/orders');
+        const data = await response.json();
+        
+        if (response.ok) {
+            orders = data;
+            displayOrders(orders);
+        } else {
+            console.error('Siparişler yüklenemedi:', data.error);
+            showAlert('Siparişler yüklenemedi: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Siparişler fetch error:', error);
+        showAlert('Siparişler yüklenirken hata oluştu', 'error');
+    }
+}
+
+// Siparişleri görüntüleme
+function displayOrders(orders) {
+    const container = document.getElementById('orders-container');
+    
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz sipariş bulunmuyor</h5>
+                <p class="text-muted">Yeni sipariş eklemek için "Yeni Sipariş" butonuna tıklayın.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Sipariş No</th>
+                        <th>Müşteri</th>
+                        <th>Ürün</th>
+                        <th>Miktar</th>
+                        <th>Tutar</th>
+                        <th>Teslim Tarihi</th>
+                        <th>Öncelik</th>
+                        <th>Durum</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orders.map(order => `
+                        <tr>
+                            <td><strong>${order.order_number}</strong></td>
+                            <td>${order.customer_name}</td>
+                            <td>${order.product_name}</td>
+                            <td>${order.quantity}</td>
+                            <td>₺${order.total_amount?.toLocaleString('tr-TR') || '0'}</td>
+                            <td>${new Date(order.delivery_date).toLocaleDateString('tr-TR')}</td>
+                            <td>
+                                <span class="badge bg-${getPriorityColor(order.priority)}">
+                                    ${order.priority}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-${getStatusColor(order.status)}">
+                                    ${getStatusText(order.status)}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="viewOrder(${order.id})">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning" onclick="editOrder(${order.id})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteOrder(${order.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+// Planlama istatistiklerini yükleme
+async function loadPlanningStatistics() {
+    try {
+        const response = await fetch('/api/production-planning/statistics');
+        const data = await response.json();
+        
+        if (response.ok) {
+            planningStatistics = data;
+            updatePlanningStatistics(planningStatistics);
+        } else {
+            console.error('Planlama istatistikleri yüklenemedi:', data.error);
+        }
+    } catch (error) {
+        console.error('Planlama istatistikleri fetch error:', error);
+    }
+}
+
+// Planlama istatistiklerini güncelleme
+function updatePlanningStatistics(stats) {
+    document.getElementById('total-plans').textContent = stats.total_plans || 0;
+    document.getElementById('active-plans').textContent = stats.active_plans || 0;
+    document.getElementById('total-orders').textContent = stats.total_orders || 0;
+    document.getElementById('total-value').textContent = `₺${(stats.total_value || 0).toLocaleString('tr-TR')}`;
+}
+
+// Yardımcı fonksiyonlar
+function getStatusColor(status) {
+    const colors = {
+        'draft': 'secondary',
+        'active': 'success',
+        'completed': 'primary',
+        'cancelled': 'danger',
+        'pending': 'warning',
+        'confirmed': 'info',
+        'in_production': 'primary',
+        'shipped': 'success'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStatusText(status) {
+    const texts = {
+        'draft': 'Taslak',
+        'active': 'Aktif',
+        'completed': 'Tamamlandı',
+        'cancelled': 'İptal',
+        'pending': 'Beklemede',
+        'confirmed': 'Onaylandı',
+        'in_production': 'Üretimde',
+        'shipped': 'Sevk Edildi'
+    };
+    return texts[status] || status;
+}
+
+function getResourceIcon(type) {
+    const icons = {
+        'machine': 'cog',
+        'operator': 'user',
+        'material': 'box'
+    };
+    return icons[type] || 'cog';
+}
+
+function getResourceTypeText(type) {
+    const texts = {
+        'machine': 'Makineler',
+        'operator': 'Operatörler',
+        'material': 'Malzemeler'
+    };
+    return texts[type] || type;
+}
+
+// Aşama şablonu düzenleme
+function editStageTemplate(templateId) {
+    showAlert('Aşama şablonu düzenleme özelliği yakında eklenecek', 'info');
+}
+
+// Aşama şablonu silme
+async function deleteStageTemplate(templateId) {
+    if (!confirm('Bu aşama şablonunu silmek istediğinizden emin misiniz?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/production-stages/templates/${templateId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showAlert('Aşama şablonu başarıyla silindi', 'success');
+            loadStageTemplates();
+        } else {
+            const error = await response.json();
+            showAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
+        }
+    } catch (error) {
+        console.error('Delete stage template error:', error);
+        showAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
+    }
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        1: 'danger',
+        2: 'warning',
+        3: 'info',
+        4: 'primary',
+        5: 'secondary'
+    };
+    return colors[priority] || 'secondary';
+}
+
+// Modal fonksiyonları
+function showAddPlanModal() {
+    showAlert('Yeni plan ekleme modalı yakında eklenecek', 'info');
+}
+
+function showSchedulingModal() {
+    showAlert('Zamanlama modalı yakında eklenecek', 'info');
+}
+
+function viewPlanDetails(planId) {
+    showAlert('Plan detayları yakında eklenecek', 'info');
+}
+
+function editPlan(planId) {
+    showAlert('Plan düzenleme yakında eklenecek', 'info');
+}
+
+function deletePlan(planId) {
+    if (confirm('Bu planı silmek istediğinizden emin misiniz?')) {
+        showAlert('Plan silme işlemi yakında eklenecek', 'info');
+    }
+}
+
+function editResource(resourceId) {
+    showAlert('Kaynak düzenleme yakında eklenecek', 'info');
+}
+
+function deleteResource(resourceId) {
+    if (confirm('Bu kaynağı silmek istediğinizden emin misiniz?')) {
+        showAlert('Kaynak silme işlemi yakında eklenecek', 'info');
+    }
+}
+
+function viewOrder(orderId) {
+    showAlert('Sipariş detayları yakında eklenecek', 'info');
+}
+
+function editOrder(orderId) {
+    showAlert('Sipariş düzenleme yakında eklenecek', 'info');
+}
+
+function deleteOrder(orderId) {
+    if (confirm('Bu siparişi silmek istediğinizden emin misiniz?')) {
+        showAlert('Sipariş silme işlemi yakında eklenecek', 'info');
+    }
+}
+
+// KALİTE KONTROL SİSTEMİ - FAZ 2
+// ========================================
+
+// Kalite kontrol noktalarını yükle
+async function loadQualityCheckpoints() {
+    try {
+        const response = await fetch('/api/quality/checkpoints');
+        if (!response.ok) throw new Error('Kalite kontrol noktaları yüklenemedi');
+        
+        const checkpoints = await response.json();
+        displayQualityCheckpoints(checkpoints);
+        return checkpoints;
+    } catch (error) {
+        console.error('Quality checkpoints load error:', error);
+        showAlert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
+        return [];
+    }
+}
+
+// Kalite kontrol noktalarını göster
+function displayQualityCheckpoints(checkpoints) {
+    const container = document.getElementById('quality-checkpoints-container');
+    if (!container) return;
+    
+    if (checkpoints.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-list-check fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Kalite kontrol noktası bulunmuyor</h5>
+                <p class="text-muted">Yeni kontrol noktası eklemek için "Yeni Kontrol Noktası" butonunu kullanın.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Ürün tipine göre grupla
+    const groupedCheckpoints = checkpoints.reduce((acc, checkpoint) => {
+        if (!acc[checkpoint.product_type]) {
+            acc[checkpoint.product_type] = [];
+        }
+        acc[checkpoint.product_type].push(checkpoint);
+        return acc;
+    }, {});
+    
+    let html = '';
+    Object.keys(groupedCheckpoints).forEach(productType => {
+        const typeCheckpoints = groupedCheckpoints[productType];
+        const typeName = {
+            'hammadde': 'Hammadde',
+            'yarimamul': 'Yarı Mamul',
+            'nihai': 'Nihai Ürün'
+        }[productType] || productType;
+        
+        html += `
+            <div class="mb-4">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-cube me-2"></i>${typeName} Kontrol Noktaları
+                </h6>
+                <div class="row">
+        `;
+        
+        typeCheckpoints.forEach(checkpoint => {
+            const typeIcon = {
+                'visual': 'fas fa-eye',
+                'measurement': 'fas fa-ruler',
+                'test': 'fas fa-flask',
+                'inspection': 'fas fa-search'
+            }[checkpoint.checkpoint_type] || 'fas fa-check-circle';
+            
+            const typeColor = {
+                'visual': 'primary',
+                'measurement': 'info',
+                'test': 'success',
+                'inspection': 'warning'
+            }[checkpoint.checkpoint_type] || 'secondary';
+            
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="${typeIcon} me-2 text-${typeColor}"></i>
+                                ${checkpoint.name}
+                            </h6>
+                            <span class="badge bg-${typeColor}">${checkpoint.checkpoint_type}</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">${checkpoint.description || 'Açıklama yok'}</p>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <small class="text-muted">Sıklık</small>
+                                    <div class="fw-bold">${checkpoint.frequency}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Zorunlu</small>
+                                    <div class="fw-bold">${checkpoint.is_mandatory ? 'Evet' : 'Hayır'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-outline-primary btn-sm" onclick="performQualityCheck(${checkpoint.id})">
+                                    <i class="fas fa-play me-1"></i>Kontrol Et
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="editQualityCheckpoint(${checkpoint.id})">
+                                    <i class="fas fa-edit me-1"></i>Düzenle
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Kalite standartlarını yükle
+async function loadQualityStandards() {
+    try {
+        const response = await fetch('/api/quality/standards');
+        if (!response.ok) throw new Error('Kalite standartları yüklenemedi');
+        
+        const standards = await response.json();
+        displayQualityStandards(standards);
+        return standards;
+    } catch (error) {
+        console.error('Quality standards load error:', error);
+        showAlert('Kalite standartları yüklenemedi: ' + error.message, 'error');
+        return [];
+    }
+}
+
+// Kalite standartlarını göster
+function displayQualityStandards(standards) {
+    const container = document.getElementById('quality-standards-container');
+    if (!container) return;
+    
+    if (standards.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-award fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Kalite standardı bulunmuyor</h5>
+                <p class="text-muted">Henüz kalite standardı tanımlanmamış.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    standards.forEach(standard => {
+        const typeIcon = {
+            'internal': 'fas fa-building',
+            'external': 'fas fa-globe',
+            'iso': 'fas fa-certificate',
+            'customer': 'fas fa-user-tie'
+        }[standard.standard_type] || 'fas fa-award';
+        
+        const typeColor = {
+            'internal': 'primary',
+            'external': 'info',
+            'iso': 'success',
+            'customer': 'warning'
+        }[standard.standard_type] || 'secondary';
+        
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="${typeIcon} me-2 text-${typeColor}"></i>
+                            ${standard.name}
+                        </h6>
+                        <span class="badge bg-${typeColor}">${standard.standard_type}</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">${standard.description || 'Açıklama yok'}</p>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <small class="text-muted">Ürün Tipi</small>
+                                <div class="fw-bold">${standard.product_type}</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Durum</small>
+                                <div class="fw-bold">
+                                    <span class="badge bg-${standard.is_active ? 'success' : 'secondary'}">
+                                        ${standard.is_active ? 'Aktif' : 'Pasif'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = `<div class="row">${html}</div>`;
+}
+
+// Kalite istatistiklerini yükle
+async function loadQualityStatistics() {
+    try {
+        const response = await fetch('/api/quality/statistics');
+        if (!response.ok) throw new Error('Kalite istatistikleri yüklenemedi');
+        
+        const stats = await response.json();
+        updateQualityStatistics(stats);
+        return stats;
+    } catch (error) {
+        console.error('Quality statistics load error:', error);
+        showAlert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Kalite istatistiklerini güncelle
+function updateQualityStatistics(stats) {
+    document.getElementById('quality-pass-rate').textContent = stats.pass_rate + '%';
+    document.getElementById('quality-fail-rate').textContent = stats.fail_rate + '%';
+    document.getElementById('quality-warning-rate').textContent = 
+        stats.total_checks > 0 ? ((stats.warning_checks / stats.total_checks * 100).toFixed(1) + '%') : '0%';
+    document.getElementById('quality-score').textContent = stats.quality_score;
+}
+
+// Yeni kontrol noktası modal'ını göster
+function showAddCheckpointModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addCheckpointModal'));
+    modal.show();
+}
+
+// Kalite kontrol noktası ekle
+async function addQualityCheckpoint() {
+    try {
+        const checkpointData = {
+            name: document.getElementById('checkpoint-name').value,
+            description: document.getElementById('checkpoint-description').value,
+            product_type: document.getElementById('checkpoint-product-type').value,
+            checkpoint_type: document.getElementById('checkpoint-type').value,
+            frequency: document.getElementById('checkpoint-frequency').value,
+            is_mandatory: document.getElementById('checkpoint-mandatory').checked
+        };
+        
+        const response = await fetch('/api/quality/checkpoints', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(checkpointData)
+        });
+        
+        if (!response.ok) throw new Error('Kalite kontrol noktası eklenemedi');
+        
+        const newCheckpoint = await response.json();
+        showAlert('Kalite kontrol noktası başarıyla eklendi!', 'success');
+        
+        // Modal'ı kapat ve formu temizle
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addCheckpointModal'));
+        modal.hide();
+        document.getElementById('addCheckpointForm').reset();
+        
+        // Kontrol noktalarını yenile
+        await loadQualityCheckpoints();
+        
+        return newCheckpoint;
+    } catch (error) {
+        console.error('Add quality checkpoint error:', error);
+        showAlert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Kalite kontrolü gerçekleştir
+function performQualityCheck(checkpointId) {
+    // Bu fonksiyon daha sonra implement edilecek
+    showAlert('Kalite kontrolü özelliği yakında eklenecek!', 'info');
+}
+
+// Kalite raporlarını göster
+function showQualityReports() {
+    // Bu fonksiyon daha sonra implement edilecek
+    showAlert('Kalite raporları özelliği yakında eklenecek!', 'info');
 }

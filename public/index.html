@@ -983,6 +983,95 @@
         </div>
     </div>
 
+    <!-- Stok Çıkışı Modal -->
+    <div class="modal fade" id="stockExitModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Stok Çıkışı</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="stockExitForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ürün Türü</label>
+                                    <select class="form-select" id="exit-product-type" required>
+                                        <option value="">Seçiniz</option>
+                                        <option value="hammadde">Hammadde</option>
+                                        <option value="yarimamul">Yarı Mamul</option>
+                                        <option value="nihai">Nihai Ürün</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ürün</label>
+                                    <select class="form-select" id="exit-product" required>
+                                        <option value="">Önce ürün türü seçiniz</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Miktar</label>
+                                    <input type="number" class="form-control" id="exit-quantity" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Birim</label>
+                                    <input type="text" class="form-control" id="exit-unit" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Mevcut Stok</label>
+                                    <input type="text" class="form-control" id="exit-current-stock" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Referans No</label>
+                                    <input type="text" class="form-control" id="exit-reference">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Çıkış Nedeni</label>
+                                    <select class="form-select" id="exit-reason" required>
+                                        <option value="">Seçiniz</option>
+                                        <option value="uretim">Üretim</option>
+                                        <option value="satis">Satış</option>
+                                        <option value="fire">Fire</option>
+                                        <option value="transfer">Transfer</option>
+                                        <option value="diger">Diğer</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="exit-description" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-danger" onclick="submitStockExit()">Stok Çıkışı Yap</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Pop-up Modal -->
     <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -1080,7 +1169,7 @@
         }
 
         function showReports() {
-            showAlert('Raporlama modülü yakında eklenecek', 'info');
+            window.location.href = 'reports.html';
         }
 
         function showSettings() {
@@ -1093,7 +1182,8 @@
         }
 
         function showStockExitModal() {
-            showAlert('Stok çıkışı modülü yakında eklenecek', 'info');
+            const modal = new bootstrap.Modal(document.getElementById('stockExitModal'));
+            modal.show();
         }
 
         function showWorkOrderModal() {
@@ -1202,6 +1292,60 @@
             }
         }
 
+        // Stok çıkışı formunu gönder
+        async function submitStockExit() {
+            const formData = {
+                urun_id: document.getElementById('exit-product').value,
+                urun_tipi: document.getElementById('exit-product-type').value,
+                miktar: document.getElementById('exit-quantity').value,
+                birim: document.getElementById('exit-unit').value,
+                referans_no: document.getElementById('exit-reference').value,
+                aciklama: document.getElementById('exit-description').value,
+                cikis_nedeni: document.getElementById('exit-reason').value
+            };
+            
+            // Validation
+            if (!formData.urun_id || !formData.urun_tipi || !formData.miktar || !formData.cikis_nedeni) {
+                showAlert('Lütfen gerekli alanları doldurun', 'error');
+                return;
+            }
+            
+            // Miktar kontrolü
+            const currentStock = parseFloat(document.getElementById('exit-current-stock').value) || 0;
+            const exitQuantity = parseFloat(formData.miktar);
+            
+            if (exitQuantity > currentStock) {
+                showAlert(`Yetersiz stok! Mevcut stok: ${currentStock}, Çıkış miktarı: ${exitQuantity}`, 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/stock/exit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Stok çıkışı başarıyla yapıldı', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('stockExitModal')).hide();
+                    document.getElementById('stockExitForm').reset();
+                    
+                    // Dashboard istatistiklerini güncelle
+                    updateDashboardStats();
+                } else {
+                    showAlert(result.error || 'Stok çıkışı yapılamadı', 'error');
+                }
+            } catch (error) {
+                console.error('Stok çıkışı error:', error);
+                showAlert('Stok çıkışı yapılamadı', 'error');
+            }
+        }
+
         // Ürün türü değiştiğinde ürün listesini güncelle
         document.getElementById('stock-product-type').addEventListener('change', async function() {
             const productType = this.value;
@@ -1246,6 +1390,53 @@
             if (selectedOption.value) {
                 document.getElementById('stock-unit').value = selectedOption.dataset.unit || '';
                 document.getElementById('stock-unit-price').value = selectedOption.dataset.unitPrice || '';
+            }
+        });
+
+        // Stok çıkışı modal'ı için ürün türü değişikliği
+        document.getElementById('exit-product-type').addEventListener('change', async function() {
+            const productType = this.value;
+            const productSelect = document.getElementById('exit-product');
+            
+            if (!productType) {
+                productSelect.innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+                return;
+            }
+            
+            try {
+                let products = [];
+                if (productType === 'hammadde') {
+                    const response = await fetch('/api/hammaddeler');
+                    products = await response.json();
+                } else if (productType === 'yarimamul') {
+                    const response = await fetch('/api/yarimamuller');
+                    products = await response.json();
+                } else if (productType === 'nihai') {
+                    const response = await fetch('/api/nihai_urunler');
+                    products = await response.json();
+                }
+                
+                productSelect.innerHTML = '<option value="">Ürün seçiniz</option>';
+                products.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.ad} (${product.kod})`;
+                    option.dataset.unit = product.birim;
+                    option.dataset.currentStock = product.miktar || 0;
+                    productSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ürünler yüklenemedi:', error);
+                showAlert('Ürünler yüklenemedi', 'error');
+            }
+        });
+
+        // Stok çıkışı modal'ı için ürün seçimi
+        document.getElementById('exit-product').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('exit-unit').value = selectedOption.dataset.unit || '';
+                document.getElementById('exit-current-stock').value = selectedOption.dataset.currentStock || '0';
             }
         });
 
