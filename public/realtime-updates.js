@@ -43,44 +43,66 @@ class RealTimeUpdates {
 
     // Sistemi başlat
     initialize() {
-        console.log('Real-time Updates sistemi başlatılıyor...');
-        this.setupVisibilityChangeListener();
-        this.setupNetworkStatusListener();
-        this.setupErrorHandling();
+        try {
+            console.log('Real-time Updates sistemi başlatılıyor...');
+            this.setupVisibilityChangeListener();
+            this.setupNetworkStatusListener();
+            this.setupErrorHandling();
+            console.log('Real-time Updates sistemi başlatıldı');
+        } catch (error) {
+            console.error('Real-time Updates başlatma hatası:', error);
+        }
     }
 
     // Görünürlük değişikliğini dinle (sayfa aktif/pasif)
     setupVisibilityChangeListener() {
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.pauseUpdates();
-                console.log('Sayfa pasif - güncellemeler duraklatıldı');
-            } else {
-                this.resumeUpdates();
-                console.log('Sayfa aktif - güncellemeler devam ettirildi');
-            }
-        });
+        try {
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.pauseUpdates();
+                    console.log('Sayfa pasif - güncellemeler duraklatıldı');
+                } else {
+                    this.resumeUpdates();
+                    console.log('Sayfa aktif - güncellemeler devam ettirildi');
+                }
+            });
+        } catch (error) {
+            console.warn('Visibility change listener kurulamadı:', error);
+        }
     }
 
     // Ağ durumunu dinle
     setupNetworkStatusListener() {
-        window.addEventListener('online', () => {
-            console.log('Ağ bağlantısı kuruldu - güncellemeler devam ettirildi');
-            this.resumeUpdates();
-        });
+        try {
+            window.addEventListener('online', () => {
+                console.log('Ağ bağlantısı kuruldu - güncellemeler devam ettirildi');
+                this.resumeUpdates();
+            });
 
-        window.addEventListener('offline', () => {
-            console.log('Ağ bağlantısı kesildi - güncellemeler duraklatıldı');
-            this.pauseUpdates();
-        });
+            window.addEventListener('offline', () => {
+                console.log('Ağ bağlantısı kesildi - güncellemeler duraklatıldı');
+                this.pauseUpdates();
+            });
+        } catch (error) {
+            console.warn('Network status listener kurulamadı:', error);
+        }
     }
 
     // Hata yönetimi
     setupErrorHandling() {
-        window.addEventListener('error', (event) => {
-            console.error('Real-time Updates hatası:', event.error);
-            this.handleError(event.error);
-        });
+        try {
+            window.addEventListener('error', (event) => {
+                console.error('Real-time Updates hatası:', event.error);
+                // Null hataları kontrol et
+                if (event && event.error) {
+                    this.handleError(event.error);
+                } else {
+                    console.warn('Null error event - sessizce geçiliyor');
+                }
+            });
+        } catch (error) {
+            console.warn('Error handling listener kurulamadı:', error);
+        }
     }
 
     // Güncellemeleri başlat
@@ -90,38 +112,82 @@ class RealTimeUpdates {
             return;
         }
 
-        this.isActive = true;
-        console.log('Real-time güncellemeler başlatıldı');
+        try {
+            this.isActive = true;
+            console.log('Real-time güncellemeler başlatıldı');
 
-        // Her veri türü için güncelleme interval'ı oluştur
-        Object.entries(this.dataTypes).forEach(([dataType, config]) => {
-            this.startDataTypeUpdate(dataType, config);
-        });
+            // Her veri türü için güncelleme interval'ı oluştur
+            Object.entries(this.dataTypes).forEach(([dataType, config]) => {
+                try {
+                    this.startDataTypeUpdate(dataType, config);
+                } catch (error) {
+                    console.warn(`${dataType} güncelleme başlatılamadı:`, error);
+                }
+            });
 
-        // Genel sistem durumu güncellemesi
-        this.startSystemStatusUpdate();
+            // Genel sistem durumu güncellemesi
+            try {
+                this.startSystemStatusUpdate();
+            } catch (error) {
+                console.warn('Sistem durumu güncellemesi başlatılamadı:', error);
+            }
+        } catch (error) {
+            console.error('Real-time updates başlatma hatası:', error);
+            this.isActive = false;
+        }
     }
 
     // Belirli veri türü için güncelleme başlat
     startDataTypeUpdate(dataType, config) {
-        const intervalId = setInterval(async () => {
-            try {
-                await this.updateDataType(dataType, config);
-            } catch (error) {
-                console.error(`${dataType} güncellenirken hata:`, error);
-                this.handleUpdateError(dataType, error);
-            }
-        }, config.frequency);
+        try {
+            const intervalId = setInterval(async () => {
+                try {
+                    await this.updateDataType(dataType, config);
+                } catch (error) {
+                    // Kritik hataları kullanıcıya göster, network hatalarını sessizce geç
+                    if (this.shouldShowErrorToUser(error)) {
+                        console.error(`${dataType} güncellenirken kritik hata:`, error);
+                        if (window.stateManager) {
+                            const errorMessage = `${dataType} güncelleme hatası - Sistem yöneticisine bildirin`;
+                            window.stateManager.addNotification(errorMessage, 'error');
+                        }
+                    } else {
+                        console.warn(`${dataType} güncellenirken geçici hata:`, error);
+                    }
+                }
+            }, config.frequency);
 
-        this.updateIntervals.set(dataType, intervalId);
-        console.log(`${dataType} güncellemeleri başlatıldı (${config.frequency}ms)`);
+            this.updateIntervals.set(dataType, intervalId);
+            console.log(`${dataType} güncellemeleri başlatıldı (${config.frequency}ms)`);
+        } catch (error) {
+            console.warn(`${dataType} güncelleme başlatılamadı:`, error);
+        }
     }
 
     // Veri türünü güncelle
     async updateDataType(dataType, config) {
         try {
-            const response = await fetch(config.endpoint);
+            // Endpoint kontrolü
+            if (!config.endpoint) {
+                console.warn(`${dataType} için endpoint tanımlı değil`);
+                return;
+            }
+
+            const response = await fetch(config.endpoint, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                // Timeout ekle
+                signal: AbortSignal.timeout(10000) // 10 saniye timeout
+            });
+            
             if (!response.ok) {
+                // 404 hatalarını sessizce geç
+                if (response.status === 404) {
+                    console.warn(`${dataType} endpoint bulunamadı: ${config.endpoint}`);
+                    return;
+                }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
@@ -143,6 +209,21 @@ class RealTimeUpdates {
 
             console.log(`${dataType} başarıyla güncellendi`);
         } catch (error) {
+            // Timeout ve network hatalarını sessizce geç
+            if (error.name === 'AbortError' || error.message.includes('fetch')) {
+                console.warn(`${dataType} güncelleme timeout: ${config.endpoint}`);
+                return;
+            }
+            
+            // Kritik hataları kullanıcıya göster
+            if (this.shouldShowErrorToUser(error)) {
+                console.error(`${dataType} güncelleme hatası:`, error);
+                if (window.stateManager) {
+                    const errorMessage = `${dataType} güncelleme hatası - Sistem yöneticisine bildirin`;
+                    window.stateManager.addNotification(errorMessage, 'error');
+                }
+            }
+            
             throw error;
         }
     }
@@ -150,7 +231,15 @@ class RealTimeUpdates {
     // Sistem durumu güncellemesi
     startSystemStatusUpdate() {
         const intervalId = setInterval(() => {
-            this.updateSystemStatus();
+            try {
+                this.updateSystemStatus();
+            } catch (error) {
+                console.error('Sistem durumu güncelleme hatası:', error);
+                // Sistem durumu hatalarını kullanıcıya göster
+                if (this.shouldShowErrorToUser(error) && window.stateManager) {
+                    window.stateManager.addNotification('Sistem durumu güncelleme hatası - Sistem yöneticisine bildirin', 'error');
+                }
+            }
         }, 5000); // 5 saniyede bir
 
         this.updateIntervals.set('system-status', intervalId);
@@ -218,24 +307,78 @@ class RealTimeUpdates {
     handleError(error) {
         console.error('Real-time Updates sistem hatası:', error);
         
-        // State Manager'a hata bildir
-        if (window.stateManager) {
-            window.stateManager.addNotification('Güncelleme sistemi hatası', 'error');
+        // Null hataları kontrol et
+        if (!error) {
+            console.warn('Null error object - sessizce geçiliyor');
+            return;
+        }
+        
+        // Kritik hataları kullanıcıya göster
+        if (this.shouldShowErrorToUser(error)) {
+            if (window.stateManager) {
+                const errorMessage = this.getUserFriendlyErrorMessage(error);
+                window.stateManager.addNotification(errorMessage, 'error');
+            }
         }
     }
-
-    // Güncelleme hatası yönetimi
-    handleUpdateError(dataType, error) {
-        console.error(`${dataType} güncelleme hatası:`, error);
+    
+    // Hata türüne göre kullanıcıya gösterilip gösterilmeyeceğini belirle
+    shouldShowErrorToUser(error) {
+        // Null hataları kontrol et
+        if (!error) {
+            return false;
+        }
         
-        // Retry mekanizması
-        setTimeout(() => {
-            if (this.isActive) {
-                console.log(`${dataType} için retry yapılıyor...`);
-                this.retryUpdate(dataType);
-            }
-        }, this.retryDelay);
+        // Geçici network hatalarını kullanıcıya gösterme
+        if (error.message && (
+            error.message.includes('fetch') ||
+            error.message.includes('network') ||
+            error.message.includes('HTTP 404') ||
+            error.message.includes('HTTP 500') ||
+            error.message.includes('AbortError')
+        )) {
+            return false;
+        }
+        
+        // JavaScript syntax hataları, kritik sistem hataları göster
+        if (error.name === 'SyntaxError' || 
+            error.name === 'ReferenceError' || 
+            error.name === 'TypeError') {
+            return true;
+        }
+        
+        // Diğer beklenmeyen hataları göster
+        return true;
     }
+    
+    // Kullanıcı dostu hata mesajı oluştur
+    getUserFriendlyErrorMessage(error) {
+        // Null hataları kontrol et
+        if (!error) {
+            return 'Bilinmeyen sistem hatası - Sistem yöneticisine bildirin';
+        }
+        
+        if (error.name === 'SyntaxError') {
+            return 'JavaScript syntax hatası - Sistem yöneticisine bildirin';
+        }
+        
+        if (error.name === 'ReferenceError') {
+            return 'JavaScript referans hatası - Sistem yöneticisine bildirin';
+        }
+        
+        if (error.name === 'TypeError') {
+            return 'JavaScript tip hatası - Sistem yöneticisine bildirin';
+        }
+        
+        if (error.message && error.message.includes('Cannot declare')) {
+            return 'Değişken tanımlama hatası - Sistem yöneticisine bildirin';
+        }
+        
+        // Genel hata mesajı
+        return `Sistem hatası: ${error.name || 'Bilinmeyen'} - Sistem yöneticisine bildirin`;
+    }
+    
+
 
     // Güncelleme retry
     async retryUpdate(dataType) {

@@ -47,6 +47,34 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* Global Modal Alert Sistemi - En üstte göster */
+#global-modal-alert-container {
+    z-index: 99999 !important;
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    max-width: 400px !important;
+}
+
+#global-modal-alert {
+    z-index: 100000 !important;
+    position: relative !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    border: 2px solid #0d6efd !important;
+    animation: modalAlertSlideIn 0.3s ease-out !important;
+}
+
+@keyframes modalAlertSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Tab Transitions */
 .nav-link {
     transition: all 0.3s ease;

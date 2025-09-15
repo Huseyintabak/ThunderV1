@@ -1,6 +1,6 @@
 {
   "name": "thunder-v1",
-  "version": "1.6.5",
+  "version": "1.6.2",
   "description": "Üretim Yönetim Sistemi",
   "main": "server.js",
   "scripts": {

@@ -2259,25 +2259,244 @@ app.get('/api/production-plans', async (req, res) => {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    res.json(data);
+    
+    // Her plan için total_orders hesapla (eğer undefined ise)
+    const updatedPlans = await Promise.all(data.map(async (plan) => {
+      let needsUpdate = false;
+      
+      if (plan.total_orders === undefined || plan.total_orders === null) {
+        if (plan.notes && plan.notes.includes('[SEÇİLEN SİPARİŞLER:')) {
+          try {
+            const parts = plan.notes.split('[SEÇİLEN SİPARİŞLER:');
+            if (parts[1]) {
+              const jsonPart = parts[1].replace(']', '').trim();
+              const selectedOrders = JSON.parse(jsonPart);
+              plan.total_orders = selectedOrders.length;
+              
+              // Toplam miktarı da hesapla
+              plan.total_quantity = selectedOrders.reduce((sum, order) => {
+                return sum + (order.quantity || 0);
+              }, 0);
+              
+              needsUpdate = true;
+            }
+          } catch (error) {
+            console.warn(`Plan ${plan.id} sipariş bilgileri parse edilemedi:`, error);
+            plan.total_orders = 0;
+            plan.total_quantity = 0;
+            needsUpdate = true;
+          }
+        } else {
+          plan.total_orders = 0;
+          plan.total_quantity = 0;
+          needsUpdate = true;
+        }
+      }
+      
+      // Çalışma günlerini hesapla (eğer undefined ise)
+      if (plan.working_days === undefined || plan.working_days === null) {
+        if (plan.start_date && plan.end_date) {
+          const startDate = new Date(plan.start_date);
+          const endDate = new Date(plan.end_date);
+          plan.working_days = calculateWorkingDays(startDate, endDate);
+          needsUpdate = true;
+        } else {
+          plan.working_days = 0;
+          needsUpdate = true;
+        }
+      }
+      
+      // Toplam kapasiteyi hesapla (eğer undefined ise)
+      if (plan.total_capacity === undefined || plan.total_capacity === null) {
+        const dailyCapacity = 10;
+        plan.total_capacity = plan.working_days * dailyCapacity;
+        needsUpdate = true;
+      }
+      
+      // Veritabanını güncelle
+      if (needsUpdate) {
+        await supabase
+          .from('production_plans')
+          .update({ 
+            total_orders: plan.total_orders,
+            total_quantity: plan.total_quantity,
+            working_days: plan.working_days,
+            total_capacity: plan.total_capacity
+          })
+          .eq('id', plan.id);
+      }
+      
+      return plan;
+    }));
+    
+    res.json(updatedPlans);
   } catch (error) {
     console.error('Üretim planları fetch error:', error);
     res.status(500).json({ error: 'Üretim planları yüklenemedi' });
   }
 });
 
-app.post('/api/production-plans', async (req, res) => {
+// Onaylanmış ve aktif üretim planlarını getir
+app.get('/api/production-plans/approved', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('production_plans')
-      .insert([req.body])
+      .select('*')
+      .in('status', ['approved', 'active'])
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Onaylanmış planlar fetch error:', error);
+    res.status(500).json({ error: 'Onaylanmış planlar yüklenemedi' });
+  }
+});
+
+app.post('/api/production-plans', async (req, res) => {
+  try {
+    // Plan verilerini hazırla
+    const planData = { ...req.body };
+    
+    // Operatör alanlarını ekle
+    planData.assigned_operator = req.body.assigned_operator || null;
+    planData.operator_notes = req.body.operator_notes || null;
+    
+    // Notes alanından sipariş bilgilerini çıkar ve total_orders hesapla
+    if (planData.notes && planData.notes.includes('[SEÇİLEN SİPARİŞLER:')) {
+      try {
+        const parts = planData.notes.split('[SEÇİLEN SİPARİŞLER:');
+        if (parts[1]) {
+          const jsonPart = parts[1].replace(']', '').trim();
+          const selectedOrders = JSON.parse(jsonPart);
+          planData.total_orders = selectedOrders.length;
+          
+          // Toplam miktarı da hesapla (eğer siparişlerde quantity varsa)
+          planData.total_quantity = selectedOrders.reduce((sum, order) => {
+            return sum + (order.quantity || 0);
+          }, 0);
+        }
+      } catch (error) {
+        console.warn('Sipariş bilgileri parse edilemedi:', error);
+        planData.total_orders = 0;
+        planData.total_quantity = 0;
+      }
+    } else {
+      planData.total_orders = 0;
+      planData.total_quantity = 0;
+    }
+    
+    // Çalışma günlerini hesapla
+    if (planData.start_date && planData.end_date) {
+      const startDate = new Date(planData.start_date);
+      const endDate = new Date(planData.end_date);
+      planData.working_days = calculateWorkingDays(startDate, endDate);
+      
+      // Toplam kapasiteyi hesapla (varsayılan olarak günlük 10 adet kapasite)
+      const dailyCapacity = 10;
+      planData.total_capacity = planData.working_days * dailyCapacity;
+    } else {
+      planData.working_days = 0;
+      planData.total_capacity = 0;
+    }
+    
+    const { data, error } = await supabase
+      .from('production_plans')
+      .insert([planData])
       .select();
     
     if (error) throw error;
+    
+    // Not: related_orders sütunu olmadığı için sipariş durumu güncelleme işlemi kaldırıldı
+    // Bu özellik gelecekte plan-sipariş ilişkisi kurulduğunda eklenebilir
+    
     res.json(data[0]);
   } catch (error) {
     console.error('Üretim planı oluşturma error:', error);
     res.status(500).json({ error: 'Üretim planı oluşturulamadı' });
+  }
+});
+
+// Tek bir üretim planı getir
+app.get('/api/production-plans/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('production_plans')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    
+    if (error) throw error;
+    
+    // Eğer total_orders undefined ise, notes alanından hesapla
+    let needsUpdate = false;
+    
+    if (data && (data.total_orders === undefined || data.total_orders === null)) {
+      if (data.notes && data.notes.includes('[SEÇİLEN SİPARİŞLER:')) {
+        try {
+          const parts = data.notes.split('[SEÇİLEN SİPARİŞLER:');
+          if (parts[1]) {
+            const jsonPart = parts[1].replace(']', '').trim();
+            const selectedOrders = JSON.parse(jsonPart);
+            data.total_orders = selectedOrders.length;
+            
+            // Toplam miktarı da hesapla
+            data.total_quantity = selectedOrders.reduce((sum, order) => {
+              return sum + (order.quantity || 0);
+            }, 0);
+            
+            needsUpdate = true;
+          }
+        } catch (error) {
+          console.warn('Sipariş bilgileri parse edilemedi:', error);
+          data.total_orders = 0;
+          data.total_quantity = 0;
+          needsUpdate = true;
+        }
+      } else {
+        data.total_orders = 0;
+        data.total_quantity = 0;
+        needsUpdate = true;
+      }
+    }
+    
+    // Çalışma günlerini hesapla (eğer undefined ise)
+    if (data && (data.working_days === undefined || data.working_days === null)) {
+      if (data.start_date && data.end_date) {
+        const startDate = new Date(data.start_date);
+        const endDate = new Date(data.end_date);
+        data.working_days = calculateWorkingDays(startDate, endDate);
+        needsUpdate = true;
+      } else {
+        data.working_days = 0;
+        needsUpdate = true;
+      }
+    }
+    
+    // Toplam kapasiteyi hesapla (eğer undefined ise)
+    if (data && (data.total_capacity === undefined || data.total_capacity === null)) {
+      const dailyCapacity = 10;
+      data.total_capacity = data.working_days * dailyCapacity;
+      needsUpdate = true;
+    }
+    
+    // Veritabanını güncelle
+    if (needsUpdate) {
+      await supabase
+        .from('production_plans')
+        .update({ 
+          total_orders: data.total_orders,
+          total_quantity: data.total_quantity,
+          working_days: data.working_days,
+          total_capacity: data.total_capacity
+        })
+        .eq('id', req.params.id);
+    }
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Üretim planı getirme error:', error);
+    res.status(500).json({ error: 'Üretim planı getirilemedi' });
   }
 });
 
@@ -2299,13 +2518,25 @@ app.put('/api/production-plans/:id', async (req, res) => {
 
 app.delete('/api/production-plans/:id', async (req, res) => {
   try {
-    const { error } = await supabase
+    console.log('Üretim planı siliniyor:', req.params.id);
+    
+    // Üretim planını sil
+    const { error: deleteError } = await supabase
       .from('production_plans')
       .delete()
       .eq('id', req.params.id);
     
-    if (error) throw error;
-    res.json({ message: 'Üretim planı silindi' });
+    if (deleteError) {
+      console.error('Plan silme hatası:', deleteError);
+      throw deleteError;
+    }
+    
+    console.log('Plan başarıyla silindi');
+    
+    // Not: related_orders sütunu olmadığı için sipariş durumu güncelleme işlemi kaldırıldı
+    // Bu özellik gelecekte plan-sipariş ilişkisi kurulduğunda eklenebilir
+    
+    res.json({ message: 'Üretim planı başarıyla silindi' });
   } catch (error) {
     console.error('Üretim planı silme error:', error);
     res.status(500).json({ error: 'Üretim planı silinemedi' });
@@ -2355,8 +2586,8 @@ app.get('/api/resources', async (req, res) => {
     const { data, error } = await supabase
       .from('resource_management')
       .select('*')
-      .eq('is_active', true)
-      .order('resource_type', { ascending: true });
+      .order('resource_type', { ascending: true })
+      .order('resource_name', { ascending: true });
     
     if (error) throw error;
     res.json(data);
@@ -2378,6 +2609,57 @@ app.post('/api/resources', async (req, res) => {
   } catch (error) {
     console.error('Kaynak oluşturma error:', error);
     res.status(500).json({ error: 'Kaynak oluşturulamadı' });
+  }
+});
+
+// Tekil kaynak getirme
+app.get('/api/resources/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('resource_management')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Kaynak getirme error:', error);
+    res.status(500).json({ error: 'Kaynak bulunamadı' });
+  }
+});
+
+// Kaynak güncelleme
+app.put('/api/resources/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('resource_management')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Kaynak güncelleme error:', error);
+    res.status(500).json({ error: 'Kaynak güncellenemedi' });
+  }
+});
+
+// Kaynak silme
+app.delete('/api/resources/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('resource_management')
+      .delete()
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json({ message: 'Kaynak başarıyla silindi', data: data[0] });
+  } catch (error) {
+    console.error('Kaynak silme error:', error);
+    res.status(500).json({ error: 'Kaynak silinemedi' });
   }
 });
 
@@ -2416,17 +2698,320 @@ app.post('/api/production-scheduling', async (req, res) => {
   }
 });
 
+// Çalışma günü kontrolü için yardımcı fonksiyonlar
+function isWorkingDay(date) {
+  const dayOfWeek = date.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+  // Pazartesi-Cuma arası çalışma günleri (1-5)
+  return dayOfWeek >= 1 && dayOfWeek <= 5;
+}
+
+function adjustToWorkingDay(date) {
+  const dayOfWeek = date.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+  
+  // Eğer hafta sonu ise
+  if (dayOfWeek === 0) { // Pazar
+    // Pazartesiye çevir
+    const adjustedDate = new Date(date);
+    adjustedDate.setDate(date.getDate() + 1);
+    return adjustedDate;
+  } else if (dayOfWeek === 6) { // Cumartesi
+    // Cumaya çevir
+    const adjustedDate = new Date(date);
+    adjustedDate.setDate(date.getDate() - 1);
+    return adjustedDate;
+  }
+  
+  // Hafta içi ise değişiklik yok
+  return date;
+}
+
+function calculateWorkingDays(startDate, endDate) {
+  let workingDays = 0;
+  const currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+    // Pazartesi-Cuma arası çalışma günleri (1-5)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      workingDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return workingDays;
+}
+
+// Operatör listesi API'si - Thunder Serisi ve ThunderPRO Serisi operatörleri
+app.get('/api/operators', async (req, res) => {
+  try {
+    // Thunder serisi operatörleri
+    const operators = [
+      {
+        id: 4,
+        name: 'Thunder Serisi Operatör',
+        resource_type: 'operator',
+        department: 'Üretim',
+        skill_level: 'Uzman',
+        is_active: true,
+        notes: 'Thunder serisi ürünler için özel operatör'
+      },
+      {
+        id: 5,
+        name: 'ThunderPRO Serisi Operatör',
+        resource_type: 'operator',
+        department: 'Üretim',
+        skill_level: 'Uzman',
+        is_active: true,
+        notes: 'ThunderPRO serisi ürünler için özel operatör'
+      }
+    ];
+    
+    res.json(operators);
+  } catch (error) {
+    console.error('Operatör listesi error:', error);
+    res.status(500).json({ error: 'Operatör listesi yüklenemedi' });
+  }
+});
+
+// ===== ÜRETİM BAŞLAT TAB'ı API'LERİ =====
+
+// Plandan üretim başlat
+app.post('/api/production-plans/:id/start-production', async (req, res) => {
+  try {
+    const planId = req.params.id;
+    const { product_type, product_id, product_name, planned_quantity, assigned_operator } = req.body;
+    
+    // Plan bilgilerini kontrol et
+    const { data: plan, error: planError } = await supabase
+      .from('production_plans')
+      .select('*')
+      .eq('id', planId)
+      .eq('status', 'approved')
+      .single();
+    
+    if (planError || !plan) {
+      return res.status(404).json({ error: 'Plan bulunamadı veya onaylanmamış' });
+    }
+    
+    // Aktif üretim oluştur
+    const productionData = {
+      plan_id: planId,
+      product_type: product_type || 'nihai',
+      product_id: product_id || 1,
+      product_name: product_name || 'Ürün',
+      planned_quantity: planned_quantity || plan.total_quantity || 1,
+      assigned_operator: assigned_operator || plan.assigned_operator || 'Thunder Serisi Operatör',
+      status: 'active',
+      estimated_end_time: plan.end_date ? new Date(plan.end_date) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+      current_stage: 'Başlangıç',
+      notes: `Plan: ${plan.plan_name}`
+    };
+    
+    const { data: production, error: productionError } = await supabase
+      .from('active_productions')
+      .insert([productionData])
+      .select();
+    
+    if (productionError) throw productionError;
+    
+    // Plan durumunu güncelle
+    await supabase
+      .from('production_plans')
+      .update({ status: 'active' })
+      .eq('id', planId);
+    
+    res.json(production[0]);
+  } catch (error) {
+    console.error('Üretim başlatma error:', error);
+    res.status(500).json({ error: 'Üretim başlatılamadı' });
+  }
+});
+
+// Aktif üretimleri listele
+app.get('/api/active-productions', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('active_productions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Aktif üretimler fetch error:', error);
+    res.status(500).json({ error: 'Aktif üretimler yüklenemedi' });
+  }
+});
+
+// Yeni üretim başlat (plan olmadan)
+app.post('/api/active-productions', async (req, res) => {
+  try {
+    const productionData = {
+      ...req.body,
+      status: 'active',
+      start_time: new Date(),
+      created_at: new Date()
+    };
+    
+    const { data, error } = await supabase
+      .from('active_productions')
+      .insert([productionData])
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim oluşturma error:', error);
+    res.status(500).json({ error: 'Üretim oluşturulamadı' });
+  }
+});
+
+// Üretim güncelle
+app.put('/api/active-productions/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('active_productions')
+      .update({ ...req.body, updated_at: new Date() })
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim güncelleme error:', error);
+    res.status(500).json({ error: 'Üretim güncellenemedi' });
+  }
+});
+
+// Üretim durdur
+app.put('/api/active-productions/:id/pause', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('active_productions')
+      .update({ status: 'paused', updated_at: new Date() })
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim durdurma error:', error);
+    res.status(500).json({ error: 'Üretim durdurulamadı' });
+  }
+});
+
+// Üretim devam ettir
+app.put('/api/active-productions/:id/resume', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('active_productions')
+      .update({ status: 'active', updated_at: new Date() })
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim devam ettirme error:', error);
+    res.status(500).json({ error: 'Üretim devam ettirilemedi' });
+  }
+});
+
+// Üretim tamamla
+app.put('/api/active-productions/:id/complete', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('active_productions')
+      .update({ 
+        status: 'completed', 
+        actual_end_time: new Date(),
+        updated_at: new Date() 
+      })
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    console.error('Üretim tamamlama error:', error);
+    res.status(500).json({ error: 'Üretim tamamlanamadı' });
+  }
+});
+
+// Üretim iptal et
+app.delete('/api/active-productions/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('active_productions')
+      .delete()
+      .eq('id', req.params.id);
+    
+    if (error) throw error;
+    res.json({ message: 'Üretim iptal edildi' });
+  } catch (error) {
+    console.error('Üretim iptal error:', error);
+    res.status(500).json({ error: 'Üretim iptal edilemedi' });
+  }
+});
+
 // Sipariş yönetimi API'leri
 app.get('/api/orders', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data: orders, error: ordersError } = await supabase
       .from('order_management')
       .select('*')
       .order('priority', { ascending: true })
       .order('delivery_date', { ascending: true });
     
-    if (error) throw error;
-    res.json(data);
+    if (ordersError) throw ordersError;
+    
+    // Her sipariş için detayları getir
+    const ordersWithDetails = await Promise.all(orders.map(async (order) => {
+      let totalQuantity = 0;
+      let productDetails = [];
+      
+      // Önce order_details tablosundan kontrol et
+      const { data: details, error: detailsError } = await supabase
+        .from('order_details')
+        .select('quantity')
+        .eq('order_id', order.id);
+      
+      if (!detailsError && details && details.length > 0) {
+        // order_details tablosunda veri varsa
+        totalQuantity = details.reduce((sum, detail) => sum + (detail.quantity || 0), 0);
+        productDetails = details;
+      } else {
+        // order_details tablosunda veri yoksa, notes alanından parse et
+        if (order.notes && order.notes.includes('[ÜRÜN DETAYLARI:')) {
+          try {
+            // Notes alanından JSON string'i çıkar
+            const notesMatch = order.notes.match(/\[ÜRÜN DETAYLARI:\s*(\[.*?\])/);
+            if (notesMatch && notesMatch[1]) {
+              const productDetailsArray = JSON.parse(notesMatch[1]);
+              if (Array.isArray(productDetailsArray)) {
+                totalQuantity = productDetailsArray.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+                productDetails = productDetailsArray;
+              }
+            }
+          } catch (parseError) {
+            console.warn(`Sipariş ${order.id} notes parse hatası:`, parseError);
+          }
+        }
+        
+        // Hala miktar bulunamadıysa varsayılan değer
+        if (totalQuantity === 0) {
+          totalQuantity = 1;
+        }
+      }
+      
+      return { 
+        ...order, 
+        quantity: totalQuantity,
+        product_details: productDetails
+      };
+    }));
+    
+    res.json(ordersWithDetails);
   } catch (error) {
     console.error('Siparişler fetch error:', error);
     res.status(500).json({ error: 'Siparişler yüklenemedi' });
@@ -2435,9 +3020,41 @@ app.get('/api/orders', async (req, res) => {
 
 app.post('/api/orders', async (req, res) => {
   try {
+    // Sipariş numarası oluştur
+    const orderNumber = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    
+    // Teslim tarihini çalışma gününe çevir
+    let deliveryDate = req.body.delivery_date;
+    if (deliveryDate) {
+      const deliveryDateObj = new Date(deliveryDate);
+      if (!isWorkingDay(deliveryDateObj)) {
+        const adjustedDate = adjustToWorkingDay(deliveryDateObj);
+        deliveryDate = adjustedDate.toISOString().split('T')[0];
+        console.log(`Teslim tarihi çalışma gününe çevrildi: ${req.body.delivery_date} -> ${deliveryDate}`);
+      }
+    }
+    
+    // Sipariş verilerini hazırla - sadece mevcut sütunları kullan
+    const orderData = {
+      order_number: orderNumber,
+      customer_name: req.body.customer_name,
+      order_date: req.body.order_date,
+      delivery_date: deliveryDate,
+      priority: parseInt(req.body.priority) || 1,
+      status: req.body.status || 'pending',
+      notes: req.body.notes || '',
+      quantity: parseInt(req.body.quantity) || 0,
+      product_details: req.body.product_details || null,
+      assigned_operator: req.body.assigned_operator || null,
+      operator_notes: req.body.operator_notes || null,
+      total_amount: parseFloat(req.body.total_amount) || 0
+    };
+    
+    console.log('Sipariş verisi:', orderData);
+    
     const { data, error } = await supabase
       .from('order_management')
-      .insert([req.body])
+      .insert([orderData])
       .select();
     
     if (error) throw error;
@@ -2448,11 +3065,49 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.put('/api/orders/:id', async (req, res) => {
+// Tekil sipariş getirme
+app.get('/api/orders/:id', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('order_management')
-      .update(req.body)
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Sipariş getirme error:', error);
+    res.status(500).json({ error: 'Sipariş bulunamadı' });
+  }
+});
+
+// Sipariş güncelleme
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    // Sadece order_management tablosunda mevcut alanları filtrele
+    const allowedFields = ['customer_name', 'customer_contact', 'order_date', 'delivery_date', 'priority', 'status', 'total_amount', 'notes', 'quantity', 'product_details', 'assigned_operator', 'operator_notes'];
+    const updateData = {};
+    
+    Object.keys(req.body).forEach(key => {
+      if (allowedFields.includes(key)) {
+        updateData[key] = req.body[key];
+      }
+    });
+    
+    // Teslim tarihini çalışma gününe çevir
+    if (updateData.delivery_date) {
+      const deliveryDateObj = new Date(updateData.delivery_date);
+      if (!isWorkingDay(deliveryDateObj)) {
+        const adjustedDate = adjustToWorkingDay(deliveryDateObj);
+        updateData.delivery_date = adjustedDate.toISOString().split('T')[0];
+        console.log(`Teslim tarihi çalışma gününe çevrildi: ${req.body.delivery_date} -> ${updateData.delivery_date}`);
+      }
+    }
+    
+    const { data, error } = await supabase
+      .from('order_management')
+      .update(updateData)
       .eq('id', req.params.id)
       .select();
     
@@ -2461,6 +3116,23 @@ app.put('/api/orders/:id', async (req, res) => {
   } catch (error) {
     console.error('Sipariş güncelleme error:', error);
     res.status(500).json({ error: 'Sipariş güncellenemedi' });
+  }
+});
+
+// Sipariş silme
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('order_management')
+      .delete()
+      .eq('id', req.params.id)
+      .select();
+    
+    if (error) throw error;
+    res.json({ message: 'Sipariş başarıyla silindi', data: data[0] });
+  } catch (error) {
+    console.error('Sipariş silme error:', error);
+    res.status(500).json({ error: 'Sipariş silinemedi' });
   }
 });
 

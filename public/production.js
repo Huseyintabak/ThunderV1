@@ -4,7 +4,7 @@
 // Global değişkenler
 let hammaddeler = [];
 let yarimamuller = [];
-let nihaiUrunler = [];
+// let nihaiUrunler = []; // production.html'de tanımlanmış, duplicate variable hatası önlemek için kaldırıldı
 let urunAgaci = [];
 let activeProductions = [];
 let productionHistory = [];
@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     loadAllData();
     setupEventListeners();
+    
+    // Tab event listener'ları
+    setupTabEventListeners();
 });
 
 // Tüm verileri yükle
@@ -75,7 +78,6 @@ async function loadAllData() {
             loadYarimamuller(),
             loadNihaiUrunler(),
             loadUrunAgaci(),
-            loadActiveProductions(),
             loadProductionHistory()
         ]);
         
@@ -85,8 +87,69 @@ async function loadAllData() {
         setupProductionProductAutocomplete();
     } catch (error) {
         console.error('Veri yükleme hatası:', error);
-        showAlert('Veriler yüklenirken hata oluştu', 'error');
+        showModalAlert('Veriler yüklenirken hata oluştu', 'error');
     }
+}
+
+// Tab event listener'larını kur
+function setupTabEventListeners() {
+    console.log('Tab event listener\'ları kuruluyor...');
+    
+    // Üretim Planlama tab
+    const planningTab = document.getElementById('production-planning-tab');
+    if (planningTab) {
+        planningTab.addEventListener('shown.bs.tab', function() {
+            console.log('Üretim Planlama tab\'ı açıldı');
+            loadProductionPlans();
+            loadResources();
+            loadOrders();
+            loadPlanningStatistics();
+        });
+    }
+    
+    
+    
+    // Üretim Aşamaları tab
+    const stagesTab = document.getElementById('production-stages-tab');
+    if (stagesTab) {
+        stagesTab.addEventListener('shown.bs.tab', function() {
+            console.log('Üretim Aşamaları tab\'ı açıldı');
+            loadStageTemplates();
+        });
+    }
+    
+    // Kalite Kontrol tab
+    const qualityTab = document.getElementById('quality-control-tab');
+    if (qualityTab) {
+        qualityTab.addEventListener('shown.bs.tab', function() {
+            console.log('Kalite Kontrol tab\'ı açıldı');
+            loadQualityCheckpoints();
+            loadQualityStandards();
+            loadQualityStatistics();
+        });
+    }
+    
+    // Üretim Geçmişi tab
+    const historyTab = document.getElementById('production-history-tab');
+    if (historyTab) {
+        historyTab.addEventListener('shown.bs.tab', function() {
+            console.log('Üretim Geçmişi tab\'ı açıldı');
+            loadProductionHistory();
+        });
+    }
+    
+    // Sayfa yüklendiğinde otomatik olarak aktif tab verilerini yükle
+    setTimeout(() => {
+        console.log('Otomatik veri yükleme başlatılıyor...');
+        const activeTab = document.querySelector('.nav-link.active');
+        if (activeTab && activeTab.id === 'production-planning-tab') {
+            console.log('Üretim Planlama tab\'ı aktif, veriler yükleniyor...');
+            loadProductionPlans();
+            loadResources();
+            loadOrders();
+            loadPlanningStatistics();
+        }
+    }, 1000);
 }
 
 
@@ -121,7 +184,7 @@ function setupProductionProductAutocomplete() {
         const allProducts = [
             ...hammaddeler.filter(h => h.aktif).map(h => ({...h, type: 'hammadde'})),
             ...yarimamuller.filter(y => y.aktif).map(y => ({...y, type: 'yarimamul'})),
-            ...nihaiUrunler.filter(n => n.aktif).map(n => ({...n, type: 'nihai'}))
+            ...(window.nihaiUrunler || []).filter(n => n.aktif).map(n => ({...n, type: 'nihai'}))
         ];
         
         // Ürünleri filtrele
@@ -335,7 +398,7 @@ function handleDataUpdate(dataType, data) {
     switch(dataType) {
         case 'active-productions':
             activeProductions = data;
-            displayActiveProductions();
+            // displayActiveProductions(); // Artık kullanılmıyor - yeni tasarımda planlanan üretimler kullanılıyor
             break;
         case 'production-history':
             productionHistory = data;
@@ -406,30 +469,27 @@ function setupTabEventListeners() {
     });
 }
 
-// Tab'a özel veri yükleme
+// Tab'a özel veri yükleme - Üretim proses sırasına göre
 function loadTabData(tabId) {
     switch(tabId) {
-        case 'production-start-tab':
-            // Üretim başlatma verileri zaten yüklü
+        case 'production-planning-tab':
+            if (typeof loadProductionPlans === 'function') {
+                loadProductionPlans();
+                loadResources();
+                loadOrders();
+                loadPlanningStatistics();
+            }
             break;
         case 'production-stages-tab':
             if (typeof loadStageTemplates === 'function') {
                 loadStageTemplates();
             }
             break;
-        case 'active-productions-tab':
-            if (typeof loadActiveProductions === 'function') {
-                loadActiveProductions();
-            }
-            break;
-        case 'production-planning-tab':
-            if (typeof loadProductionPlans === 'function') {
-                loadProductionPlans();
-            }
-            break;
         case 'quality-control-tab':
             if (typeof loadQualityCheckpoints === 'function') {
                 loadQualityCheckpoints();
+                loadQualityStandards();
+                loadQualityStatistics();
             }
             break;
         case 'production-history-tab':
@@ -473,11 +533,7 @@ function setupEventListeners() {
         }
     });
     
-    // Tab değişim event'leri
-    document.getElementById('production-stages-tab').addEventListener('shown.bs.tab', function() {
-        loadStageTemplates();
-    });
-    
+    // Tab değişim event'leri - Üretim proses sırasına göre
     document.getElementById('production-planning-tab').addEventListener('shown.bs.tab', function() {
         loadProductionPlans();
         loadResources();
@@ -485,10 +541,20 @@ function setupEventListeners() {
         loadPlanningStatistics();
     });
     
+    
+    
+    document.getElementById('production-stages-tab').addEventListener('shown.bs.tab', function() {
+        loadStageTemplates();
+    });
+    
     document.getElementById('quality-control-tab').addEventListener('shown.bs.tab', function() {
         loadQualityCheckpoints();
         loadQualityStandards();
         loadQualityStatistics();
+    });
+    
+    document.getElementById('production-history-tab').addEventListener('shown.bs.tab', function() {
+        loadProductionHistory();
     });
     
     document.getElementById('production-quantity').addEventListener('input', function() {
@@ -564,7 +630,7 @@ async function loadNihaiUrunler() {
     try {
         const response = await fetch('/api/nihai_urunler');
         if (response.ok) {
-            nihaiUrunler = await response.json();
+            window.nihaiUrunler = await response.json();
         }
     } catch (error) {
         console.error('Nihai ürünler yüklenemedi:', error);
@@ -583,182 +649,11 @@ async function loadUrunAgaci() {
     }
 }
 
-// Aktif üretimleri yükle
-async function loadActiveProductions() {
-    console.log('loadActiveProductions fonksiyonu çağrıldı');
-    try {
-        const productions = await getActiveProductions();
-        console.log('Aktif üretimler:', productions);
 
-        // Her üretim için ürün bilgilerini al
-        const enrichedProductions = await Promise.all(productions.map(async (production) => {
-            try {
-                let productInfo = null;
-                console.log(`Ürün bilgisi alınıyor - ID: ${production.product_id}, Tip: ${production.product_type}`);
-                
-                if (production.product_type === 'nihai') {
-                    const response = await fetch(`/api/nihai_urunler/${production.product_id}`);
-                    console.log(`Nihai ürün API response:`, response.status);
-                    if (response.ok) {
-                        productInfo = await response.json();
-                        console.log(`Nihai ürün bilgisi:`, productInfo);
-                    }
-                } else if (production.product_type === 'yarimamul') {
-                    const response = await fetch(`/api/yarimamuller/${production.product_id}`);
-                    console.log(`Yarı mamul API response:`, response.status);
-                    if (response.ok) {
-                        productInfo = await response.json();
-                        console.log(`Yarı mamul bilgisi:`, productInfo);
-                    }
-                } else if (production.product_type === 'hammadde') {
-                    const response = await fetch(`/api/hammaddeler/${production.product_id}`);
-                    console.log(`Hammadde API response:`, response.status);
-                    if (response.ok) {
-                        productInfo = await response.json();
-                        console.log(`Hammadde bilgisi:`, productInfo);
-                    }
-                }
-                
-                const enrichedProduction = {
-                    ...production,
-                    urun_adi: productInfo?.ad || 'Bilinmeyen Ürün',
-                    urun_kodu: productInfo?.kod || 'N/A',
-                    hedef_miktar: production.target_quantity || 0,
-                    uretilen_miktar: production.quantity || 0,
-                    durum: production.status === 'active' ? 'devam_ediyor' : production.status
-                };
-                
-                console.log(`Zenginleştirilmiş üretim:`, enrichedProduction);
-                return enrichedProduction;
-            } catch (error) {
-                console.error(`Ürün bilgisi alınamadı (ID: ${production.product_id}):`, error);
-                return {
-                    ...production,
-                    urun_adi: 'Bilinmeyen Ürün',
-                    urun_kodu: 'N/A',
-                    hedef_miktar: production.target_quantity || 0,
-                    uretilen_miktar: production.quantity || 0,
-                    durum: production.status === 'active' ? 'devam_ediyor' : production.status
-                };
-            }
-        }));
-        
-        activeProductions = enrichedProductions;
-        console.log('displayActiveProductions çağrılıyor...');
-        displayActiveProductions();
-        
-        // Aktif üretimleri UI'da göster (isteğe bağlı)
-        if (enrichedProductions.length > 0) {
-            showAlert(`${enrichedProductions.length} aktif üretim bulundu`, 'info');
-        }
-        
-        return enrichedProductions;
-    } catch (error) {
-        console.error('Aktif üretimler yüklenemedi:', error);
-        showAlert('Aktif üretimler yüklenemedi: ' + error.message, 'error');
-        return [];
-    }
-}
-
-// Aktif üretimleri göster
+// Aktif üretimleri göster (artık kullanılmıyor - yeni tasarımda planlanan üretimler kullanılıyor)
 function displayActiveProductions() {
-    console.log('displayActiveProductions çağrıldı');
-    console.log('activeProductions:', activeProductions);
-    
-    try {
-        const container = document.getElementById('active-productions-container');
-        const noProductions = document.getElementById('no-active-productions');
-        const countElement = document.getElementById('active-productions-count');
-        
-        console.log('Container elementleri:', {
-            container: container,
-            noProductions: noProductions,
-            countElement: countElement
-        });
-        
-        if (!container) {
-            console.error('Aktif üretimler container bulunamadı');
-            return;
-        }
-        
-        // Sayıyı güncelle (eğer element varsa)
-        if (countElement) {
-            countElement.textContent = activeProductions.length;
-        }
-        
-        if (activeProductions.length === 0) {
-            container.innerHTML = '';
-            if (noProductions) {
-                noProductions.style.display = 'block';
-            }
-            return;
-        }
-        
-        if (noProductions) {
-            noProductions.style.display = 'none';
-        }
-        
-        // Aktif üretimleri göster - eski HTML formatına uygun
-        container.innerHTML = activeProductions.map(production => {
-            const progressPercentage = Math.round(((production.uretilen_miktar || 0) / (production.hedef_miktar || 1)) * 100);
-            const startDate = production.start_time ? new Date(production.start_time).toLocaleString('tr-TR') : 'Bilinmiyor';
-            
-            return `
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-box me-2 text-primary"></i>
-                                <div>
-                                    <h6 class="mb-1">${production.urun_adi || 'Bilinmeyen Ürün'}</h6>
-                                    <small class="text-muted">Miktar: ${production.uretilen_miktar || 0}</small>
-                                </div>
-                            </div>
-                            <span class="badge bg-${production.status === 'active' ? 'warning' : production.status === 'paused' ? 'secondary' : production.status === 'completed' ? 'success' : 'danger'}">
-                                ${production.status === 'active' ? 'Üretimde' : 
-                                  production.status === 'paused' ? 'Duraklatıldı' : 
-                                  production.status === 'completed' ? 'Tamamlandı' : 
-                                  production.status === 'cancelled' ? 'İptal Edildi' : 'Bilinmiyor'}
-                            </span>
-                        </div>
-                        <div class="mb-2">
-                            <small class="text-muted">Başlangıç: ${startDate}</small>
-                        </div>
-                        <div class="progress mb-2" style="height: 8px;">
-                            <div class="progress-bar" role="progressbar" 
-                                 style="width: ${progressPercentage}%"
-                                 aria-valuenow="${production.uretilen_miktar || 0}"
-                                 aria-valuemin="0"
-                                 aria-valuemax="${production.hedef_miktar || 1}">
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                Hedef: ${production.hedef_miktar || 0} | Üretilen: ${production.uretilen_miktar || 0}
-                            </small>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" onclick="viewProductionDetails(${production.id})" title="Detayları Görüntüle">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-outline-success" onclick="continueProduction(${production.id})" title="Üretime Devam Et">
-                                    <i class="fas fa-play"></i>
-                                </button>
-                                <button class="btn btn-outline-warning" onclick="pauseProduction(${production.id})" title="Duraklat">
-                                    <i class="fas fa-pause"></i>
-                                </button>
-                                <button class="btn btn-outline-danger" onclick="stopProduction(${production.id})" title="Durdur">
-                                    <i class="fas fa-stop"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-    } catch (error) {
-        console.error('displayActiveProductions hatası:', error);
-    }
+    // Bu fonksiyon artık kullanılmıyor - yeni tasarımda planlanan üretimler kullanılıyor
+    console.log('displayActiveProductions çağrıldı ama artık kullanılmıyor');
 }
 
 // Üretim geçmişini yükle
@@ -780,7 +675,7 @@ let selectedProduction = null;
 function viewProductionDetails(productionId) {
     selectedProduction = activeProductions.find(p => p.id === productionId);
     if (!selectedProduction) {
-        showAlert('Üretim bulunamadı', 'error');
+        showModalAlert('Üretim bulunamadı', 'error');
         return;
     }
     
@@ -878,12 +773,12 @@ function viewProductionDetails(productionId) {
 async function continueProduction(productionId) {
     const production = activeProductions.find(p => p.id === productionId);
     if (!production) {
-        showAlert('Üretim bulunamadı', 'error');
+        showModalAlert('Üretim bulunamadı', 'error');
         return;
     }
     
     if (production.status === 'active') {
-        showAlert('Bu üretim zaten aktif durumda', 'info');
+        showModalAlert('Bu üretim zaten aktif durumda', 'info');
         return;
     }
     
@@ -899,7 +794,7 @@ async function continueProduction(productionId) {
         });
         
         if (response.ok) {
-            showAlert('Üretim başarıyla devam ettirildi', 'success');
+            showModalAlert('Üretim başarıyla devam ettirildi', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -929,11 +824,11 @@ async function continueProduction(productionId) {
             console.log('Üretim devam ettirildi, durum:', production?.status);
         } else {
             const error = await response.json();
-            showAlert(error.error || 'Üretim devam ettirilemedi', 'error');
+            showModalAlert(error.error || 'Üretim devam ettirilemedi', 'error');
         }
     } catch (error) {
         console.error('Üretim devam ettirme hatası:', error);
-        showAlert('Üretim devam ettirilemedi', 'error');
+        showModalAlert('Üretim devam ettirilemedi', 'error');
     }
 }
 
@@ -941,22 +836,22 @@ async function continueProduction(productionId) {
 async function pauseProduction(productionId) {
     const production = activeProductions.find(p => p.id === productionId);
     if (!production) {
-        showAlert('Üretim bulunamadı', 'error');
+        showModalAlert('Üretim bulunamadı', 'error');
         return;
     }
     
     if (production.status === 'paused') {
-        showAlert('Bu üretim zaten duraklatılmış durumda', 'info');
+        showModalAlert('Bu üretim zaten duraklatılmış durumda', 'info');
         return;
     }
     
     if (production.status === 'completed') {
-        showAlert('Tamamlanmış üretim duraklatılamaz', 'error');
+        showModalAlert('Tamamlanmış üretim duraklatılamaz', 'error');
         return;
     }
     
     if (production.status === 'cancelled') {
-        showAlert('İptal edilmiş üretim duraklatılamaz', 'error');
+        showModalAlert('İptal edilmiş üretim duraklatılamaz', 'error');
         return;
     }
     
@@ -976,7 +871,7 @@ async function pauseProduction(productionId) {
         });
         
         if (response.ok) {
-            showAlert('Üretim başarıyla duraklatıldı', 'success');
+            showModalAlert('Üretim başarıyla duraklatıldı', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -1006,11 +901,11 @@ async function pauseProduction(productionId) {
             console.log('Üretim duraklatıldı, durum:', production?.status);
         } else {
             const error = await response.json();
-            showAlert(error.error || 'Üretim duraklatılamadı', 'error');
+            showModalAlert(error.error || 'Üretim duraklatılamadı', 'error');
         }
     } catch (error) {
         console.error('Üretim duraklatma hatası:', error);
-        showAlert('Üretim duraklatılamadı', 'error');
+        showModalAlert('Üretim duraklatılamadı', 'error');
     }
 }
 
@@ -1018,17 +913,17 @@ async function pauseProduction(productionId) {
 async function stopProduction(productionId) {
     const production = activeProductions.find(p => p.id === productionId);
     if (!production) {
-        showAlert('Üretim bulunamadı', 'error');
+        showModalAlert('Üretim bulunamadı', 'error');
         return;
     }
     
     if (production.status === 'completed') {
-        showAlert('Bu üretim zaten tamamlanmış', 'info');
+        showModalAlert('Bu üretim zaten tamamlanmış', 'info');
         return;
     }
     
     if (production.status === 'cancelled') {
-        showAlert('Bu üretim zaten iptal edilmiş', 'info');
+        showModalAlert('Bu üretim zaten iptal edilmiş', 'info');
         return;
     }
     
@@ -1049,7 +944,7 @@ async function stopProduction(productionId) {
         });
         
         if (response.ok) {
-            showAlert('Üretim başarıyla durduruldu', 'success');
+            showModalAlert('Üretim başarıyla durduruldu', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -1082,18 +977,18 @@ async function stopProduction(productionId) {
             console.log('Üretim durduruldu, aktif üretim sayısı:', activeProductions.length);
         } else {
             const error = await response.json();
-            showAlert(error.error || 'Üretim durdurulamadı', 'error');
+            showModalAlert(error.error || 'Üretim durdurulamadı', 'error');
         }
     } catch (error) {
         console.error('Üretim durdurma hatası:', error);
-        showAlert('Üretim durdurulamadı', 'error');
+        showModalAlert('Üretim durdurulamadı', 'error');
     }
 }
 
 // Üretim düzenleme modalını aç
 function editProduction() {
     if (!selectedProduction) {
-        showAlert('Seçili üretim bulunamadı', 'error');
+        showModalAlert('Seçili üretim bulunamadı', 'error');
         return;
     }
     
@@ -1116,7 +1011,7 @@ function editProduction() {
 // Üretim değişikliklerini kaydet
 async function saveProductionChanges() {
     if (!selectedProduction) {
-        showAlert('Seçili üretim bulunamadı', 'error');
+        showModalAlert('Seçili üretim bulunamadı', 'error');
         return;
     }
     
@@ -1130,17 +1025,17 @@ async function saveProductionChanges() {
     
     // Validation
     if (formData.target_quantity < 1) {
-        showAlert('Hedef miktar en az 1 olmalıdır', 'error');
+        showModalAlert('Hedef miktar en az 1 olmalıdır', 'error');
         return;
     }
     
     if (formData.quantity < 0) {
-        showAlert('Üretilen miktar negatif olamaz', 'error');
+        showModalAlert('Üretilen miktar negatif olamaz', 'error');
         return;
     }
     
     if (formData.quantity > formData.target_quantity) {
-        showAlert('Üretilen miktar hedef miktardan fazla olamaz', 'error');
+        showModalAlert('Üretilen miktar hedef miktardan fazla olamaz', 'error');
         return;
     }
     
@@ -1154,7 +1049,7 @@ async function saveProductionChanges() {
         });
         
         if (response.ok) {
-            showAlert('Üretim başarıyla güncellendi', 'success');
+            showModalAlert('Üretim başarıyla güncellendi', 'success');
             
             // Düzenleme modalını kapat
             bootstrap.Modal.getInstance(document.getElementById('editProductionModal')).hide();
@@ -1163,18 +1058,18 @@ async function saveProductionChanges() {
             await loadActiveProductions();
         } else {
             const error = await response.json();
-            showAlert(error.error || 'Üretim güncellenemedi', 'error');
+            showModalAlert(error.error || 'Üretim güncellenemedi', 'error');
         }
     } catch (error) {
         console.error('Üretim güncelleme hatası:', error);
-        showAlert('Üretim güncellenemedi', 'error');
+        showModalAlert('Üretim güncellenemedi', 'error');
     }
 }
 
 // Üretimi iptal et
 async function cancelProduction() {
     if (!selectedProduction) {
-        showAlert('Seçili üretim bulunamadı', 'error');
+        showModalAlert('Seçili üretim bulunamadı', 'error');
         return;
     }
     
@@ -1195,7 +1090,7 @@ async function cancelProduction() {
         });
         
         if (response.ok) {
-            showAlert('Üretim başarıyla iptal edildi', 'success');
+            showModalAlert('Üretim başarıyla iptal edildi', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -1217,11 +1112,11 @@ async function cancelProduction() {
             await loadActiveProductions();
         } else {
             const error = await response.json();
-            showAlert(error.error || 'Üretim iptal edilemedi', 'error');
+            showModalAlert(error.error || 'Üretim iptal edilemedi', 'error');
         }
     } catch (error) {
         console.error('Üretim iptal etme hatası:', error);
-        showAlert('Üretim iptal edilemedi', 'error');
+        showModalAlert('Üretim iptal edilemedi', 'error');
     }
 }
 
@@ -1243,7 +1138,7 @@ function updateProductSelects() {
     
     // Nihai ürün seçeneklerini güncelle
     nihaiSelect.innerHTML = '<option value="">Seçiniz...</option>';
-    nihaiUrunler.forEach(nihai => {
+    (window.nihaiUrunler || []).forEach(nihai => {
         if (nihai.aktif) {
             const option = document.createElement('option');
             option.value = nihai.id;
@@ -1535,14 +1430,14 @@ async function handleYarimamulProduction(event) {
     const quantity = parseFloat(document.getElementById('yarimamul-quantity').value);
     
     if (!productId || quantity <= 0) {
-        showAlert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
+        showModalAlert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
         return;
     }
     
     // Stok kontrolü yap
     const stockCheck = checkYarimamulStock(productId, quantity);
     if (!stockCheck.sufficient) {
-        showAlert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
+        showModalAlert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
         return;
     }
     
@@ -1566,7 +1461,7 @@ async function handleYarimamulProduction(event) {
         document.getElementById('yarimamul-production-form-element').reset();
         clearYarimamulMaterials();
         
-        showAlert('Yarı mamul üretimi başlatıldı!', 'success');
+        showModalAlert('Yarı mamul üretimi başlatıldı!', 'success');
         
         // Simüle edilmiş üretim süreci (gerçek uygulamada backend'de olacak)
         setTimeout(() => {
@@ -1575,7 +1470,7 @@ async function handleYarimamulProduction(event) {
         
     } catch (error) {
         console.error('Yarı mamul üretim hatası:', error);
-        showAlert('Üretim başlatılırken hata oluştu', 'error');
+        showModalAlert('Üretim başlatılırken hata oluştu', 'error');
     }
 }
 
@@ -1587,14 +1482,14 @@ async function handleNihaiProduction(event) {
     const quantity = parseFloat(document.getElementById('nihai-quantity').value);
     
     if (!productId || quantity <= 0) {
-        showAlert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
+        showModalAlert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
         return;
     }
     
     // Stok kontrolü yap
     const stockCheck = checkNihaiStock(productId, quantity);
     if (!stockCheck.sufficient) {
-        showAlert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
+        showModalAlert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
         return;
     }
     
@@ -1618,7 +1513,7 @@ async function handleNihaiProduction(event) {
         document.getElementById('nihai-production-form-element').reset();
         clearNihaiMaterials();
         
-        showAlert('Nihai ürün üretimi başlatıldı!', 'success');
+        showModalAlert('Nihai ürün üretimi başlatıldı!', 'success');
         
         // Simüle edilmiş üretim süreci (gerçek uygulamada backend'de olacak)
         setTimeout(() => {
@@ -1627,7 +1522,7 @@ async function handleNihaiProduction(event) {
         
     } catch (error) {
         console.error('Nihai ürün üretim hatası:', error);
-        showAlert('Üretim başlatılırken hata oluştu', 'error');
+        showModalAlert('Üretim başlatılırken hata oluştu', 'error');
     }
 }
 
@@ -1648,7 +1543,7 @@ function completeProduction(production) {
     displayActiveProductions();
     displayProductionHistory();
     
-    showAlert('Üretim tamamlandı!', 'success');
+    showModalAlert('Üretim tamamlandı!', 'success');
 }
 
 // Bu fonksiyon silindi - yukarıda daha iyi versiyonu var
@@ -1660,7 +1555,7 @@ function createProductionCard(production) {
     
     const product = production.type === 'yarimamul' 
         ? yarimamuller.find(y => y.id === production.productId)
-        : nihaiUrunler.find(n => n.id === production.productId);
+        : (window.nihaiUrunler || []).find(n => n.id === production.productId);
     
     const startTime = new Date(production.startTime).toLocaleString('tr-TR');
     
@@ -1715,7 +1610,7 @@ function displayProductionHistory() {
     productionHistory.forEach((production, index) => {
         const product = production.type === 'yarimamul' 
             ? yarimamuller.find(y => y.id === production.productId)
-            : nihaiUrunler.find(n => n.id === production.productId);
+            : (window.nihaiUrunler || []).find(n => n.id === production.productId);
         
         const startTime = new Date(production.startTime).toLocaleString('tr-TR');
         const endTime = production.endTime ? new Date(production.endTime).toLocaleString('tr-TR') : '-';
@@ -1795,7 +1690,7 @@ function updateProductionStatistics() {
     productionHistory.forEach(production => {
         const product = production.type === 'yarimamul' 
             ? yarimamuller.find(y => y.id === production.productId)
-            : nihaiUrunler.find(n => n.id === production.productId);
+            : (window.nihaiUrunler || []).find(n => n.id === production.productId);
         
         if (product) {
             const unitCost = product.birim_maliyet || product.birim_fiyat || 0;
@@ -1829,13 +1724,13 @@ function updateProductionStatistics() {
 function viewProductionDetails(productionIndex) {
     const production = productionHistory[productionIndex];
     if (!production) {
-        showAlert('Üretim bulunamadı', 'error');
+        showModalAlert('Üretim bulunamadı', 'error');
         return;
     }
     
     const product = production.type === 'yarimamul' 
         ? yarimamuller.find(y => y.id === production.productId)
-        : nihaiUrunler.find(n => n.id === production.productId);
+        : (window.nihaiUrunler || []).find(n => n.id === production.productId);
     
     const startTime = new Date(production.startTime).toLocaleString('tr-TR');
     const endTime = production.endTime ? new Date(production.endTime).toLocaleString('tr-TR') : 'Devam Ediyor';
@@ -1926,7 +1821,7 @@ function viewProductionDetails(productionIndex) {
 function viewBarcodeHistory(productionIndex) {
     const production = productionHistory[productionIndex];
     if (!production || !production.scannedBarcodes || production.scannedBarcodes.length === 0) {
-        showAlert('Barkod geçmişi bulunamadı', 'warning');
+        showModalAlert('Barkod geçmişi bulunamadı', 'warning');
         return;
     }
     
@@ -2011,14 +1906,13 @@ function showDetailedAlert(title, content, type) {
 
 // Aktif üretimleri yenile
 function refreshActiveProductions() {
-    loadActiveProductions();
-    showAlert('Aktif üretimler yenilendi', 'success');
+    showModalAlert('Aktif üretimler yenilendi', 'success');
 }
 
 // Üretim geçmişini yenile
 function refreshProductionHistory() {
     loadProductionHistory();
-    showAlert('Üretim geçmişi yenilendi', 'success');
+    showModalAlert('Üretim geçmişi yenilendi', 'success');
 }
 
 // Üretim geçmişini temizle
@@ -2026,7 +1920,7 @@ function clearProductionHistory() {
     if (confirm('Üretim geçmişini temizlemek istediğinizden emin misiniz?')) {
         productionHistory = [];
         displayProductionHistory();
-        showAlert('Üretim geçmişi temizlendi', 'success');
+        showModalAlert('Üretim geçmişi temizlendi', 'success');
     }
 }
 
@@ -2039,7 +1933,7 @@ function filterProductionHistory() {
     const filteredHistory = productionHistory.filter(production => {
         const product = production.type === 'yarimamul' 
             ? yarimamuller.find(y => y.id === production.productId)
-            : nihaiUrunler.find(n => n.id === production.productId);
+            : (window.nihaiUrunler || []).find(n => n.id === production.productId);
         
         // Arama filtresi
         const matchesSearch = !searchTerm || 
@@ -2078,7 +1972,7 @@ function displayFilteredProductionHistory(filteredHistory) {
     filteredHistory.forEach((production, index) => {
         const product = production.type === 'yarimamul' 
             ? yarimamuller.find(y => y.id === production.productId)
-            : nihaiUrunler.find(n => n.id === production.productId);
+            : (window.nihaiUrunler || []).find(n => n.id === production.productId);
         
         const startTime = new Date(production.startTime).toLocaleString('tr-TR');
         const endTime = production.endTime ? new Date(production.endTime).toLocaleString('tr-TR') : '-';
@@ -2166,6 +2060,349 @@ function startProductionWithBarcode(type) {
     modal.show();
 }
 
+// ===== ÜRETİM BAŞLAT TAB'ı FONKSİYONLARI =====
+
+// Onaylanmış planları yükle
+async function loadApprovedPlans() {
+    try {
+        const response = await fetch('/api/production-plans/approved');
+        const plans = await response.json();
+        
+        const tbody = document.getElementById('approved-plans-list');
+        
+        if (plans.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-muted">
+                        <i class="fas fa-info-circle me-2"></i>Onaylanmış plan bulunmuyor
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = plans.map(plan => `
+            <tr>
+                <td>
+                    <strong>${plan.plan_name}</strong>
+                    <br><small class="text-muted">${plan.plan_type}</small>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${plan.total_orders || 0} Sipariş</span>
+                </td>
+                <td>
+                    <span class="badge bg-primary">${plan.total_quantity || 0} Adet</span>
+                </td>
+                <td>
+                    <span class="badge bg-info">${plan.assigned_operator || 'Atanmamış'}</span>
+                </td>
+                <td>${new Date(plan.start_date).toLocaleDateString('tr-TR')}</td>
+                <td>${new Date(plan.end_date).toLocaleDateString('tr-TR')}</td>
+                <td>
+                    <span class="badge bg-${getStatusColor(plan.status)}">${getStatusText(plan.status)}</span>
+                </td>
+                <td>
+                    ${plan.status === 'approved' ? 
+                        `<button class="btn btn-success btn-sm me-1" onclick="startProductionFromPlan(${plan.id})" title="Üretimi Başlat">
+                            <i class="fas fa-play"></i>
+                        </button>` : 
+                        `<button class="btn btn-warning btn-sm me-1" onclick="viewActiveProduction(${plan.id})" title="Aktif Üretimi Görüntüle">
+                            <i class="fas fa-eye"></i>
+                        </button>`
+                    }
+                    <button class="btn btn-info btn-sm" onclick="showPlanDetails(${plan.id})" title="Plan Detayları">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Onaylanmış planlar yüklenemedi:', error);
+        showModalAlert('Onaylanmış planlar yüklenemedi', 'error');
+    }
+}
+
+// Plandan üretim başlat
+async function startProductionFromPlan(planId) {
+    try {
+        const response = await fetch(`/api/production-plans/${planId}/start-production`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                product_type: 'nihai',
+                product_id: 1,
+                product_name: 'Ürün',
+                planned_quantity: 1,
+                assigned_operator: 'Thunder Serisi Operatör'
+            })
+        });
+        
+        if (response.ok) {
+            const production = await response.json();
+            showModalAlert('Üretim başarıyla başlatıldı!', 'success');
+            loadApprovedPlans(); // Planları yenile
+            updateStatusPanel(); // Durum panelini güncelle
+        } else {
+            const error = await response.json();
+            showModalAlert('Üretim başlatılamadı: ' + error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Üretim başlatma hatası:', error);
+        showModalAlert('Üretim başlatılamadı', 'error');
+    }
+}
+
+// Plan detaylarını göster
+function showPlanDetails(planId) {
+    // Bu fonksiyon plan detaylarını modal'da gösterecek
+    showModalAlert('Plan detayları gösterilecek (geliştirilecek)', 'info');
+}
+
+// Aktif üretimi görüntüle
+function viewActiveProduction(planId) {
+    showModalAlert('Aktif üretimler artık Üretim Başlat tab\'ında yönetiliyor', 'info');
+}
+
+// Durum panelini güncelle
+async function updateStatusPanel() {
+    try {
+        const response = await fetch('/api/active-productions');
+        const productions = await response.json();
+        
+        // Aktif üretim sayısı
+        const activeCount = productions.filter(p => p.status === 'active').length;
+        document.getElementById('active-productions-count').textContent = activeCount;
+        
+        // Çalışan operatör sayısı
+        const activeOperators = new Set(productions.filter(p => p.status === 'active').map(p => p.assigned_operator));
+        document.getElementById('active-operators-count').textContent = activeOperators.size;
+        
+        // Kalite geçiş oranı (şimdilik sabit)
+        document.getElementById('quality-pass-rate').textContent = '95%';
+        
+        // Ortalama süre (şimdilik sabit)
+        document.getElementById('avg-production-time').textContent = '2h';
+        
+    } catch (error) {
+        console.error('Durum paneli güncellenemedi:', error);
+    }
+}
+
+// Operatörleri yükle
+async function loadOperators() {
+    try {
+        const response = await fetch('/api/operators');
+        const operators = await response.json();
+        
+        const select = document.getElementById('operator-select');
+        select.innerHTML = '<option value="">Operatör Seçiniz...</option>';
+        
+        operators.forEach(operator => {
+            const option = document.createElement('option');
+            option.value = operator.name;
+            option.textContent = `${operator.name} - ${operator.department}`;
+            select.appendChild(option);
+        });
+        
+        // Operatör seçimi değiştiğinde
+        select.addEventListener('change', function() {
+            if (this.value) {
+                showOperatorStatus(this.value);
+            } else {
+                document.getElementById('operator-status').innerHTML = '';
+                document.getElementById('operator-workload').innerHTML = '';
+            }
+        });
+        
+    } catch (error) {
+        console.error('Operatörler yüklenemedi:', error);
+    }
+}
+
+// Operatör durumunu göster
+async function showOperatorStatus(operatorName) {
+    try {
+        const response = await fetch('/api/active-productions');
+        const productions = await response.json();
+        
+        const operatorProductions = productions.filter(p => p.assigned_operator === operatorName);
+        const activeProductions = operatorProductions.filter(p => p.status === 'active');
+        
+        const statusDiv = document.getElementById('operator-status');
+        const workloadDiv = document.getElementById('operator-workload');
+        
+        // Operatör durumu
+        statusDiv.innerHTML = `
+            <div class="alert alert-${activeProductions.length > 0 ? 'success' : 'info'} mb-0">
+                <i class="fas fa-user me-2"></i>
+                <strong>${operatorName}</strong>
+                <br>
+                <small>${activeProductions.length} aktif üretim</small>
+            </div>
+        `;
+        
+        // İş yükü
+        workloadDiv.innerHTML = `
+            <div class="progress mb-2">
+                <div class="progress-bar" style="width: ${Math.min(activeProductions.length * 25, 100)}%"></div>
+            </div>
+            <small class="text-muted">
+                ${activeProductions.length} aktif üretim / ${operatorProductions.length} toplam üretim
+            </small>
+        `;
+        
+    } catch (error) {
+        console.error('Operatör durumu yüklenemedi:', error);
+    }
+}
+
+// Durum metni döndür
+function getStatusText(status) {
+    const statusMap = {
+        'draft': 'Taslak',
+        'approved': 'Onaylandı',
+        'active': 'Aktif',
+        'completed': 'Tamamlandı',
+        'cancelled': 'İptal Edildi'
+    };
+    return statusMap[status] || status;
+}
+
+// Durum rengi döndür
+function getStatusColor(status) {
+    const colorMap = {
+        'draft': 'secondary',
+        'approved': 'success',
+        'active': 'primary',
+        'completed': 'success',
+        'cancelled': 'danger'
+    };
+    return colorMap[status] || 'secondary';
+}
+
+
+
+// Plan durumu metni
+function getPlanStatusText(status) {
+    const statusMap = {
+        'draft': 'Taslak',
+        'approved': 'Onaylandı',
+        'active': 'Aktif',
+        'completed': 'Tamamlandı',
+        'cancelled': 'İptal Edildi'
+    };
+    return statusMap[status] || status;
+}
+
+// Plan durumu rengi
+function getPlanStatusColor(status) {
+    const colorMap = {
+        'draft': 'secondary',
+        'approved': 'success',
+        'active': 'warning',
+        'completed': 'primary',
+        'cancelled': 'danger'
+    };
+    return colorMap[status] || 'secondary';
+}
+
+
+
+
+
+
+// Üretim durumu metni döndür
+function getProductionStatusText(status) {
+    const statusMap = {
+        'active': 'Aktif',
+        'paused': 'Durduruldu',
+        'completed': 'Tamamlandı',
+        'cancelled': 'İptal Edildi'
+    };
+    return statusMap[status] || status;
+}
+
+// Üretim durumu rengi döndür
+function getProductionStatusColor(status) {
+    const colorMap = {
+        'active': 'success',
+        'paused': 'warning',
+        'completed': 'primary',
+        'cancelled': 'danger'
+    };
+    return colorMap[status] || 'secondary';
+}
+
+// Üretimi durdur
+async function pauseProduction(productionId) {
+    try {
+        const response = await fetch(`/api/active-productions/${productionId}/pause`, {
+            method: 'PUT'
+        });
+        
+        if (response.ok) {
+            showModalAlert('Üretim durduruldu', 'success');
+            updateStatusPanel();
+        } else {
+            const error = await response.json();
+            showModalAlert('Üretim durdurulamadı: ' + error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Üretim durdurma hatası:', error);
+        showModalAlert('Üretim durdurulamadı', 'error');
+    }
+}
+
+// Üretimi devam ettir
+async function resumeProduction(productionId) {
+    try {
+        const response = await fetch(`/api/active-productions/${productionId}/resume`, {
+            method: 'PUT'
+        });
+        
+        if (response.ok) {
+            showModalAlert('Üretim devam ettirildi', 'success');
+            updateStatusPanel();
+        } else {
+            const error = await response.json();
+            showModalAlert('Üretim devam ettirilemedi: ' + error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Üretim devam ettirme hatası:', error);
+        showModalAlert('Üretim devam ettirilemedi', 'error');
+    }
+}
+
+// Üretim detaylarını görüntüle
+function viewProductionDetails(productionId) {
+    showModalAlert('Üretim detayları gösterilecek (geliştirilecek)', 'info');
+}
+
+// Üretimi iptal et
+async function cancelProduction(productionId) {
+    if (confirm('Bu üretimi iptal etmek istediğinizden emin misiniz?')) {
+        try {
+            const response = await fetch(`/api/active-productions/${productionId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showModalAlert('Üretim iptal edildi', 'success');
+                updateStatusPanel();
+            } else {
+                const error = await response.json();
+                showModalAlert('Üretim iptal edilemedi: ' + error.error, 'error');
+            }
+        } catch (error) {
+            console.error('Üretim iptal hatası:', error);
+            showModalAlert('Üretim iptal edilemedi', 'error');
+        }
+    }
+}
+
 // Üretim ürün seçeneklerini güncelle
 function updateProductionProductSelect(type) {
     const select = document.getElementById('production-product');
@@ -2182,7 +2419,7 @@ function updateProductionProductSelect(type) {
             }
         });
     } else if (type === 'nihai') {
-        nihaiUrunler.forEach(nihai => {
+        (window.nihaiUrunler || []).forEach(nihai => {
             if (nihai.aktif) {
                 const option = document.createElement('option');
                 option.value = nihai.id;
@@ -2235,13 +2472,13 @@ function checkMaterialsForProduction() {
     }
 }
 
-// Üretimi başlat
-function startProduction() {
+// Üretimi başlat (ESKİ FONKSİYON - DEVRE DIŞI)
+function startProductionOld() {
     const productId = parseInt(document.getElementById('production-product').value);
     const quantity = parseInt(document.getElementById('production-quantity').value);
     
     if (!productId || !quantity) {
-        showAlert('Lütfen ürün ve miktar seçin', 'warning');
+        showModalAlert('Lütfen ürün ve miktar seçin', 'warning');
         return;
     }
     
@@ -2250,11 +2487,11 @@ function startProduction() {
     if (currentProductionType === 'yarimamul') {
         product = yarimamuller.find(y => y.id === productId);
     } else {
-        product = nihaiUrunler.find(n => n.id === productId);
+        product = (window.nihaiUrunler || []).find(n => n.id === productId);
     }
     
     if (!product) {
-        showAlert('Ürün bulunamadı', 'error');
+        showModalAlert('Ürün bulunamadı', 'error');
         return;
     }
     
@@ -2332,84 +2569,7 @@ function initializeBarcodeModal() {
     document.getElementById('last-scanned').innerHTML = 'Henüz barkod okutulmadı';
 }
 
-// Barkod okutma
-function scanBarcode() {
-    const barcodeInput = document.getElementById('barcode-input');
-    const barcode = barcodeInput.value.trim();
-    
-    if (!barcode) {
-        showBarcodeResult('Lütfen barkod girin', 'warning');
-        return;
-    }
-    
-    // Aynı barkodun tekrar okutulmasını engelle (1 saniye içinde)
-    const now = Date.now();
-    const lastScan = window.lastBarcodeScan || 0;
-    const lastBarcode = window.lastScannedBarcode || '';
-    
-    if (barcode === lastBarcode && (now - lastScan) < 1000) {
-        showBarcodeResult('⚠️ Aynı barkod tekrar okutuldu, işlem yapılmadı', 'warning');
-        barcodeInput.value = '';
-        barcodeInput.focus();
-        return;
-    }
-    
-    // Barkod doğrulama
-    const isValid = validateBarcode(barcode);
-    
-    if (isValid) {
-        // Başarılı okutma
-        productionStats.produced++;
-        productionStats.success++;
-        productionStats.target = Math.max(0, productionStats.target - 1);
-        
-        scannedBarcodes.push({
-            barcode: barcode,
-            timestamp: new Date().toISOString(),
-            success: true
-        });
-        
-        showBarcodeResult(`✅ Başarılı! Üretilen: ${productionStats.success}`, 'success');
-        updateProductionStats();
-        
-        // Tamamlama butonunu kontrol et
-        if (productionStats.target === 0) {
-            document.getElementById('complete-production-btn').disabled = false;
-            showBarcodeResult('🎉 Tüm ürünler üretildi! Üretimi tamamlayabilirsiniz.', 'success');
-        }
-        
-        // Başarılı okutma sonrası input'u hemen temizle
-        barcodeInput.value = '';
-        barcodeInput.focus();
-        
-    } else {
-        // Hatalı barkod
-        productionStats.error++;
-        
-        scannedBarcodes.push({
-            barcode: barcode,
-            timestamp: new Date().toISOString(),
-            success: false
-        });
-        
-        showBarcodeResult(`❌ Hatalı barkod! Beklenen: ${currentProduction.product.barkod || 'Barkod tanımlanmamış'}`, 'danger');
-        updateProductionStats();
-        
-        // Hatalı barkod sonrası input'u temizle
-        barcodeInput.value = '';
-        barcodeInput.focus();
-    }
-    
-    // Son okutulan barkodu göster
-    document.getElementById('last-scanned').innerHTML = `
-        <strong>${barcode}</strong><br>
-        <small class="text-muted">${new Date().toLocaleTimeString('tr-TR')}</small>
-    `;
-    
-    // Son okutma bilgilerini kaydet
-    window.lastBarcodeScan = now;
-    window.lastScannedBarcode = barcode;
-}
+// Duplicate scanBarcode fonksiyonu kaldırıldı - çakışma önlendi
 
 // Barkod doğrulama
 function validateBarcode(barcode) {
@@ -2476,7 +2636,7 @@ function updateProductionStats() {
 // Üretimi tamamla
 function completeProduction() {
     if (!currentProduction) {
-        showAlert('Aktif üretim bulunamadı', 'error');
+        showModalAlert('Aktif üretim bulunamadı', 'error');
         return;
     }
     
@@ -2510,7 +2670,7 @@ function completeProduction() {
         barcodeModal.hide();
         
         // Başarı mesajı
-        showAlert(`Üretim tamamlandı! ${productionStats.success} adet ${currentProduction.product.ad} üretildi.`, 'success');
+        showModalAlert(`Üretim tamamlandı! ${productionStats.success} adet ${currentProduction.product.ad} üretildi.`, 'success');
         
         // Verileri sıfırla
         currentProduction = null;
@@ -2520,12 +2680,12 @@ function completeProduction() {
         
     } catch (error) {
         console.error('Üretim tamamlama hatası:', error);
-        showAlert('Üretim tamamlanırken hata oluştu', 'error');
+        showModalAlert('Üretim tamamlanırken hata oluştu', 'error');
     }
 }
 
 // Alert göster
-function showAlert(message, type) {
+function showModalAlert(message, type) {
     const alertModal = document.getElementById('alertModal');
     const alertTitle = document.getElementById('alertModalTitle');
     const alertBody = document.getElementById('alertModalBody');
@@ -2776,11 +2936,11 @@ async function showProductionSummary() {
             Verimlilik: %${summary.efficiency}
         `;
         
-        showAlert(summaryText, 'info');
+        showModalAlert(summaryText, 'info');
         return summary;
     } catch (error) {
         console.error('Üretim özeti alınamadı:', error);
-        showAlert('Üretim özeti alınamadı: ' + error.message, 'error');
+        showModalAlert('Üretim özeti alınamadı: ' + error.message, 'error');
         return null;
     }
 }
@@ -2802,11 +2962,11 @@ async function showEfficiencyReport(productionId) {
             Üretim Hızı: ${report.production_rate} adet/dakika
         `;
         
-        showAlert(reportText, 'info');
+        showModalAlert(reportText, 'info');
         return report;
     } catch (error) {
         console.error('Verimlilik raporu alınamadı:', error);
-        showAlert('Verimlilik raporu alınamadı: ' + error.message, 'error');
+        showModalAlert('Verimlilik raporu alınamadı: ' + error.message, 'error');
         return null;
     }
 }
@@ -2826,7 +2986,7 @@ async function loadStageTemplates() {
         return templates;
     } catch (error) {
         console.error('Stage templates load error:', error);
-        showAlert('Aşama şablonları yüklenemedi: ' + error.message, 'error');
+        showModalAlert('Aşama şablonları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -2961,7 +3121,7 @@ async function addStageTemplate() {
         if (!response.ok) throw new Error('Aşama şablonu eklenemedi');
         
         const newTemplate = await response.json();
-        showAlert('Aşama şablonu başarıyla eklendi!', 'success');
+        showModalAlert('Aşama şablonu başarıyla eklendi!', 'success');
         
         // Modal'ı kapat ve formu temizle
         const modal = bootstrap.Modal.getInstance(document.getElementById('addStageTemplateModal'));
@@ -2974,7 +3134,7 @@ async function addStageTemplate() {
         return newTemplate;
     } catch (error) {
         console.error('Add stage template error:', error);
-        showAlert('Aşama şablonu eklenemedi: ' + error.message, 'error');
+        showModalAlert('Aşama şablonu eklenemedi: ' + error.message, 'error');
     }
 }
 
@@ -2989,7 +3149,7 @@ async function loadProductionStages(productionId) {
         return stages;
     } catch (error) {
         console.error('Production stages load error:', error);
-        showAlert('Üretim aşamaları yüklenemedi: ' + error.message, 'error');
+        showModalAlert('Üretim aşamaları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -3108,11 +3268,11 @@ async function startStage(stageId) {
         
         if (!response.ok) throw new Error('Aşama başlatılamadı');
         
-        showAlert('Aşama başarıyla başlatıldı!', 'success');
+        showModalAlert('Aşama başarıyla başlatıldı!', 'success');
         await loadProductionStages(currentProductionId);
     } catch (error) {
         console.error('Start stage error:', error);
-        showAlert('Aşama başlatılamadı: ' + error.message, 'error');
+        showModalAlert('Aşama başlatılamadı: ' + error.message, 'error');
     }
 }
 
@@ -3131,11 +3291,11 @@ async function completeStage(stageId) {
         
         if (!response.ok) throw new Error('Aşama tamamlanamadı');
         
-        showAlert('Aşama başarıyla tamamlandı!', 'success');
+        showModalAlert('Aşama başarıyla tamamlandı!', 'success');
         await loadProductionStages(currentProductionId);
     } catch (error) {
         console.error('Complete stage error:', error);
-        showAlert('Aşama tamamlanamadı: ' + error.message, 'error');
+        showModalAlert('Aşama tamamlanamadı: ' + error.message, 'error');
     }
 }
 
@@ -3154,23 +3314,7 @@ function showProductionStagesModal(productionId) {
 }
 
 // Tab değiştiğinde aşama şablonlarını yükle
-document.addEventListener('DOMContentLoaded', function() {
-    const stagesTab = document.getElementById('production-stages-tab');
-    if (stagesTab) {
-        stagesTab.addEventListener('shown.bs.tab', function() {
-            loadStageTemplates();
-        });
-    }
-    
-    const qualityTab = document.getElementById('quality-control-tab');
-    if (qualityTab) {
-        qualityTab.addEventListener('shown.bs.tab', function() {
-            loadQualityCheckpoints();
-            loadQualityStandards();
-            loadQualityStatistics();
-        });
-    }
-});
+// Tab event listener'ları ana DOMContentLoaded'da tanımlandı
 
 // ========================================
 // ==================== FAZ 3: ÜRETİM PLANLAMA VE ZAMANLAMA SİSTEMİ ====================
@@ -3186,11 +3330,11 @@ async function loadProductionPlans() {
             displayProductionPlans(productionPlans);
         } else {
             console.error('Üretim planları yüklenemedi:', data.error);
-            showAlert('Üretim planları yüklenemedi: ' + data.error, 'error');
+            showModalAlert('Üretim planları yüklenemedi: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Üretim planları fetch error:', error);
-        showAlert('Üretim planları yüklenirken hata oluştu', 'error');
+        showModalAlert('Üretim planları yüklenirken hata oluştu', 'error');
     }
 }
 
@@ -3223,7 +3367,7 @@ function displayProductionPlans(plans) {
                         <div class="d-flex gap-2">
                             <span class="badge bg-${getStatusColor(plan.status)}">${getStatusText(plan.status)}</span>
                             <span class="badge bg-info">${plan.plan_type}</span>
-                            <span class="badge bg-secondary">${plan.total_orders} Sipariş</span>
+                            <span class="badge bg-secondary">${plan.total_quantity || 0} Adet</span>
                         </div>
                     </div>
                     <div class="col-md-4 text-end">
@@ -3248,24 +3392,28 @@ function displayProductionPlans(plans) {
 // Kaynakları yükleme
 async function loadResources() {
     try {
+        console.log('Kaynaklar yükleniyor...');
         const response = await fetch('/api/resources');
         const data = await response.json();
         
+        console.log('Kaynak API yanıtı:', data);
+        
         if (response.ok) {
             resources = data;
-            displayResources(resources);
+            await displayResources(resources);
+            console.log('Kaynaklar başarıyla yüklendi:', resources.length);
         } else {
             console.error('Kaynaklar yüklenemedi:', data.error);
-            showAlert('Kaynaklar yüklenemedi: ' + data.error, 'error');
+            showModalAlert('Kaynaklar yüklenemedi: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Kaynaklar fetch error:', error);
-        showAlert('Kaynaklar yüklenirken hata oluştu', 'error');
+        showModalAlert('Kaynaklar yüklenirken hata oluştu', 'error');
     }
 }
 
 // Kaynakları görüntüleme
-function displayResources(resources) {
+async function displayResources(resources) {
     const container = document.getElementById('resources-container');
     
     if (!resources || resources.length === 0) {
@@ -3279,6 +3427,16 @@ function displayResources(resources) {
         return;
     }
     
+    // Operatör kullanım bilgilerini hesapla
+    let operatorUsage = { 4: 0, 5: 0 };
+    try {
+        operatorUsage = await calculateOperatorUsage();
+        console.log('Operatör kullanım bilgisi:', operatorUsage);
+    } catch (error) {
+        console.error('Operatör kullanım hesaplama hatası:', error);
+        operatorUsage = { 4: 0, 5: 0 };
+    }
+    
     // Kaynakları türlerine göre grupla
     const groupedResources = resources.reduce((acc, resource) => {
         if (!acc[resource.resource_type]) {
@@ -3288,65 +3446,83 @@ function displayResources(resources) {
         return acc;
     }, {});
     
-    container.innerHTML = Object.entries(groupedResources).map(([type, typeResources]) => `
-        <div class="mb-4">
-            <h6 class="text-capitalize mb-3">
-                <i class="fas fa-${getResourceIcon(type)} me-2"></i>
-                ${getResourceTypeText(type)} (${typeResources.length})
-            </h6>
-            <div class="row">
-                ${typeResources.map(resource => `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6 class="card-title">${resource.resource_name}</h6>
-                                <p class="card-text">
-                                    <small class="text-muted">${resource.resource_code}</small><br>
-                                    <strong>Kapasite:</strong> ${resource.capacity}<br>
-                                    <strong>Kullanım:</strong> ${resource.current_usage}/${resource.capacity}<br>
-                                    <strong>Maliyet:</strong> ₺${resource.cost_per_hour}/saat
-                                </p>
-                                <div class="progress mb-2" style="height: 6px;">
-                                    <div class="progress-bar" style="width: ${(resource.current_usage / resource.capacity) * 100}%"></div>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span class="badge bg-${resource.is_active ? 'success' : 'secondary'}">
-                                        ${resource.is_active ? 'Aktif' : 'Pasif'}
-                                    </span>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" onclick="editResource(${resource.id})">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-outline-danger" onclick="deleteResource(${resource.id})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `).join('');
+    // HTML oluştur
+    let html = '';
+    Object.entries(groupedResources).forEach(([type, typeResources]) => {
+        const typeIcon = getResourceIcon(type);
+        const typeName = getResourceTypeText(type);
+        
+        html += '<div class="mb-4">';
+        html += '<h6 class="text-capitalize mb-3">';
+        html += '<i class="fas fa-' + typeIcon + ' me-2"></i>';
+        html += typeName + ' (' + typeResources.length + ')';
+        html += '</h6>';
+        html += '<div class="row">';
+        
+        typeResources.forEach(resource => {
+            const usage = operatorUsage[resource.id] || 0;
+            const resourceIcon = getResourceIcon(type);
+            
+            html += '<div class="col-md-6 col-lg-4 mb-3">';
+            html += '<div class="card h-100">';
+            html += '<div class="card-body">';
+            html += '<h6 class="card-title">';
+            html += '<i class="fas fa-' + resourceIcon + ' me-2"></i>';
+            html += resource.resource_name;
+            html += '</h6>';
+            html += '<p class="card-text small text-muted">';
+            html += '<i class="fas fa-map-marker-alt me-1"></i>' + resource.location + '<br>';
+            html += '<i class="fas fa-clock me-1"></i>' + resource.capacity + ' saat<br>';
+            html += '<i class="fas fa-lira-sign me-1"></i>₺' + resource.cost_per_hour + '/saat<br>';
+            html += '<i class="fas fa-user me-1"></i>Kullanım: ' + usage + '/' + resource.capacity + ' saat';
+            html += '</p>';
+            html += '<div class="d-flex gap-2">';
+            html += '<button class="btn btn-sm btn-outline-primary" onclick="editResource(' + resource.id + ')">';
+            html += '<i class="fas fa-edit me-1"></i>Düzenle';
+            html += '</button>';
+            html += '<button class="btn btn-sm btn-outline-danger" onclick="deleteResource(' + resource.id + ')">';
+            html += '<i class="fas fa-trash me-1"></i>Sil';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        html += '</div>';
+    });
+    
+    container.innerHTML = html;
+}
+
+// Çalışma günü kontrolü için yardımcı fonksiyon
+function isWorkingDay(date) {
+  const dayOfWeek = date.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+  // Pazartesi-Cuma arası çalışma günleri (1-5)
+  return dayOfWeek >= 1 && dayOfWeek <= 5;
 }
 
 // Siparişleri yükleme
 async function loadOrders() {
     try {
+        console.log('Siparişler yükleniyor...');
         const response = await fetch('/api/orders');
         const data = await response.json();
+        
+        console.log('Sipariş API yanıtı:', data);
         
         if (response.ok) {
             orders = data;
             displayOrders(orders);
+            console.log('Siparişler başarıyla yüklendi:', orders.length);
         } else {
             console.error('Siparişler yüklenemedi:', data.error);
-            showAlert('Siparişler yüklenemedi: ' + data.error, 'error');
+            showModalAlert('Siparişler yüklenemedi: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Siparişler fetch error:', error);
-        showAlert('Siparişler yüklenirken hata oluştu', 'error');
+        showModalAlert('Siparişler yüklenirken hata oluştu', 'error');
     }
 }
 
@@ -3386,10 +3562,15 @@ function displayOrders(orders) {
                         <tr>
                             <td><strong>${order.order_number}</strong></td>
                             <td>${order.customer_name}</td>
-                            <td>${order.product_name}</td>
-                            <td>${order.quantity}</td>
-                            <td>₺${order.total_amount?.toLocaleString('tr-TR') || '0'}</td>
-                            <td>${new Date(order.delivery_date).toLocaleDateString('tr-TR')}</td>
+                            <td>Çoklu Ürün</td>
+                            <td>Toplam Miktar</td>
+                            <td>
+                                ${new Date(order.delivery_date).toLocaleDateString('tr-TR')}
+                                ${!isWorkingDay(new Date(order.delivery_date)) ? 
+                                    `<br><small class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Çalışma günü dışı</small>` : 
+                                    `<br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Çalışma günü</small>`
+                                }
+                            </td>
                             <td>
                                 <span class="badge bg-${getPriorityColor(order.priority)}">
                                     ${order.priority}
@@ -3495,7 +3676,7 @@ function getResourceTypeText(type) {
 
 // Aşama şablonu düzenleme
 function editStageTemplate(templateId) {
-    showAlert('Aşama şablonu düzenleme özelliği yakında eklenecek', 'info');
+    showModalAlert('Aşama şablonu düzenleme özelliği yakında eklenecek', 'info');
 }
 
 // Aşama şablonu silme
@@ -3510,15 +3691,15 @@ async function deleteStageTemplate(templateId) {
         });
         
         if (response.ok) {
-            showAlert('Aşama şablonu başarıyla silindi', 'success');
+            showModalAlert('Aşama şablonu başarıyla silindi', 'success');
             loadStageTemplates();
         } else {
             const error = await response.json();
-            showAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
+            showModalAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
         }
     } catch (error) {
         console.error('Delete stage template error:', error);
-        showAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
+        showModalAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
     }
 }
 
@@ -3535,48 +3716,48 @@ function getPriorityColor(priority) {
 
 // Modal fonksiyonları
 function showAddPlanModal() {
-    showAlert('Yeni plan ekleme modalı yakında eklenecek', 'info');
+    showModalAlert('Yeni plan ekleme modalı yakında eklenecek', 'info');
 }
 
 function showSchedulingModal() {
-    showAlert('Zamanlama modalı yakında eklenecek', 'info');
+    showModalAlert('Zamanlama modalı yakında eklenecek', 'info');
 }
 
 function viewPlanDetails(planId) {
-    showAlert('Plan detayları yakında eklenecek', 'info');
+    showModalAlert('Plan detayları yakında eklenecek', 'info');
 }
 
 function editPlan(planId) {
-    showAlert('Plan düzenleme yakında eklenecek', 'info');
+    showModalAlert('Plan düzenleme yakında eklenecek', 'info');
 }
 
 function deletePlan(planId) {
     if (confirm('Bu planı silmek istediğinizden emin misiniz?')) {
-        showAlert('Plan silme işlemi yakında eklenecek', 'info');
+        showModalAlert('Plan silme işlemi yakında eklenecek', 'info');
     }
 }
 
 function editResource(resourceId) {
-    showAlert('Kaynak düzenleme yakında eklenecek', 'info');
+    showModalAlert('Kaynak düzenleme yakında eklenecek', 'info');
 }
 
 function deleteResource(resourceId) {
     if (confirm('Bu kaynağı silmek istediğinizden emin misiniz?')) {
-        showAlert('Kaynak silme işlemi yakında eklenecek', 'info');
+        showModalAlert('Kaynak silme işlemi yakında eklenecek', 'info');
     }
 }
 
 function viewOrder(orderId) {
-    showAlert('Sipariş detayları yakında eklenecek', 'info');
+    showModalAlert('Sipariş detayları yakında eklenecek', 'info');
 }
 
 function editOrder(orderId) {
-    showAlert('Sipariş düzenleme yakında eklenecek', 'info');
+    showModalAlert('Sipariş düzenleme yakında eklenecek', 'info');
 }
 
 function deleteOrder(orderId) {
     if (confirm('Bu siparişi silmek istediğinizden emin misiniz?')) {
-        showAlert('Sipariş silme işlemi yakında eklenecek', 'info');
+        showModalAlert('Sipariş silme işlemi yakında eklenecek', 'info');
     }
 }
 
@@ -3594,7 +3775,7 @@ async function loadQualityCheckpoints() {
         return checkpoints;
     } catch (error) {
         console.error('Quality checkpoints load error:', error);
-        showAlert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
+        showModalAlert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -3714,7 +3895,7 @@ async function loadQualityStandards() {
         return standards;
     } catch (error) {
         console.error('Quality standards load error:', error);
-        showAlert('Kalite standartları yüklenemedi: ' + error.message, 'error');
+        showModalAlert('Kalite standartları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -3797,7 +3978,7 @@ async function loadQualityStatistics() {
         return stats;
     } catch (error) {
         console.error('Quality statistics load error:', error);
-        showAlert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
+        showModalAlert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
     }
 }
 
@@ -3839,7 +4020,7 @@ async function addQualityCheckpoint() {
         if (!response.ok) throw new Error('Kalite kontrol noktası eklenemedi');
         
         const newCheckpoint = await response.json();
-        showAlert('Kalite kontrol noktası başarıyla eklendi!', 'success');
+        showModalAlert('Kalite kontrol noktası başarıyla eklendi!', 'success');
         
         // Modal'ı kapat ve formu temizle
         const modal = bootstrap.Modal.getInstance(document.getElementById('addCheckpointModal'));
@@ -3852,18 +4033,94 @@ async function addQualityCheckpoint() {
         return newCheckpoint;
     } catch (error) {
         console.error('Add quality checkpoint error:', error);
-        showAlert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
+        showModalAlert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
     }
 }
 
 // Kalite kontrolü gerçekleştir
 function performQualityCheck(checkpointId) {
     // Bu fonksiyon daha sonra implement edilecek
-    showAlert('Kalite kontrolü özelliği yakında eklenecek!', 'info');
+    showModalAlert('Kalite kontrolü özelliği yakında eklenecek!', 'info');
 }
 
 // Kalite raporlarını göster
 function showQualityReports() {
     // Bu fonksiyon daha sonra implement edilecek
-    showAlert('Kalite raporları özelliği yakında eklenecek!', 'info');
+    showModalAlert('Kalite raporları özelliği yakında eklenecek!', 'info');
 }
+
+// Real-time updates handler fonksiyonları
+window.updateActiveProductions = function(data) {
+    try {
+        console.log('Active productions güncellendi:', data);
+        if (data && Array.isArray(data)) {
+            window.activeProductions = data;
+            // displayActiveProductions(); // Artık kullanılmıyor - yeni tasarımda planlanan üretimler kullanılıyor
+        }
+    } catch (error) {
+        console.error('updateActiveProductions hatası:', error);
+        // Kritik hataları kullanıcıya göster
+        if (window.stateManager && (error.name === 'SyntaxError' || error.name === 'ReferenceError' || error.name === 'TypeError')) {
+            window.stateManager.addNotification('Aktif üretimler güncelleme hatası - Sistem yöneticisine bildirin', 'error');
+        }
+    }
+};
+
+window.updateProductionHistory = function(data) {
+    try {
+        console.log('Production history güncellendi:', data);
+        if (data && Array.isArray(data)) {
+            window.productionHistory = data;
+            if (typeof displayProductionHistory === 'function') {
+                displayProductionHistory();
+            }
+        }
+    } catch (error) {
+        console.error('updateProductionHistory hatası:', error);
+        // Kritik hataları kullanıcıya göster
+        if (window.stateManager && (error.name === 'SyntaxError' || error.name === 'ReferenceError' || error.name === 'TypeError')) {
+            window.stateManager.addNotification('Üretim geçmişi güncelleme hatası - Sistem yöneticisine bildirin', 'error');
+        }
+    }
+};
+
+window.updateStageTemplates = function(data) {
+    try {
+        console.log('Stage templates güncellendi:', data);
+        if (data && Array.isArray(data)) {
+            window.stageTemplates = data;
+        }
+    } catch (error) {
+        console.error('updateStageTemplates hatası:', error);
+    }
+};
+
+window.updateQualityCheckpoints = function(data) {
+    try {
+        console.log('Quality checkpoints güncellendi:', data);
+        if (data && Array.isArray(data)) {
+            window.qualityCheckpoints = data;
+        }
+    } catch (error) {
+        console.error('updateQualityCheckpoints hatası:', error);
+    }
+};
+
+window.updateProductionPlans = function(data) {
+    try {
+        console.log('Production plans güncellendi:', data);
+        if (data && Array.isArray(data)) {
+            window.allPlans = data;
+            // Eğer plan görünümü aktifse, güncelle
+            if (typeof renderPlansView === 'function') {
+                renderPlansView();
+            }
+        }
+    } catch (error) {
+        console.error('updateProductionPlans hatası:', error);
+        // Kritik hataları kullanıcıya göster
+        if (window.stateManager && (error.name === 'SyntaxError' || error.name === 'ReferenceError' || error.name === 'TypeError')) {
+            window.stateManager.addNotification('Üretim planları güncelleme hatası - Sistem yöneticisine bildirin', 'error');
+        }
+    }
+};
