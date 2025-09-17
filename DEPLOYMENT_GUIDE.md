@@ -29,11 +29,21 @@
 # Production Environment Variables
 NODE_ENV=production
 PORT=3000
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-JWT_SECRET=your_jwt_secret
-REDIS_URL=your_redis_url
+
+# Supabase (Mevcut projeden aynı bilgiler)
+SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ4OTkwNywiZXhwIjoyMDczMDY1OTA3fQ.XpsgrVHXZPJ5Z0_-VrA62mL0nDxSnQQeRsm6UHGLfXA
+
+# JWT ve Session (Production için güçlü secret'lar)
+JWT_SECRET=x/v7dOYf5fRkmNyBPON7iaP82AJDXXJog+afbchTaEaLgbcP+yUbJcOQdhunD05kN9UxHtRMchQ3fJqFU4l7Gw==
+SESSION_SECRET=your_session_secret_production
+
+# Redis (Opsiyonel - caching için)
+REDIS_URL=redis://localhost:6379
+
+# Diğer Production Ayarları
+LOG_LEVEL=info
 ```
 
 ### **1.3 Build Optimizasyonu**
