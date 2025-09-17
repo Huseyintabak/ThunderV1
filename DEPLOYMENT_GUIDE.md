@@ -91,34 +91,22 @@ REDIS_URL=your_redis_url
 
 ## 🗄️ **VERİTABANI KURULUMU**
 
-### **3.1 Supabase (Önerilen)**
+### **3.1 Supabase (Mevcut Database Kullanımı)**
 ```bash
-# 1. Supabase Proje Oluşturma
-# 2. Database URL ve API Key'leri alma
-# 3. RLS (Row Level Security) politikaları aktifleştirme
-# 4. Database backup'ı alma
+# 1. Mevcut Supabase projesini kullanma
+# 2. Production environment için aynı database URL'leri
+# 3. RLS (Row Level Security) politikaları zaten aktif
+# 4. Mevcut veriler korunacak
+
+# Supabase bağlantı bilgileri (mevcut projeden)
+SUPABASE_URL=https://your-existing-project.supabase.co
+SUPABASE_ANON_KEY=your_existing_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_existing_service_role_key
 ```
 
-### **3.2 PostgreSQL (Self-hosted)**
+### **3.2 Redis Kurulumu (Opsiyonel - Caching için)**
 ```bash
-# Ubuntu'da PostgreSQL kurulumu
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-
-# PostgreSQL servisini başlatma
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-
-# Database oluşturma
-sudo -u postgres psql
-CREATE DATABASE thunderv1_production;
-CREATE USER thunderv1_user WITH PASSWORD 'secure_password';
-GRANT ALL PRIVILEGES ON DATABASE thunderv1_production TO thunderv1_user;
-```
-
-### **3.3 Redis Kurulumu**
-```bash
-# Redis kurulumu
+# Redis kurulumu (caching ve session yönetimi için)
 sudo apt install redis-server
 
 # Redis servisini başlatma
@@ -130,6 +118,44 @@ sudo nano /etc/redis/redis.conf
 # requirepass your_redis_password
 # maxmemory 256mb
 # maxmemory-policy allkeys-lru
+```
+
+### **3.3 Database Migration (Gerekirse)**
+```bash
+# Eğer yeni tablolar veya sütunlar eklendiyse
+# Mevcut Supabase projesinde SQL migration'ları çalıştır
+
+# Supabase Dashboard > SQL Editor'da çalıştırılacak migration'lar:
+# - Yeni tablolar
+# - Yeni sütunlar
+# - Index'ler
+# - RLS politikaları
+```
+
+### **3.4 Supabase Production Konfigürasyonu**
+```bash
+# Supabase Dashboard'da yapılacak ayarlar:
+
+# 1. API Keys kontrolü
+# - Anon key production için uygun mu?
+# - Service role key güvenli mi?
+
+# 2. RLS (Row Level Security) Politikaları
+# - Tüm tablolar için RLS aktif mi?
+# - Production için uygun politikalar var mı?
+
+# 3. Database Ayarları
+# - Connection pooling aktif mi?
+# - Query timeout ayarları uygun mu?
+
+# 4. Monitoring ve Logging
+# - Database logs aktif mi?
+# - API logs aktif mi?
+# - Error tracking aktif mi?
+
+# 5. Backup Ayarları
+# - Otomatik backup aktif mi?
+# - Point-in-time recovery aktif mi?
 ```
 
 ---
@@ -179,14 +205,25 @@ nano .env
 
 ### **4.3 Environment Variables (.env)**
 ```bash
+# Production Environment Variables
 NODE_ENV=production
 PORT=3000
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-JWT_SECRET=your_very_secure_jwt_secret
+
+# Supabase (Mevcut projeden aynı bilgiler)
+SUPABASE_URL=https://your-existing-project.supabase.co
+SUPABASE_ANON_KEY=your_existing_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_existing_service_role_key
+
+# JWT ve Session (Production için güçlü secret'lar)
+JWT_SECRET=your_very_secure_jwt_secret_production
+SESSION_SECRET=your_session_secret_production
+
+# Redis (Opsiyonel - caching için)
 REDIS_URL=redis://localhost:6379
-SESSION_SECRET=your_session_secret
+
+# Diğer Production Ayarları
+LOG_LEVEL=info
+CORS_ORIGIN=https://your-domain.com
 ```
 
 ### **4.4 PM2 Konfigürasyonu**
@@ -406,16 +443,23 @@ npm install winston
 
 ## 🔒 **BACKUP VE GÜVENLİK**
 
-### **7.1 Database Backup**
+### **7.1 Database Backup (Supabase)**
 ```bash
-# PostgreSQL backup script
+# Supabase backup script
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M%S)
-pg_dump -h localhost -U thunderv1_user thunderv1_production > /backup/thunderv1_$DATE.sql
-gzip /backup/thunderv1_$DATE.sql
+
+# Supabase CLI ile backup alma
+npx supabase db dump --db-url "postgresql://postgres:[password]@[host]:5432/postgres" > /backup/thunderv1_supabase_$DATE.sql
+gzip /backup/thunderv1_supabase_$DATE.sql
+
+# Alternatif: Supabase Dashboard'dan manual backup
+# 1. Supabase Dashboard > Settings > Database
+# 2. "Download backup" butonuna tıkla
+# 3. Backup dosyasını sunucuya yükle
 
 # Otomatik backup (crontab)
-0 2 * * * /path/to/backup_script.sh
+0 2 * * * /path/to/supabase_backup_script.sh
 ```
 
 ### **7.2 Application Backup**
@@ -525,13 +569,19 @@ sudo tail -f /var/log/nginx/error.log
 curl http://localhost:3000/api/health
 ```
 
-#### **Database Bağlantı Sorunu**
+#### **Database Bağlantı Sorunu (Supabase)**
 ```bash
-# PostgreSQL servisini kontrol et
-sudo systemctl status postgresql
+# Supabase bağlantısını test et
+curl -X GET "https://your-project.supabase.co/rest/v1/" \
+  -H "apikey: your_anon_key" \
+  -H "Authorization: Bearer your_anon_key"
 
-# Database bağlantısını test et
-psql -h localhost -U thunderv1_user -d thunderv1_production
+# Supabase servis durumunu kontrol et
+curl -X GET "https://your-project.supabase.co/rest/v1/health"
+
+# Environment variables'ları kontrol et
+echo $SUPABASE_URL
+echo $SUPABASE_ANON_KEY
 ```
 
 ### **9.2 Log Analizi**
@@ -553,12 +603,14 @@ grep "slow" /var/www/thunderv1/logs/combined.log
 # 1. Sistem durumunu kontrol et
 pm2 status
 sudo systemctl status nginx
-sudo systemctl status postgresql
 
-# 2. Disk kullanımını kontrol et
+# 2. Supabase bağlantısını kontrol et
+curl -X GET "https://your-project.supabase.co/rest/v1/health"
+
+# 3. Disk kullanımını kontrol et
 df -h
 
-# 3. Log dosyalarını temizle
+# 4. Log dosyalarını temizle
 sudo find /var/log -name "*.log" -type f -mtime +7 -delete
 ```
 
@@ -573,8 +625,12 @@ git pull origin main
 npm install
 pm2 reload thunderv1
 
-# 3. Database optimizasyonu
-sudo -u postgres psql -d thunderv1_production -c "VACUUM ANALYZE;"
+# 3. Supabase durum kontrolü
+# Supabase Dashboard'da:
+# - Database performansını kontrol et
+# - API kullanımını kontrol et
+# - Storage kullanımını kontrol et
+# - RLS politikalarını kontrol et
 ```
 
 ### **10.3 Aylık Bakım**
