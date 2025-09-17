@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Üretim Aşamaları</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Debug - Üretim Aşamaları</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>API Test</h3>
+                <button class="btn btn-primary" onclick="testAPI()">API Test Et</button>
+                <div id="api-result" class="mt-3"></div>
+            </div>
+            
+            <div class="col-md-6">
+                <h3>JavaScript Test</h3>
+                <button class="btn btn-success" onclick="testJS()">JS Test Et</button>
+                <div id="js-result" class="mt-3"></div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3>Console Log</h3>
+                <div id="console-log" class="bg-dark text-light p-3" style="height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Console log'u yakala
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logContainer = document.getElementById('console-log');
+        
+        function addToLog(message, type = 'log') {
+            const div = document.createElement('div');
+            div.className = type === 'error' ? 'text-danger' : 'text-success';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Loading...';
+            
+            try {
+                const response = await fetch('/api/production-stages/templates');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>API Başarılı!</strong><br>
+                        Veri sayısı: ${data.length}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>API Hatası!</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function testJS() {
+            const resultDiv = document.getElementById('js-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Loading...';
+            
+            try {
+                // loadStageTemplates fonksiyonunu test et
+                const response = await fetch('/api/production-stages/templates');
+                const templates = await response.json();
+                
+                // displayStageTemplates fonksiyonunu simüle et
+                const container = document.createElement('div');
+                container.innerHTML = '';
+                
+                if (templates.length === 0) {
+                    container.innerHTML = '<div class="text-center py-4">Aşama şablonu bulunmuyor</div>';
+                } else {
+                    container.innerHTML = `
+                        <div class="row">
+                            ${templates.map(template => `
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">${template.stage_name}</h5>
+                                            <p class="card-text">Tip: ${template.product_type}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>JavaScript Başarılı!</strong><br>
+                        Şablon sayısı: ${templates.length}<br>
+                        <div class="mt-2">${container.innerHTML}</div>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>JavaScript Hatası!</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Sayfa yüklendiğinde otomatik test
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Debug sayfası yüklendi');
+            testAPI();
+            testJS();
+        });
+    </script>
+</body>
+</html>
+

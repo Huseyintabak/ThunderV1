@@ -4,6 +4,42 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Barkod Input Loading ve Validation Stilleri */
+#barcodeInput.is-loading {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    position: relative;
+}
+
+#barcodeInput.is-loading::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffc107;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+#barcodeInput.is-valid {
+    background-color: #d1e7dd;
+    border-color: #198754;
+}
+
+#barcodeInput.is-invalid {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
 /* Faz 0: State Management ve Tab Durumları */
 .nav-link.disabled {
     opacity: 0.5;
@@ -45,6 +81,61 @@ body {
 #notification-container .alert {
     margin-bottom: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Faz 7: Aşama Performans Kartları - Yan yana görünüm */
+#stage-performance-stats .card {
+    min-height: 120px;
+    transition: transform 0.2s ease-in-out;
+}
+
+#stage-performance-stats .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#stage-performance-stats .card-body {
+    padding: 1.5rem;
+}
+
+#stage-performance-stats .card h5 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+#stage-performance-stats .card small {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* Responsive düzenleme */
+@media (max-width: 992px) {
+    #stage-performance-stats .card h5 {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    #stage-performance-stats .card h5 {
+        font-size: 1.8rem;
+    }
+    
+    #stage-performance-stats .card-body {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    #stage-performance-stats .card h5 {
+        font-size: 1.5rem;
+    }
+    
+    #stage-performance-stats .card {
+        min-height: 100px;
+    }
 }
 
 /* Global Modal Alert Sistemi - En üstte göster */
@@ -816,6 +907,74 @@ body.modal-open {
     background: none;
 }
 
+/* Sipariş Detayları Modal Stilleri */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #007bff;
+}
+
+.timeline-title {
+    margin: 0 0 5px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.timeline-description {
+    margin: 0 0 5px 0;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Sipariş Detayları Kartları */
+.card-header.bg-light {
+    background-color: #f8f9fa !important;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.table-sm td {
+    padding: 0.5rem;
+    vertical-align: middle;
+}
+
+.table-sm td:first-child {
+    width: 40%;
+    font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .stage-details {
@@ -832,5 +991,13 @@ body.modal-open {
     
     .stage-template-actions {
         flex-direction: column;
+    }
+    
+    .timeline {
+        padding-left: 20px;
+    }
+    
+    .timeline-marker {
+        left: -12px;
     }
 }

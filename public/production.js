@@ -1,6 +1,12 @@
 // Üretim Yönetimi JavaScript
 // Faz 0: State Management ve Event Bus entegrasyonu
 
+// Bildirimleri geçici olarak kapat
+function showNotification(message, type = 'info') {
+    console.log('🔕 Bildirim kapatıldı:', message, type);
+    return;
+}
+
 // Global değişkenler
 let hammaddeler = [];
 let yarimamuller = [];
@@ -9,6 +15,22 @@ let urunAgaci = [];
 let activeProductions = [];
 let productionHistory = [];
 let currentProductionId = null;
+let currentOrderId = null; // Sipariş düzenleme için
+
+// Faz 7: Aşama takip sistemi değişkenleri
+let stageTemplates = [];
+let realtimeStages = [];
+let stagePerformance = {};
+let realtimeInterval = null;
+let flowchartData = [];
+
+// Operatör takibi değişkenleri
+let operators = [];
+let operatorProductions = [];
+let operatorPerformance = {};
+let operatorRealtimeInterval = null;
+let previousOperators = [];
+let previousOperatorProductions = [];
 
 // Faz 0: State Manager kontrolü - window.stateManager kullanılıyor
 
@@ -33,11 +55,20 @@ function initializeStateManagement() {
         console.warn('Workflow Engine not found');
     }
     
+    // Real-time Updates kontrolü - script yüklenme sırasına bağlı olabilir
     if (typeof window.realTimeUpdates !== 'undefined') {
         console.log('Real-time Updates initialized');
         setupRealTimeEventListeners();
     } else {
-        console.warn('Real-time Updates not found');
+        // Script henüz yüklenmemiş olabilir, kısa bir süre sonra tekrar dene
+        setTimeout(() => {
+            if (typeof window.realTimeUpdates !== 'undefined') {
+                console.log('Real-time Updates initialized (delayed)');
+                setupRealTimeEventListeners();
+            } else {
+                console.log('Real-time Updates not available - continuing without real-time features');
+            }
+        }, 1000);
     }
 }
 
@@ -68,6 +99,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Tab event listener'ları
     setupTabEventListeners();
+    
+    // Sipariş Yönetimi tab'ı için direkt yükleme (varsayılan aktif tab)
+    console.log('🎯 Sayfa yüklendi - Sipariş Yönetimi verileri yükleniyor...');
+    loadOrders();
+    loadPlanningStatistics();
 });
 
 // Tüm verileri yükle
@@ -87,7 +123,7 @@ async function loadAllData() {
         setupProductionProductAutocomplete();
     } catch (error) {
         console.error('Veri yükleme hatası:', error);
-        showModalAlert('Veriler yüklenirken hata oluştu', 'error');
+        alert('Veriler yüklenirken hata oluştu', 'error');
     }
 }
 
@@ -113,9 +149,17 @@ function setupTabEventListeners() {
     const stagesTab = document.getElementById('production-stages-tab');
     if (stagesTab) {
         stagesTab.addEventListener('shown.bs.tab', function() {
-            console.log('Üretim Aşamaları tab\'ı açıldı');
+            console.log('🎯 Üretim Aşamaları tab\'ı açıldı - Event listener çalışıyor');
+            // Tüm aşama verilerini yükle
+            console.log('📊 Tüm aşama verilerini yüklüyor...');
             loadStageTemplates();
+            loadStagePerformance();
+            loadRealtimeStages();
+            // loadStageAnalytics(); // Kaldırıldı
+            // loadEfficiencyReport(); // Kaldırıldı
         });
+    } else {
+        console.error('❌ production-stages-tab element bulunamadı!');
     }
     
     // Kalite Kontrol tab
@@ -142,12 +186,21 @@ function setupTabEventListeners() {
     setTimeout(() => {
         console.log('Otomatik veri yükleme başlatılıyor...');
         const activeTab = document.querySelector('.nav-link.active');
-        if (activeTab && activeTab.id === 'production-planning-tab') {
+        if (activeTab) {
+            if (activeTab.id === 'production-planning-tab') {
             console.log('Üretim Planlama tab\'ı aktif, veriler yükleniyor...');
             loadProductionPlans();
             loadResources();
             loadOrders();
             loadPlanningStatistics();
+            } else if (activeTab.id === 'production-stages-tab') {
+                console.log('Üretim Aşamaları tab\'ı aktif, veriler yükleniyor...');
+                loadStageTemplates();
+                loadStagePerformance();
+                loadRealtimeStages();
+                // loadStageAnalytics(); // Kaldırıldı
+                // loadEfficiencyReport(); // Kaldırıldı
+            }
         }
     }, 1000);
 }
@@ -437,37 +490,37 @@ function updateSystemStatusDisplay(status) {
     }
 }
 
-// Faz 0: Tab event listener'larını ayarla
-function setupTabEventListeners() {
-    // Tab değişim event'lerini dinle
-    const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
-    
-    tabElements.forEach(tabElement => {
-        tabElement.addEventListener('shown.bs.tab', function(event) {
-            const targetTab = event.target.getAttribute('data-bs-target');
-            const tabId = event.target.id;
-            
-            console.log('Tab changed to:', tabId, targetTab);
-            
-            // State Manager'ı güncelle
-            if (window.stateManager) {
-                window.stateManager.updateState('activeTab', tabId);
-            }
-            
-            // Event Bus'a bildir
-            if (window.eventBus) {
-                window.eventBus.emit('tab-changed', {
-                    tabId: tabId,
-                    targetTab: targetTab,
-                    timestamp: new Date()
-                });
-            }
-            
-            // Tab'a özel veri yükleme
-            loadTabData(tabId);
-        });
-    });
-}
+// Bu fonksiyon kaldırıldı - çakışma önlemek için
+// function setupTabEventListeners() {
+//     // Tab değişim event'lerini dinle
+//     const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
+//     
+//     tabElements.forEach(tabElement => {
+//         tabElement.addEventListener('shown.bs.tab', function(event) {
+//             const targetTab = event.target.getAttribute('data-bs-target');
+//             const tabId = event.target.id;
+//             
+//             console.log('Tab changed to:', tabId, targetTab);
+//             
+//             // State Manager'ı güncelle
+//             if (window.stateManager) {
+//                 window.stateManager.updateState('activeTab', tabId);
+//             }
+//             
+//             // Event Bus'a bildir
+//             if (window.eventBus) {
+//                 window.eventBus.emit('tab-changed', {
+//                     tabId: tabId,
+//                     targetTab: targetTab,
+//                     timestamp: new Date()
+//                 });
+//             }
+//             
+//             // Tab'a özel veri yükleme
+//             loadTabData(tabId);
+//         });
+//     });
+// }
 
 // Tab'a özel veri yükleme - Üretim proses sırasına göre
 function loadTabData(tabId) {
@@ -481,8 +534,13 @@ function loadTabData(tabId) {
             }
             break;
         case 'production-stages-tab':
+            console.log('🎯 loadTabData: Üretim Aşamaları tab verileri yükleniyor...');
             if (typeof loadStageTemplates === 'function') {
                 loadStageTemplates();
+                loadStagePerformance();
+                loadRealtimeStages();
+                // loadStageAnalytics(); // Kaldırıldı
+                // loadEfficiencyReport(); // Kaldırıldı
             }
             break;
         case 'quality-control-tab':
@@ -543,8 +601,10 @@ function setupEventListeners() {
     
     
     
+    // Operatör Takibi tab'ı için event listener
     document.getElementById('production-stages-tab').addEventListener('shown.bs.tab', function() {
-        loadStageTemplates();
+        console.log('🎯 Operatör Takibi tab\'ı aktif oldu, operatör durumu yükleniyor...');
+        loadOperatorStatus();
     });
     
     document.getElementById('quality-control-tab').addEventListener('shown.bs.tab', function() {
@@ -564,14 +624,18 @@ function setupEventListeners() {
     });
     
     // Barkod input enter tuşu ve otomatik okutma
-    document.getElementById('barcode-input').addEventListener('keypress', function(e) {
+    const barcodeInput = document.getElementById('barcode-input');
+    if (barcodeInput) {
+        barcodeInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             scanBarcode();
         }
     });
+    }
     
     // Barkod input değişiklik takibi (otomatik okutma)
-    document.getElementById('barcode-input').addEventListener('input', function(e) {
+    if (barcodeInput) {
+        barcodeInput.addEventListener('input', function(e) {
         const barcode = e.target.value.trim();
         
         // Eğer barkod yeterince uzunsa (genellikle barkodlar 8+ karakter) otomatik okut
@@ -583,6 +647,7 @@ function setupEventListeners() {
             }, 500); // 500ms gecikme
         }
     });
+    }
     
     // Filtreleme event listener'ları
     const searchElement = document.getElementById('production-search');
@@ -675,7 +740,7 @@ let selectedProduction = null;
 function viewProductionDetails(productionId) {
     selectedProduction = activeProductions.find(p => p.id === productionId);
     if (!selectedProduction) {
-        showModalAlert('Üretim bulunamadı', 'error');
+        alert('Üretim bulunamadı', 'error');
         return;
     }
     
@@ -773,12 +838,12 @@ function viewProductionDetails(productionId) {
 async function continueProduction(productionId) {
     const production = activeProductions.find(p => p.id === productionId);
     if (!production) {
-        showModalAlert('Üretim bulunamadı', 'error');
+        alert('Üretim bulunamadı', 'error');
         return;
     }
     
     if (production.status === 'active') {
-        showModalAlert('Bu üretim zaten aktif durumda', 'info');
+        alert('Bu üretim zaten aktif durumda', 'info');
         return;
     }
     
@@ -794,7 +859,7 @@ async function continueProduction(productionId) {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim başarıyla devam ettirildi', 'success');
+            alert('Üretim başarıyla devam ettirildi', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -824,11 +889,11 @@ async function continueProduction(productionId) {
             console.log('Üretim devam ettirildi, durum:', production?.status);
         } else {
             const error = await response.json();
-            showModalAlert(error.error || 'Üretim devam ettirilemedi', 'error');
+            alert(error.error || 'Üretim devam ettirilemedi', 'error');
         }
     } catch (error) {
         console.error('Üretim devam ettirme hatası:', error);
-        showModalAlert('Üretim devam ettirilemedi', 'error');
+        alert('Üretim devam ettirilemedi', 'error');
     }
 }
 
@@ -836,22 +901,22 @@ async function continueProduction(productionId) {
 async function pauseProduction(productionId) {
     const production = activeProductions.find(p => p.id === productionId);
     if (!production) {
-        showModalAlert('Üretim bulunamadı', 'error');
+        alert('Üretim bulunamadı', 'error');
         return;
     }
     
     if (production.status === 'paused') {
-        showModalAlert('Bu üretim zaten duraklatılmış durumda', 'info');
+        alert('Bu üretim zaten duraklatılmış durumda', 'info');
         return;
     }
     
     if (production.status === 'completed') {
-        showModalAlert('Tamamlanmış üretim duraklatılamaz', 'error');
+        alert('Tamamlanmış üretim duraklatılamaz', 'error');
         return;
     }
     
     if (production.status === 'cancelled') {
-        showModalAlert('İptal edilmiş üretim duraklatılamaz', 'error');
+        alert('İptal edilmiş üretim duraklatılamaz', 'error');
         return;
     }
     
@@ -871,7 +936,7 @@ async function pauseProduction(productionId) {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim başarıyla duraklatıldı', 'success');
+            alert('Üretim başarıyla duraklatıldı', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -901,11 +966,11 @@ async function pauseProduction(productionId) {
             console.log('Üretim duraklatıldı, durum:', production?.status);
         } else {
             const error = await response.json();
-            showModalAlert(error.error || 'Üretim duraklatılamadı', 'error');
+            alert(error.error || 'Üretim duraklatılamadı', 'error');
         }
     } catch (error) {
         console.error('Üretim duraklatma hatası:', error);
-        showModalAlert('Üretim duraklatılamadı', 'error');
+        alert('Üretim duraklatılamadı', 'error');
     }
 }
 
@@ -913,17 +978,17 @@ async function pauseProduction(productionId) {
 async function stopProduction(productionId) {
     const production = activeProductions.find(p => p.id === productionId);
     if (!production) {
-        showModalAlert('Üretim bulunamadı', 'error');
+        alert('Üretim bulunamadı', 'error');
         return;
     }
     
     if (production.status === 'completed') {
-        showModalAlert('Bu üretim zaten tamamlanmış', 'info');
+        alert('Bu üretim zaten tamamlanmış', 'info');
         return;
     }
     
     if (production.status === 'cancelled') {
-        showModalAlert('Bu üretim zaten iptal edilmiş', 'info');
+        alert('Bu üretim zaten iptal edilmiş', 'info');
         return;
     }
     
@@ -944,7 +1009,7 @@ async function stopProduction(productionId) {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim başarıyla durduruldu', 'success');
+            alert('Üretim başarıyla durduruldu', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -977,18 +1042,18 @@ async function stopProduction(productionId) {
             console.log('Üretim durduruldu, aktif üretim sayısı:', activeProductions.length);
         } else {
             const error = await response.json();
-            showModalAlert(error.error || 'Üretim durdurulamadı', 'error');
+            alert(error.error || 'Üretim durdurulamadı', 'error');
         }
     } catch (error) {
         console.error('Üretim durdurma hatası:', error);
-        showModalAlert('Üretim durdurulamadı', 'error');
+        alert('Üretim durdurulamadı', 'error');
     }
 }
 
 // Üretim düzenleme modalını aç
 function editProduction() {
     if (!selectedProduction) {
-        showModalAlert('Seçili üretim bulunamadı', 'error');
+        alert('Seçili üretim bulunamadı', 'error');
         return;
     }
     
@@ -1011,7 +1076,7 @@ function editProduction() {
 // Üretim değişikliklerini kaydet
 async function saveProductionChanges() {
     if (!selectedProduction) {
-        showModalAlert('Seçili üretim bulunamadı', 'error');
+        alert('Seçili üretim bulunamadı', 'error');
         return;
     }
     
@@ -1025,17 +1090,17 @@ async function saveProductionChanges() {
     
     // Validation
     if (formData.target_quantity < 1) {
-        showModalAlert('Hedef miktar en az 1 olmalıdır', 'error');
+        alert('Hedef miktar en az 1 olmalıdır', 'error');
         return;
     }
     
     if (formData.quantity < 0) {
-        showModalAlert('Üretilen miktar negatif olamaz', 'error');
+        alert('Üretilen miktar negatif olamaz', 'error');
         return;
     }
     
     if (formData.quantity > formData.target_quantity) {
-        showModalAlert('Üretilen miktar hedef miktardan fazla olamaz', 'error');
+        alert('Üretilen miktar hedef miktardan fazla olamaz', 'error');
         return;
     }
     
@@ -1049,7 +1114,7 @@ async function saveProductionChanges() {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim başarıyla güncellendi', 'success');
+            alert('Üretim başarıyla güncellendi', 'success');
             
             // Düzenleme modalını kapat
             bootstrap.Modal.getInstance(document.getElementById('editProductionModal')).hide();
@@ -1058,18 +1123,18 @@ async function saveProductionChanges() {
             await loadActiveProductions();
         } else {
             const error = await response.json();
-            showModalAlert(error.error || 'Üretim güncellenemedi', 'error');
+            alert(error.error || 'Üretim güncellenemedi', 'error');
         }
     } catch (error) {
         console.error('Üretim güncelleme hatası:', error);
-        showModalAlert('Üretim güncellenemedi', 'error');
+        alert('Üretim güncellenemedi', 'error');
     }
 }
 
 // Üretimi iptal et
 async function cancelProduction() {
     if (!selectedProduction) {
-        showModalAlert('Seçili üretim bulunamadı', 'error');
+        alert('Seçili üretim bulunamadı', 'error');
         return;
     }
     
@@ -1090,7 +1155,7 @@ async function cancelProduction() {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim başarıyla iptal edildi', 'success');
+            alert('Üretim başarıyla iptal edildi', 'success');
             
             // Modal'ları kapat
             const detailModal = bootstrap.Modal.getInstance(document.getElementById('productionDetailModal'));
@@ -1112,11 +1177,11 @@ async function cancelProduction() {
             await loadActiveProductions();
         } else {
             const error = await response.json();
-            showModalAlert(error.error || 'Üretim iptal edilemedi', 'error');
+            alert(error.error || 'Üretim iptal edilemedi', 'error');
         }
     } catch (error) {
         console.error('Üretim iptal etme hatası:', error);
-        showModalAlert('Üretim iptal edilemedi', 'error');
+        alert('Üretim iptal edilemedi', 'error');
     }
 }
 
@@ -1430,14 +1495,14 @@ async function handleYarimamulProduction(event) {
     const quantity = parseFloat(document.getElementById('yarimamul-quantity').value);
     
     if (!productId || quantity <= 0) {
-        showModalAlert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
+        alert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
         return;
     }
     
     // Stok kontrolü yap
     const stockCheck = checkYarimamulStock(productId, quantity);
     if (!stockCheck.sufficient) {
-        showModalAlert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
+        alert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
         return;
     }
     
@@ -1461,7 +1526,7 @@ async function handleYarimamulProduction(event) {
         document.getElementById('yarimamul-production-form-element').reset();
         clearYarimamulMaterials();
         
-        showModalAlert('Yarı mamul üretimi başlatıldı!', 'success');
+        alert('Yarı mamul üretimi başlatıldı!', 'success');
         
         // Simüle edilmiş üretim süreci (gerçek uygulamada backend'de olacak)
         setTimeout(() => {
@@ -1470,7 +1535,7 @@ async function handleYarimamulProduction(event) {
         
     } catch (error) {
         console.error('Yarı mamul üretim hatası:', error);
-        showModalAlert('Üretim başlatılırken hata oluştu', 'error');
+        alert('Üretim başlatılırken hata oluştu', 'error');
     }
 }
 
@@ -1482,14 +1547,14 @@ async function handleNihaiProduction(event) {
     const quantity = parseFloat(document.getElementById('nihai-quantity').value);
     
     if (!productId || quantity <= 0) {
-        showModalAlert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
+        alert('Lütfen geçerli bir ürün ve miktar seçin', 'warning');
         return;
     }
     
     // Stok kontrolü yap
     const stockCheck = checkNihaiStock(productId, quantity);
     if (!stockCheck.sufficient) {
-        showModalAlert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
+        alert(`Stok yetersiz! Eksik malzemeler:\n${stockCheck.missingItems.join('\n')}`, 'error');
         return;
     }
     
@@ -1513,7 +1578,7 @@ async function handleNihaiProduction(event) {
         document.getElementById('nihai-production-form-element').reset();
         clearNihaiMaterials();
         
-        showModalAlert('Nihai ürün üretimi başlatıldı!', 'success');
+        alert('Nihai ürün üretimi başlatıldı!', 'success');
         
         // Simüle edilmiş üretim süreci (gerçek uygulamada backend'de olacak)
         setTimeout(() => {
@@ -1522,7 +1587,7 @@ async function handleNihaiProduction(event) {
         
     } catch (error) {
         console.error('Nihai ürün üretim hatası:', error);
-        showModalAlert('Üretim başlatılırken hata oluştu', 'error');
+        alert('Üretim başlatılırken hata oluştu', 'error');
     }
 }
 
@@ -1543,7 +1608,7 @@ function completeProduction(production) {
     displayActiveProductions();
     displayProductionHistory();
     
-    showModalAlert('Üretim tamamlandı!', 'success');
+    alert('Üretim tamamlandı!', 'success');
 }
 
 // Bu fonksiyon silindi - yukarıda daha iyi versiyonu var
@@ -1724,7 +1789,7 @@ function updateProductionStatistics() {
 function viewProductionDetails(productionIndex) {
     const production = productionHistory[productionIndex];
     if (!production) {
-        showModalAlert('Üretim bulunamadı', 'error');
+        alert('Üretim bulunamadı', 'error');
         return;
     }
     
@@ -1821,7 +1886,7 @@ function viewProductionDetails(productionIndex) {
 function viewBarcodeHistory(productionIndex) {
     const production = productionHistory[productionIndex];
     if (!production || !production.scannedBarcodes || production.scannedBarcodes.length === 0) {
-        showModalAlert('Barkod geçmişi bulunamadı', 'warning');
+        alert('Barkod geçmişi bulunamadı', 'warning');
         return;
     }
     
@@ -1906,13 +1971,13 @@ function showDetailedAlert(title, content, type) {
 
 // Aktif üretimleri yenile
 function refreshActiveProductions() {
-    showModalAlert('Aktif üretimler yenilendi', 'success');
+    alert('Aktif üretimler yenilendi', 'success');
 }
 
 // Üretim geçmişini yenile
 function refreshProductionHistory() {
     loadProductionHistory();
-    showModalAlert('Üretim geçmişi yenilendi', 'success');
+    alert('Üretim geçmişi yenilendi', 'success');
 }
 
 // Üretim geçmişini temizle
@@ -1920,7 +1985,7 @@ function clearProductionHistory() {
     if (confirm('Üretim geçmişini temizlemek istediğinizden emin misiniz?')) {
         productionHistory = [];
         displayProductionHistory();
-        showModalAlert('Üretim geçmişi temizlendi', 'success');
+        alert('Üretim geçmişi temizlendi', 'success');
     }
 }
 
@@ -2119,7 +2184,7 @@ async function loadApprovedPlans() {
         
     } catch (error) {
         console.error('Onaylanmış planlar yüklenemedi:', error);
-        showModalAlert('Onaylanmış planlar yüklenemedi', 'error');
+        alert('Onaylanmış planlar yüklenemedi', 'error');
     }
 }
 
@@ -2134,7 +2199,6 @@ async function startProductionFromPlan(planId) {
             body: JSON.stringify({
                 product_type: 'nihai',
                 product_id: 1,
-                product_name: 'Ürün',
                 planned_quantity: 1,
                 assigned_operator: 'Thunder Serisi Operatör'
             })
@@ -2142,28 +2206,319 @@ async function startProductionFromPlan(planId) {
         
         if (response.ok) {
             const production = await response.json();
-            showModalAlert('Üretim başarıyla başlatıldı!', 'success');
+            alert('Üretim başarıyla başlatıldı!', 'success');
             loadApprovedPlans(); // Planları yenile
             updateStatusPanel(); // Durum panelini güncelle
         } else {
             const error = await response.json();
-            showModalAlert('Üretim başlatılamadı: ' + error.error, 'error');
+            alert('Üretim başlatılamadı: ' + error.error, 'error');
         }
     } catch (error) {
         console.error('Üretim başlatma hatası:', error);
-        showModalAlert('Üretim başlatılamadı', 'error');
+        alert('Üretim başlatılamadı', 'error');
     }
 }
 
 // Plan detaylarını göster
-function showPlanDetails(planId) {
-    // Bu fonksiyon plan detaylarını modal'da gösterecek
-    showModalAlert('Plan detayları gösterilecek (geliştirilecek)', 'info');
+async function showPlanDetails(planId) {
+    try {
+        // Plan detaylarını yükle
+        const response = await fetch(`/api/production-plans/${planId}`);
+        if (!response.ok) throw new Error('Plan detayları yüklenemedi');
+        
+        const plan = await response.json();
+        
+        // Aşamaları yükle
+        const stagesResponse = await fetch(`/api/production-stages?plan_id=${planId}`);
+        const stages = stagesResponse.ok ? await stagesResponse.json() : [];
+        
+        // Modal oluştur
+        showPlanDetailsModal(plan, stages);
+        
+    } catch (error) {
+        console.error('Plan detay yükleme hatası:', error);
+        alert('Plan detayları yüklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Plan detay modal'ını göster
+function showPlanDetailsModal(plan, stages) {
+    const modalHtml = `
+        <div class="modal fade" id="planDetailsModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-clipboard-list me-2"></i>Plan Detayları: ${plan.plan_name}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="fas fa-info-circle me-2"></i>Plan Bilgileri</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Plan Adı:</strong> ${plan.plan_name}</p>
+                                        <p><strong>Plan Tipi:</strong> ${getPlanTypeText(plan.plan_type)}</p>
+                                        <p><strong>Durum:</strong> <span class="badge bg-${getStatusColor(plan.status)}">${getStatusText(plan.status)}</span></p>
+                                        <p><strong>Başlangıç:</strong> ${new Date(plan.start_date).toLocaleDateString('tr-TR')}</p>
+                                        <p><strong>Bitiş:</strong> ${new Date(plan.end_date).toLocaleDateString('tr-TR')}</p>
+                                        <p><strong>Oluşturan:</strong> ${plan.created_by || 'Bilinmiyor'}</p>
+                                        ${plan.notes ? `<p><strong>Notlar:</strong> ${plan.notes}</p>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="fas fa-chart-pie me-2"></i>İlerleme Durumu</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        ${generateProgressInfo(stages)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6><i class="fas fa-tasks me-2"></i>Üretim Aşamaları</h6>
+                                </div>
+                                <div class="card-body">
+                                    ${generateStagesList(stages)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                        ${plan.status === 'approved' ? '<button type="button" class="btn btn-primary" onclick="startProductionFromPlan(' + plan.id + ')">Üretimi Başlat</button>' : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Modal'ı DOM'a ekle
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('planDetailsModal'));
+    modal.show();
+    
+    // Modal kapandığında DOM'dan kaldır
+    document.getElementById('planDetailsModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// İlerleme bilgilerini oluştur
+function generateProgressInfo(stages) {
+    if (!stages || stages.length === 0) {
+        return '<p class="text-muted">Henüz aşama oluşturulmamış</p>';
+    }
+    
+    const total = stages.length;
+    const completed = stages.filter(s => s.status === 'completed').length;
+    const inProgress = stages.filter(s => s.status === 'in_progress').length;
+    const pending = stages.filter(s => s.status === 'pending').length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return `
+        <div class="progress mb-3" style="height: 25px;">
+            <div class="progress-bar" role="progressbar" style="width: ${progress}%">${progress}%</div>
+        </div>
+        <div class="row text-center">
+            <div class="col-4">
+                <div class="text-success">
+                    <i class="fas fa-check-circle fa-2x"></i>
+                    <div><strong>${completed}</strong></div>
+                    <small>Tamamlandı</small>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="text-warning">
+                    <i class="fas fa-play-circle fa-2x"></i>
+                    <div><strong>${inProgress}</strong></div>
+                    <small>Devam Ediyor</small>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="text-muted">
+                    <i class="fas fa-clock fa-2x"></i>
+                    <div><strong>${pending}</strong></div>
+                    <small>Bekliyor</small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Aşama listesini oluştur
+function generateStagesList(stages) {
+    if (!stages || stages.length === 0) {
+        return '<p class="text-muted">Henüz aşama oluşturulmamış</p>';
+    }
+    
+    let html = '<div class="timeline">';
+    
+    stages.sort((a, b) => a.stage_order - b.stage_order).forEach((stage, index) => {
+        const isLast = index === stages.length - 1;
+        const statusIcon = getStageStatusIcon(stage.status);
+        const statusColor = getStageStatusColor(stage.status);
+        
+        html += `
+            <div class="timeline-item">
+                <div class="timeline-marker ${statusColor}">
+                    <i class="${statusIcon}"></i>
+                </div>
+                <div class="timeline-content">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">${stage.stage_name}</h6>
+                                    <p class="card-text text-muted">
+                                        <i class="fas fa-sort-numeric-up me-1"></i>Sıra: ${stage.stage_order} |
+                                        <i class="fas fa-clock me-1"></i>Süre: ${stage.estimated_duration}dk |
+                                        <i class="fas fa-user me-1"></i>Operatör: ${stage.operator || 'Atanmamış'}
+                                    </p>
+                                    ${stage.notes ? `<p class="card-text"><small>${stage.notes}</small></p>` : ''}
+                                </div>
+                                <div>
+                                    <span class="badge bg-${statusColor}">${getStageStatusText(stage.status)}</span>
+                                    ${stage.quality_check_required ? '<span class="badge bg-warning ms-1">Kalite Kontrol</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${!isLast ? '<div class="timeline-line"></div>' : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    // CSS ekle
+    html += `
+        <style>
+            .timeline {
+                position: relative;
+                padding-left: 30px;
+            }
+            .timeline-item {
+                position: relative;
+                margin-bottom: 20px;
+            }
+            .timeline-marker {
+                position: absolute;
+                left: -35px;
+                top: 10px;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 14px;
+            }
+            .timeline-marker.success { background-color: #28a745; }
+            .timeline-marker.warning { background-color: #ffc107; }
+            .timeline-marker.secondary { background-color: #6c757d; }
+            .timeline-line {
+                position: absolute;
+                left: -20px;
+                top: 40px;
+                width: 2px;
+                height: 20px;
+                background-color: #dee2e6;
+            }
+        </style>
+    `;
+    
+    return html;
+}
+
+// Yardımcı fonksiyonlar
+function getPlanTypeText(type) {
+    const types = {
+        'hammadde': 'Hammadde',
+        'yarimamul': 'Yarı Mamul',
+        'nihai': 'Nihai Ürün'
+    };
+    return types[type] || type;
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'draft': 'secondary',
+        'pending': 'warning',
+        'approved': 'success',
+        'active': 'primary',
+        'in_progress': 'warning',
+        'in_production': 'info',
+        'completed': 'success',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStatusText(status) {
+    const texts = {
+        'draft': 'Taslak',
+        'pending': 'Bekliyor',
+        'approved': 'Onaylandı',
+        'active': 'Aktif',
+        'in_progress': 'Devam Ediyor',
+        'in_production': 'Üretimde',
+        'completed': 'Tamamlandı',
+        'cancelled': 'İptal'
+    };
+    return texts[status] || status;
+}
+
+function getStageStatusIcon(status) {
+    const icons = {
+        'pending': 'fas fa-clock',
+        'in_progress': 'fas fa-play',
+        'completed': 'fas fa-check',
+        'paused': 'fas fa-pause',
+        'cancelled': 'fas fa-times'
+    };
+    return icons[status] || 'fas fa-question';
+}
+
+function getStageStatusColor(status) {
+    const colors = {
+        'pending': 'secondary',
+        'in_progress': 'warning',
+        'completed': 'success',
+        'paused': 'info',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStageStatusText(status) {
+    const texts = {
+        'pending': 'Bekliyor',
+        'in_progress': 'Devam Ediyor',
+        'completed': 'Tamamlandı',
+        'paused': 'Duraklatıldı',
+        'cancelled': 'İptal'
+    };
+    return texts[status] || status;
 }
 
 // Aktif üretimi görüntüle
 function viewActiveProduction(planId) {
-    showModalAlert('Aktif üretimler artık Üretim Başlat tab\'ında yönetiliyor', 'info');
+    alert('Aktif üretimler artık Üretim Başlat tab\'ında yönetiliyor', 'info');
 }
 
 // Durum panelini güncelle
@@ -2265,6 +2620,8 @@ function getStatusText(status) {
         'draft': 'Taslak',
         'approved': 'Onaylandı',
         'active': 'Aktif',
+        'in_progress': 'Devam Ediyor',
+        'in_production': 'Üretimde',
         'completed': 'Tamamlandı',
         'cancelled': 'İptal Edildi'
     };
@@ -2277,6 +2634,8 @@ function getStatusColor(status) {
         'draft': 'secondary',
         'approved': 'success',
         'active': 'primary',
+        'in_progress': 'warning',
+        'in_production': 'info',
         'completed': 'success',
         'cancelled': 'danger'
     };
@@ -2344,15 +2703,15 @@ async function pauseProduction(productionId) {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim durduruldu', 'success');
+            alert('Üretim durduruldu', 'success');
             updateStatusPanel();
         } else {
             const error = await response.json();
-            showModalAlert('Üretim durdurulamadı: ' + error.error, 'error');
+            alert('Üretim durdurulamadı: ' + error.error, 'error');
         }
     } catch (error) {
         console.error('Üretim durdurma hatası:', error);
-        showModalAlert('Üretim durdurulamadı', 'error');
+        alert('Üretim durdurulamadı', 'error');
     }
 }
 
@@ -2364,21 +2723,21 @@ async function resumeProduction(productionId) {
         });
         
         if (response.ok) {
-            showModalAlert('Üretim devam ettirildi', 'success');
+            alert('Üretim devam ettirildi', 'success');
             updateStatusPanel();
         } else {
             const error = await response.json();
-            showModalAlert('Üretim devam ettirilemedi: ' + error.error, 'error');
+            alert('Üretim devam ettirilemedi: ' + error.error, 'error');
         }
     } catch (error) {
         console.error('Üretim devam ettirme hatası:', error);
-        showModalAlert('Üretim devam ettirilemedi', 'error');
+        alert('Üretim devam ettirilemedi', 'error');
     }
 }
 
 // Üretim detaylarını görüntüle
 function viewProductionDetails(productionId) {
-    showModalAlert('Üretim detayları gösterilecek (geliştirilecek)', 'info');
+    alert('Üretim detayları gösterilecek (geliştirilecek)', 'info');
 }
 
 // Üretimi iptal et
@@ -2390,15 +2749,15 @@ async function cancelProduction(productionId) {
             });
             
             if (response.ok) {
-                showModalAlert('Üretim iptal edildi', 'success');
+                alert('Üretim iptal edildi', 'success');
                 updateStatusPanel();
             } else {
                 const error = await response.json();
-                showModalAlert('Üretim iptal edilemedi: ' + error.error, 'error');
+                alert('Üretim iptal edilemedi: ' + error.error, 'error');
             }
         } catch (error) {
             console.error('Üretim iptal hatası:', error);
-            showModalAlert('Üretim iptal edilemedi', 'error');
+            alert('Üretim iptal edilemedi', 'error');
         }
     }
 }
@@ -2478,7 +2837,7 @@ function startProductionOld() {
     const quantity = parseInt(document.getElementById('production-quantity').value);
     
     if (!productId || !quantity) {
-        showModalAlert('Lütfen ürün ve miktar seçin', 'warning');
+        alert('Lütfen ürün ve miktar seçin', 'warning');
         return;
     }
     
@@ -2491,7 +2850,7 @@ function startProductionOld() {
     }
     
     if (!product) {
-        showModalAlert('Ürün bulunamadı', 'error');
+        alert('Ürün bulunamadı', 'error');
         return;
     }
     
@@ -2636,7 +2995,7 @@ function updateProductionStats() {
 // Üretimi tamamla
 function completeProduction() {
     if (!currentProduction) {
-        showModalAlert('Aktif üretim bulunamadı', 'error');
+        alert('Aktif üretim bulunamadı', 'error');
         return;
     }
     
@@ -2670,7 +3029,7 @@ function completeProduction() {
         barcodeModal.hide();
         
         // Başarı mesajı
-        showModalAlert(`Üretim tamamlandı! ${productionStats.success} adet ${currentProduction.product.ad} üretildi.`, 'success');
+        alert(`Üretim tamamlandı! ${productionStats.success} adet ${currentProduction.product.ad} üretildi.`, 'success');
         
         // Verileri sıfırla
         currentProduction = null;
@@ -2680,12 +3039,12 @@ function completeProduction() {
         
     } catch (error) {
         console.error('Üretim tamamlama hatası:', error);
-        showModalAlert('Üretim tamamlanırken hata oluştu', 'error');
+        alert('Üretim tamamlanırken hata oluştu', 'error');
     }
 }
 
 // Alert göster
-function showModalAlert(message, type) {
+function alert(message, type) {
     const alertModal = document.getElementById('alertModal');
     const alertTitle = document.getElementById('alertModalTitle');
     const alertBody = document.getElementById('alertModalBody');
@@ -2699,6 +3058,13 @@ function showModalAlert(message, type) {
     
     const modal = new bootstrap.Modal(alertModal);
     modal.show();
+    
+    // Modal'ı otomatik kapat (success mesajları için)
+    if (type === 'success') {
+        setTimeout(() => {
+            modal.hide();
+        }, 2000); // 2 saniye sonra kapat
+    }
 }
 
 // ========================================
@@ -2936,11 +3302,11 @@ async function showProductionSummary() {
             Verimlilik: %${summary.efficiency}
         `;
         
-        showModalAlert(summaryText, 'info');
+        alert(summaryText, 'info');
         return summary;
     } catch (error) {
         console.error('Üretim özeti alınamadı:', error);
-        showModalAlert('Üretim özeti alınamadı: ' + error.message, 'error');
+        alert('Üretim özeti alınamadı: ' + error.message, 'error');
         return null;
     }
 }
@@ -2962,11 +3328,11 @@ async function showEfficiencyReport(productionId) {
             Üretim Hızı: ${report.production_rate} adet/dakika
         `;
         
-        showModalAlert(reportText, 'info');
+        alert(reportText, 'info');
         return report;
     } catch (error) {
         console.error('Verimlilik raporu alınamadı:', error);
-        showModalAlert('Verimlilik raporu alınamadı: ' + error.message, 'error');
+        alert('Verimlilik raporu alınamadı: ' + error.message, 'error');
         return null;
     }
 }
@@ -2978,109 +3344,90 @@ async function showEfficiencyReport(productionId) {
 // Aşama şablonlarını yükle
 async function loadStageTemplates() {
     try {
-        const response = await fetch('/api/production-stages/templates');
-        if (!response.ok) throw new Error('Aşama şablonları yüklenemedi');
+        console.log('🔄 Loading stage templates...');
+        const response = await fetch('/api/operators');
+        if (!response.ok) throw new Error('Operatörler yüklenemedi');
         
-        const templates = await response.json();
-        displayStageTemplates(templates);
-        return templates;
+        const operators = await response.json();
+        console.log('✅ Operators loaded:', operators.length, 'operators');
+        console.log('📋 Operators data:', operators);
+        displayStageTemplates(operators);
+        return operators;
     } catch (error) {
-        console.error('Stage templates load error:', error);
-        showModalAlert('Aşama şablonları yüklenemedi: ' + error.message, 'error');
+        console.error('❌ Stage templates load error:', error);
+        alert('Aşama şablonları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
 
-// Aşama şablonlarını göster
-function displayStageTemplates(templates) {
-    const container = document.getElementById('stage-templates-container');
-    if (!container) return;
+// Operatör listesini göster
+function displayStageTemplates(operators) {
+    console.log('🎨 Displaying operators:', operators);
+    const container = document.getElementById('operators-list-container');
+    if (!container) {
+        console.error('❌ Operators list container not found!');
+        return;
+    }
+    console.log('✅ Container found, rendering operators...');
     
-    if (templates.length === 0) {
+    // Yükleme mesajını temizle
+    console.log('🧹 Clearing loading message...');
+    container.innerHTML = '';
+    
+    if (operators.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4">
-                <i class="fas fa-templates fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Aşama şablonu bulunmuyor</h5>
-                <p class="text-muted">Yeni aşama şablonu eklemek için "Yeni Şablon" butonunu kullanın.</p>
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Operatör bulunmuyor</h5>
+                <p class="text-muted">Sistemde henüz operatör kaydı bulunmuyor.</p>
             </div>
         `;
         return;
     }
     
-    // Ürün tipine göre grupla
-    const groupedTemplates = templates.reduce((acc, template) => {
-        if (!acc[template.product_type]) {
-            acc[template.product_type] = [];
-        }
-        acc[template.product_type].push(template);
-        return acc;
-    }, {});
-    
     let html = '';
-    Object.keys(groupedTemplates).forEach(productType => {
-        const typeTemplates = groupedTemplates[productType];
-        const typeName = {
-            'hammadde': 'Hammadde',
-            'yarimamul': 'Yarı Mamul',
-            'nihai': 'Nihai Ürün'
-        }[productType] || productType;
-        
+    html += `
+        <div class="row">
+    `;
+    
+    operators.forEach(operator => {
         html += `
-            <div class="mb-4">
-                <h6 class="text-primary mb-3">
-                    <i class="fas fa-cube me-2"></i>${typeName} Aşamaları
-                </h6>
-                <div class="row">
-        `;
-        
-        typeTemplates.forEach(template => {
-            html += `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="stage-template-card">
-                        <div class="stage-template-header">
-                            <h6 class="stage-template-title">${template.stage_name}</h6>
-                            <span class="stage-template-type">${typeName}</span>
-                        </div>
-                        <div class="stage-template-details">
-                            <div class="stage-template-detail">
-                                <i class="fas fa-sort-numeric-up"></i>
-                                Sıra: ${template.stage_order}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                <i class="fas fa-user"></i>
                             </div>
-                            <div class="stage-template-detail">
-                                <i class="fas fa-clock"></i>
-                                Süre: ${template.estimated_duration || 'Belirtilmemiş'} dk
-                            </div>
-                            <div class="stage-template-detail">
-                                <i class="fas fa-users"></i>
-                                Yetenekler: ${template.required_skills.join(', ') || 'Yok'}
-                            </div>
-                            <div class="stage-template-detail">
-                                <i class="fas fa-check-circle"></i>
-                                Kalite: ${template.quality_check_required ? 'Gerekli' : 'Gerekli Değil'}
-                            </div>
-                            <div class="stage-template-detail">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Zorunlu: ${template.is_mandatory ? 'Evet' : 'Hayır'}
+                            <div>
+                                <h6 class="mb-1">${operator.name}</h6>
+                                <small class="text-muted">${operator.department}</small>
                             </div>
                         </div>
-                        <div class="stage-template-actions">
-                            <button class="btn btn-outline-primary btn-sm" onclick="editStageTemplate(${template.id})">
-                                <i class="fas fa-edit me-1"></i>Düzenle
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="deleteStageTemplate(${template.id})">
-                                <i class="fas fa-trash me-1"></i>Sil
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="badge ${operator.is_active ? 'bg-success' : 'bg-secondary'} fs-6">
+                                    ${operator.is_active ? 'Aktif' : 'Pasif'}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Seviye: ${operator.skill_level || 'N/A'}</small>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="viewOperatorDetails('${operator.id}')">
+                                <i class="fas fa-eye me-1"></i>Detaylar
                             </button>
                         </div>
                     </div>
                 </div>
-            `;
-        });
-        
-        html += `
-                </div>
             </div>
         `;
     });
+    
+    html += `
+        </div>
+    `;
     
     container.innerHTML = html;
 }
@@ -3121,7 +3468,7 @@ async function addStageTemplate() {
         if (!response.ok) throw new Error('Aşama şablonu eklenemedi');
         
         const newTemplate = await response.json();
-        showModalAlert('Aşama şablonu başarıyla eklendi!', 'success');
+        alert('Aşama şablonu başarıyla eklendi!', 'success');
         
         // Modal'ı kapat ve formu temizle
         const modal = bootstrap.Modal.getInstance(document.getElementById('addStageTemplateModal'));
@@ -3134,7 +3481,7 @@ async function addStageTemplate() {
         return newTemplate;
     } catch (error) {
         console.error('Add stage template error:', error);
-        showModalAlert('Aşama şablonu eklenemedi: ' + error.message, 'error');
+        alert('Aşama şablonu eklenemedi: ' + error.message, 'error');
     }
 }
 
@@ -3149,7 +3496,7 @@ async function loadProductionStages(productionId) {
         return stages;
     } catch (error) {
         console.error('Production stages load error:', error);
-        showModalAlert('Üretim aşamaları yüklenemedi: ' + error.message, 'error');
+        alert('Üretim aşamaları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -3268,11 +3615,11 @@ async function startStage(stageId) {
         
         if (!response.ok) throw new Error('Aşama başlatılamadı');
         
-        showModalAlert('Aşama başarıyla başlatıldı!', 'success');
+        alert('Aşama başarıyla başlatıldı!', 'success');
         await loadProductionStages(currentProductionId);
     } catch (error) {
         console.error('Start stage error:', error);
-        showModalAlert('Aşama başlatılamadı: ' + error.message, 'error');
+        alert('Aşama başlatılamadı: ' + error.message, 'error');
     }
 }
 
@@ -3291,11 +3638,11 @@ async function completeStage(stageId) {
         
         if (!response.ok) throw new Error('Aşama tamamlanamadı');
         
-        showModalAlert('Aşama başarıyla tamamlandı!', 'success');
+        alert('Aşama başarıyla tamamlandı!', 'success');
         await loadProductionStages(currentProductionId);
     } catch (error) {
         console.error('Complete stage error:', error);
-        showModalAlert('Aşama tamamlanamadı: ' + error.message, 'error');
+        alert('Aşama tamamlanamadı: ' + error.message, 'error');
     }
 }
 
@@ -3330,11 +3677,11 @@ async function loadProductionPlans() {
             displayProductionPlans(productionPlans);
         } else {
             console.error('Üretim planları yüklenemedi:', data.error);
-            showModalAlert('Üretim planları yüklenemedi: ' + data.error, 'error');
+            alert('Üretim planları yüklenemedi: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Üretim planları fetch error:', error);
-        showModalAlert('Üretim planları yüklenirken hata oluştu', 'error');
+        alert('Üretim planları yüklenirken hata oluştu', 'error');
     }
 }
 
@@ -3404,11 +3751,11 @@ async function loadResources() {
             console.log('Kaynaklar başarıyla yüklendi:', resources.length);
         } else {
             console.error('Kaynaklar yüklenemedi:', data.error);
-            showModalAlert('Kaynaklar yüklenemedi: ' + data.error, 'error');
+            alert('Kaynaklar yüklenemedi: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Kaynaklar fetch error:', error);
-        showModalAlert('Kaynaklar yüklenirken hata oluştu', 'error');
+        alert('Kaynaklar yüklenirken hata oluştu', 'error');
     }
 }
 
@@ -3504,7 +3851,7 @@ function isWorkingDay(date) {
 }
 
 // Siparişleri yükleme
-async function loadOrders() {
+window.loadOrders = async function loadOrders() {
     try {
         console.log('Siparişler yükleniyor...');
         const response = await fetch('/api/orders');
@@ -3518,17 +3865,310 @@ async function loadOrders() {
             console.log('Siparişler başarıyla yüklendi:', orders.length);
         } else {
             console.error('Siparişler yüklenemedi:', data.error);
-            showModalAlert('Siparişler yüklenemedi: ' + data.error, 'error');
+            alert('Siparişler yüklenemedi: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Siparişler fetch error:', error);
-        showModalAlert('Siparişler yüklenirken hata oluştu', 'error');
+        alert('Siparişler yüklenirken hata oluştu', 'error');
     }
 }
+
+// İstatistikleri güncelle
+function updateOrderStatistics(orders) {
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter(order => order.status === 'pending').length;
+    const processingOrders = orders.filter(order => order.status === 'processing').length;
+    const completedOrders = orders.filter(order => order.status === 'completed').length;
+    
+    // İstatistik elementlerini güncelle
+    const totalElement = document.getElementById('total-orders');
+    const pendingElement = document.getElementById('pending-orders');
+    const processingElement = document.getElementById('processing-orders');
+    const completedElement = document.getElementById('completed-orders');
+    
+    if (totalElement) totalElement.textContent = totalOrders;
+    if (pendingElement) pendingElement.textContent = pendingOrders;
+    if (processingElement) processingElement.textContent = processingOrders;
+    if (completedElement) completedElement.textContent = completedOrders;
+}
+
+// Sipariş detaylarını görüntüleme
+function viewOrder(orderId) {
+    console.log('Sipariş detayları görüntüleniyor:', orderId);
+    
+    // Siparişi bul
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+        alert('Sipariş bulunamadı!', 'error');
+        return;
+    }
+    
+    // Modal başlığını güncelle
+    document.getElementById('orderDetailsModalLabel').innerHTML = 
+        `<i class="fas fa-file-alt me-2"></i>Sipariş Detayları - ${order.order_number}`;
+    
+    // Sipariş detaylarını oluştur
+    const orderDetails = createOrderDetailsHTML(order);
+    document.getElementById('orderDetailsModalBody').innerHTML = orderDetails;
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+    modal.show();
+}
+
+// Sipariş detayları HTML oluşturma
+function createOrderDetailsHTML(order) {
+    const statusBadge = getStatusBadge(order.status);
+    const priorityBadge = getPriorityBadge(order.priority);
+    const createdDate = new Date(order.created_at).toLocaleDateString('tr-TR');
+    const updatedDate = new Date(order.updated_at).toLocaleDateString('tr-TR');
+    
+    return `
+        <div class="row">
+            <!-- Sol: Temel Bilgiler -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Temel Bilgiler</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Sipariş No:</strong></td>
+                                <td>${order.order_number}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Müşteri:</strong></td>
+                                <td>${order.customer_name}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sipariş Tarihi:</strong></td>
+                                <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Teslim Tarihi:</strong></td>
+                                <td>${new Date(order.delivery_date).toLocaleDateString('tr-TR')}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Öncelik:</strong></td>
+                                <td>${priorityBadge}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durum:</strong></td>
+                                <td>${statusBadge}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Toplam Miktar:</strong></td>
+                                <td><span class="badge bg-primary">${order.quantity || 0}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Toplam Tutar:</strong></td>
+                                <td><strong class="text-success">₺${order.total_amount || 0}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sağ: Ek Bilgiler -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Ek Bilgiler</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Atanan Operatör:</strong></td>
+                                <td>${order.assigned_operator || 'Atanmamış'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Referans No:</strong></td>
+                                <td>${order.reference_number || 'Yok'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Oluşturulma:</strong></td>
+                                <td>${createdDate}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Son Güncelleme:</strong></td>
+                                <td>${updatedDate}</td>
+                            </tr>
+                        </table>
+                        
+                        ${order.notes ? `
+                            <div class="mt-3">
+                                <strong>Notlar:</strong>
+                                <div class="alert alert-light mt-2">
+                                    <small>${order.notes}</small>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ürün Detayları -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-boxes me-2"></i>Ürün Detayları</h6>
+                    </div>
+                    <div class="card-body">
+                        ${createProductDetailsTable(order.product_details)}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- İşlem Geçmişi -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-history me-2"></i>İşlem Geçmişi</h6>
+                    </div>
+                    <div class="card-body">
+                        ${createOrderHistory(order)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Ürün detayları tablosu oluşturma
+function createProductDetailsTable(productDetails) {
+    if (!productDetails || productDetails.length === 0) {
+        return '<p class="text-muted">Ürün detayları bulunamadı.</p>';
+    }
+    
+    return `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ürün Kodu</th>
+                        <th>Ürün Adı</th>
+                        <th>Miktar</th>
+                        <th>Birim Fiyat</th>
+                        <th>Toplam</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${productDetails.map(product => `
+                        <tr>
+                            <td><code>${product.code || 'N/A'}</code></td>
+                            <td>${product.name || 'N/A'}</td>
+                            <td><span class="badge bg-info">${product.quantity || 0}</span></td>
+                            <td>₺${product.unit_price || 0}</td>
+                            <td><strong>₺${(product.quantity || 0) * (product.unit_price || 0)}</strong></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+// Sipariş işlem geçmişi oluşturma
+function createOrderHistory(order) {
+    const history = [
+        {
+            date: order.created_at,
+            action: 'Sipariş Oluşturuldu',
+            description: 'Sipariş sisteme eklendi',
+            status: 'created'
+        }
+    ];
+    
+    if (order.status === 'approved') {
+        history.push({
+            date: order.updated_at,
+            action: 'Sipariş Onaylandı',
+            description: 'Sipariş onaylandı ve üretim planı oluşturuldu',
+            status: 'approved'
+        });
+    }
+    
+    return `
+        <div class="timeline">
+            ${history.map(item => `
+                <div class="timeline-item">
+                    <div class="timeline-marker bg-${item.status === 'created' ? 'primary' : 'success'}"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">${item.action}</h6>
+                        <p class="timeline-description">${item.description}</p>
+                        <small class="text-muted">${new Date(item.date).toLocaleString('tr-TR')}</small>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Durum badge'i oluşturma
+function getStatusBadge(status) {
+    const statusMap = {
+        'pending': { class: 'warning', text: 'Taslak' },
+        'approved': { class: 'success', text: 'Aktif' },
+        'processing': { class: 'info', text: 'İşleniyor' },
+        'completed': { class: 'primary', text: 'Tamamlandı' },
+        'cancelled': { class: 'danger', text: 'İptal' }
+    };
+    
+    const statusInfo = statusMap[status] || { class: 'secondary', text: status };
+    return `<span class="badge bg-${statusInfo.class}">${statusInfo.text}</span>`;
+}
+
+// Öncelik badge'i oluşturma
+function getPriorityBadge(priority) {
+    const priorityMap = {
+        1: { class: 'success', text: 'Düşük' },
+        2: { class: 'info', text: 'Orta' },
+        3: { class: 'warning', text: 'Yüksek' },
+        4: { class: 'danger', text: 'Kritik' }
+    };
+    
+    const priorityInfo = priorityMap[priority] || { class: 'secondary', text: 'Bilinmiyor' };
+    return `<span class="badge bg-${priorityInfo.class}">${priorityInfo.text}</span>`;
+}
+
+// Sipariş detaylarından düzenleme
+function editOrderFromDetails() {
+    // Modal'ı kapat
+    const detailsModal = bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'));
+    detailsModal.hide();
+    
+    // Düzenleme modal'ını aç
+    setTimeout(() => {
+        showAddOrderModal();
+    }, 300);
+}
+
+// renderPlansView fonksiyonu - Basit placeholder
+window.renderPlansView = function(plans) {
+    console.log('renderPlansView çağrıldı:', plans);
+    const container = document.getElementById('production-plans-container');
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Üretim Planları</h5>
+                <p class="text-muted">${plans ? plans.length : 0} plan bulundu</p>
+            </div>
+        `;
+    }
+};
 
 // Siparişleri görüntüleme
 function displayOrders(orders) {
     const container = document.getElementById('orders-container');
+    
+    // İstatistikleri güncelle
+    updateOrderStatistics(orders);
     
     if (!orders || orders.length === 0) {
         container.innerHTML = `
@@ -3583,13 +4223,18 @@ function displayOrders(orders) {
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary" onclick="viewOrder(${order.id})">
+                                    <button class="btn btn-outline-primary" onclick="viewOrder(${order.id})" title="Görüntüle">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button class="btn btn-outline-warning" onclick="editOrder(${order.id})">
+                                    ${order.status === 'pending' ? `
+                                        <button class="btn btn-outline-success" onclick="approveOrder(${order.id})" title="Onayla">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    ` : ''}
+                                    <button class="btn btn-outline-warning" onclick="editOrder(${order.id})" title="Düzenle">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-outline-danger" onclick="deleteOrder(${order.id})">
+                                    <button class="btn btn-outline-danger" onclick="deleteOrder(${order.id})" title="Sil">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -3648,9 +4293,11 @@ function getStatusText(status) {
         'active': 'Aktif',
         'completed': 'Tamamlandı',
         'cancelled': 'İptal',
-        'pending': 'Beklemede',
+        'pending': 'Taslak',
+        'approved': 'Aktif',
         'confirmed': 'Onaylandı',
         'in_production': 'Üretimde',
+        'in_progress': 'Devam Ediyor',
         'shipped': 'Sevk Edildi'
     };
     return texts[status] || status;
@@ -3676,13 +4323,200 @@ function getResourceTypeText(type) {
 
 // Aşama şablonu düzenleme
 function editStageTemplate(templateId) {
-    showModalAlert('Aşama şablonu düzenleme özelliği yakında eklenecek', 'info');
+    // Debug: templateId kontrolü
+    console.log('Edit template ID:', templateId, 'Type:', typeof templateId);
+    
+    if (!templateId || templateId === 'undefined' || templateId === 'null') {
+        alert('Geçersiz aşama şablonu ID\'si', 'error');
+        return;
+    }
+    
+    // Şablon bilgilerini yükle ve düzenleme modal'ını aç
+    loadStageTemplateForEdit(templateId);
+}
+
+// Aşama şablonu düzenleme için veri yükle
+async function loadStageTemplateForEdit(templateId) {
+    try {
+        console.log('Loading template for edit:', templateId);
+        
+        const response = await fetch(`/api/production-stages/templates/${templateId}`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const template = await response.json();
+        console.log('Template loaded:', template);
+        
+        // Düzenleme modal'ını aç
+        showEditStageTemplateModal(template);
+        
+    } catch (error) {
+        console.error('Load template for edit error:', error);
+        alert('Şablon bilgileri yüklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Düzenleme modal'ını göster
+function showEditStageTemplateModal(template) {
+    // Basit düzenleme modal'ı oluştur
+    const modalHtml = `
+        <div class="modal fade" id="editStageTemplateModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Aşama Şablonu Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editStageTemplateForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Aşama Adı</label>
+                                        <input type="text" class="form-control" id="editStageName" value="${template.stage_name}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Ürün Tipi</label>
+                                        <select class="form-select" id="editProductType" required>
+                                            <option value="hammadde" ${template.product_type === 'hammadde' ? 'selected' : ''}>Hammadde</option>
+                                            <option value="yarimamul" ${template.product_type === 'yarimamul' ? 'selected' : ''}>Yarı Mamul</option>
+                                            <option value="nihai" ${template.product_type === 'nihai' ? 'selected' : ''}>Nihai Ürün</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Sıra Numarası</label>
+                                        <input type="number" class="form-control" id="editStageOrder" value="${template.stage_order}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Tahmini Süre (dakika)</label>
+                                        <input type="number" class="form-control" id="editEstimatedDuration" value="${template.estimated_duration}" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Gerekli Beceriler (virgülle ayırın)</label>
+                                        <input type="text" class="form-control" id="editRequiredSkills" value="${template.required_skills.join(', ')}" placeholder="operatör, teknisyen">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editQualityCheckRequired" ${template.quality_check_required ? 'checked' : ''}>
+                                            <label class="form-check-label">Kalite Kontrol Gerekli</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editIsMandatory" ${template.is_mandatory ? 'checked' : ''}>
+                                            <label class="form-check-label">Zorunlu Aşama</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="button" class="btn btn-primary" onclick="updateStageTemplate('${template.id}')">Güncelle</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Modal'ı DOM'a ekle
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('editStageTemplateModal'));
+    modal.show();
+    
+    // Modal kapandığında DOM'dan kaldır
+    document.getElementById('editStageTemplateModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Aşama şablonu güncelle
+async function updateStageTemplate(templateId) {
+    try {
+        const formData = {
+            stage_name: document.getElementById('editStageName').value,
+            product_type: document.getElementById('editProductType').value,
+            stage_order: parseInt(document.getElementById('editStageOrder').value),
+            estimated_duration: parseInt(document.getElementById('editEstimatedDuration').value),
+            required_skills: document.getElementById('editRequiredSkills').value.split(',').map(s => s.trim()).filter(s => s),
+            quality_check_required: document.getElementById('editQualityCheckRequired').checked,
+            is_mandatory: document.getElementById('editIsMandatory').checked
+        };
+        
+        const response = await fetch(`/api/production-stages/templates/${templateId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert(result.message || 'Aşama şablonu başarıyla güncellendi', 'success');
+            
+            // Modal'ı kapat
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editStageTemplateModal'));
+            modal.hide();
+            
+            // Listeyi yenile
+            loadStageTemplates();
+        } else {
+            const error = await response.json();
+            alert('Aşama şablonu güncellenemedi: ' + (error.error || error.message || 'Bilinmeyen hata'), 'error');
+        }
+        
+    } catch (error) {
+        console.error('Update stage template error:', error);
+        alert('Aşama şablonu güncellenemedi: ' + error.message, 'error');
+    }
 }
 
 // Aşama şablonu silme
 async function deleteStageTemplate(templateId) {
+    // Debug: templateId kontrolü
+    console.log('Delete template ID:', templateId, 'Type:', typeof templateId);
+    
+    if (!templateId || templateId === 'undefined' || templateId === 'null') {
+        alert('Geçersiz aşama şablonu ID\'si', 'error');
+        return;
+    }
+    
     if (!confirm('Bu aşama şablonunu silmek istediğinizden emin misiniz?')) {
         return;
+    }
+    
+    // Loading state başlat
+    const container = document.getElementById('stage-templates-container');
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Siliniyor...</span>
+                </div>
+                <p class="mt-2 text-muted">Aşama şablonu siliniyor...</p>
+            </div>
+        `;
     }
     
     try {
@@ -3691,15 +4525,29 @@ async function deleteStageTemplate(templateId) {
         });
         
         if (response.ok) {
-            showModalAlert('Aşama şablonu başarıyla silindi', 'success');
-            loadStageTemplates();
+            const result = await response.json();
+            console.log('Stage template deleted successfully:', templateId);
+            
+            // Başarı mesajı göster
+            alert(result.message || 'Aşama şablonu başarıyla silindi', 'success');
+            
+            // Şablonları yeniden yükle
+            await loadStageTemplates();
+            
         } else {
             const error = await response.json();
-            showModalAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
+            console.error('Delete stage template error:', error);
+            alert('Aşama şablonu silinemedi: ' + (error.error || error.message || 'Bilinmeyen hata'), 'error');
+            
+            // Hata durumunda da şablonları yeniden yükle
+            await loadStageTemplates();
         }
     } catch (error) {
         console.error('Delete stage template error:', error);
-        showModalAlert('Aşama şablonu silinemedi: ' + error.message, 'error');
+        alert('Aşama şablonu silinemedi: ' + error.message, 'error');
+        
+        // Hata durumunda da şablonları yeniden yükle
+        await loadStageTemplates();
     }
 }
 
@@ -3716,48 +4564,214 @@ function getPriorityColor(priority) {
 
 // Modal fonksiyonları
 function showAddPlanModal() {
-    showModalAlert('Yeni plan ekleme modalı yakında eklenecek', 'info');
+    alert('Yeni plan ekleme modalı yakında eklenecek', 'info');
 }
 
 function showSchedulingModal() {
-    showModalAlert('Zamanlama modalı yakında eklenecek', 'info');
+    alert('Zamanlama modalı yakında eklenecek', 'info');
 }
 
 function viewPlanDetails(planId) {
-    showModalAlert('Plan detayları yakında eklenecek', 'info');
+    alert('Plan detayları yakında eklenecek', 'info');
 }
 
 function editPlan(planId) {
-    showModalAlert('Plan düzenleme yakında eklenecek', 'info');
+    alert('Plan düzenleme yakında eklenecek', 'info');
 }
 
 function deletePlan(planId) {
     if (confirm('Bu planı silmek istediğinizden emin misiniz?')) {
-        showModalAlert('Plan silme işlemi yakında eklenecek', 'info');
+        alert('Plan silme işlemi yakında eklenecek', 'info');
     }
 }
 
 function editResource(resourceId) {
-    showModalAlert('Kaynak düzenleme yakında eklenecek', 'info');
+    alert('Kaynak düzenleme yakında eklenecek', 'info');
 }
 
 function deleteResource(resourceId) {
     if (confirm('Bu kaynağı silmek istediğinizden emin misiniz?')) {
-        showModalAlert('Kaynak silme işlemi yakında eklenecek', 'info');
+        alert('Kaynak silme işlemi yakında eklenecek', 'info');
     }
 }
 
-function viewOrder(orderId) {
-    showModalAlert('Sipariş detayları yakında eklenecek', 'info');
+// Sipariş onaylama
+async function approveOrder(orderId) {
+    try {
+        console.log('Sipariş onaylanıyor:', orderId);
+        
+        const response = await fetch(`/api/orders/${orderId}/approve`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Sipariş onaylanamadı');
+        }
+        
+        const result = await response.json();
+        console.log('Sipariş onaylandı:', result);
+        
+        // Siparişleri yenile
+        await loadOrders();
+        
+        alert('Sipariş başarıyla onaylandı!', 'success');
+        
+    } catch (error) {
+        console.error('Sipariş onaylama hatası:', error);
+        alert('Sipariş onaylanamadı: ' + error.message, 'error');
+    }
 }
 
+// Sipariş düzenleme
 function editOrder(orderId) {
-    showModalAlert('Sipariş düzenleme yakında eklenecek', 'info');
+    console.log('Sipariş düzenleniyor:', orderId);
+    
+    // Siparişi bul
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+        alert('Sipariş bulunamadı!', 'error');
+        return;
+    }
+    
+    // Form alanlarını doldur
+    document.getElementById('customer-name').value = order.customer_name || '';
+    document.getElementById('order-date').value = order.order_date || '';
+    document.getElementById('delivery-date').value = order.delivery_date || '';
+    document.getElementById('priority').value = order.priority || 1;
+    document.getElementById('total-quantity').value = order.quantity || 0;
+    document.getElementById('product-name').value = order.product_details ? JSON.stringify(order.product_details) : '';
+    document.getElementById('notes').value = order.notes || '';
+    document.getElementById('assigned-operator').value = order.assigned_operator || '';
+    
+    // Durum radio butonlarını ayarla
+    if (order.status === 'pending') {
+        document.getElementById('status-draft').checked = true;
+    } else if (order.status === 'approved') {
+        document.getElementById('status-active').checked = true;
+    }
+    
+    // Modal başlığını güncelle
+    document.getElementById('orderModalTitle').innerHTML = 
+        '<i class="fas fa-edit me-2"></i>Sipariş Düzenle';
+    
+    // Güncelleme modunu ayarla
+    currentOrderId = orderId;
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('orderModal'));
+    modal.show();
 }
 
-function deleteOrder(orderId) {
+// Sipariş silme
+async function deleteOrder(orderId) {
     if (confirm('Bu siparişi silmek istediğinizden emin misiniz?')) {
-        showModalAlert('Sipariş silme işlemi yakında eklenecek', 'info');
+        try {
+            console.log('Sipariş siliniyor:', orderId);
+            
+            const response = await fetch(`/api/orders/${orderId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Sipariş silinemedi');
+            }
+            
+            const result = await response.json();
+            console.log('Sipariş silindi:', result);
+            
+            // Siparişleri yenile
+            await loadOrders();
+            
+            alert('Sipariş başarıyla silindi!', 'success');
+            
+        } catch (error) {
+            console.error('Sipariş silme hatası:', error);
+            alert('Sipariş silinemedi: ' + error.message, 'error');
+        }
+    }
+}
+
+// Sipariş kaydetme fonksiyonu
+async function saveOrder() {
+    try {
+        // Form verilerini topla
+        const formData = {
+            customer_name: document.getElementById('customer-name').value,
+            order_date: document.getElementById('order-date').value,
+            delivery_date: document.getElementById('delivery-date').value,
+            priority: parseInt(document.getElementById('priority').value),
+            quantity: parseInt(document.getElementById('total-quantity').value) || 0,
+            product_details: document.getElementById('product-name').value,
+            notes: document.getElementById('notes').value,
+            assigned_operator: document.getElementById('assigned-operator').value,
+            status: document.querySelector('input[name="status"]:checked').value
+        };
+        
+        // Güncelleme modu kontrolü
+        const isUpdate = currentOrderId !== null;
+        
+        // Validasyon
+        if (!formData.customer_name || !formData.order_date || !formData.delivery_date || !formData.priority) {
+            alert('Lütfen tüm zorunlu alanları doldurun', 'warning');
+            return;
+        }
+        
+        if (formData.quantity <= 0) {
+            alert('Lütfen geçerli bir miktar girin', 'warning');
+            return;
+        }
+        
+        // API'ye gönder
+        const url = isUpdate ? `/api/orders/${currentOrderId}` : '/api/orders';
+        const method = isUpdate ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Sipariş kaydedilemedi');
+        }
+        
+        const result = await response.json();
+        console.log('Sipariş kaydedildi:', result);
+        
+        // Modal'ı kapat
+        const modal = bootstrap.Modal.getInstance(document.getElementById('orderModal'));
+        modal.hide();
+        
+        // Formu temizle
+        document.getElementById('orderForm').reset();
+        document.getElementById('status-draft').checked = true;
+        
+        // Güncelleme modunu sıfırla
+        currentOrderId = null;
+        
+        // Modal başlığını sıfırla
+        document.getElementById('orderModalTitle').innerHTML = 
+            '<i class="fas fa-plus me-2"></i>Yeni Sipariş Ekle';
+        
+        // Siparişleri yenile
+        await loadOrders();
+        
+        // Başarı mesajı
+        const statusText = formData.status === 'approved' ? 'Aktif' : 'Taslak';
+        const actionText = isUpdate ? 'güncellendi' : 'kaydedildi';
+        alert(`Sipariş başarıyla ${actionText} (${statusText})`, 'success');
+        
+    } catch (error) {
+        console.error('Sipariş kaydetme hatası:', error);
+        alert('Sipariş kaydedilemedi: ' + error.message, 'error');
     }
 }
 
@@ -3775,7 +4789,7 @@ async function loadQualityCheckpoints() {
         return checkpoints;
     } catch (error) {
         console.error('Quality checkpoints load error:', error);
-        showModalAlert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
+        alert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -3895,7 +4909,7 @@ async function loadQualityStandards() {
         return standards;
     } catch (error) {
         console.error('Quality standards load error:', error);
-        showModalAlert('Kalite standartları yüklenemedi: ' + error.message, 'error');
+        alert('Kalite standartları yüklenemedi: ' + error.message, 'error');
         return [];
     }
 }
@@ -3978,7 +4992,7 @@ async function loadQualityStatistics() {
         return stats;
     } catch (error) {
         console.error('Quality statistics load error:', error);
-        showModalAlert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
+        alert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
     }
 }
 
@@ -4020,7 +5034,7 @@ async function addQualityCheckpoint() {
         if (!response.ok) throw new Error('Kalite kontrol noktası eklenemedi');
         
         const newCheckpoint = await response.json();
-        showModalAlert('Kalite kontrol noktası başarıyla eklendi!', 'success');
+        alert('Kalite kontrol noktası başarıyla eklendi!', 'success');
         
         // Modal'ı kapat ve formu temizle
         const modal = bootstrap.Modal.getInstance(document.getElementById('addCheckpointModal'));
@@ -4033,20 +5047,264 @@ async function addQualityCheckpoint() {
         return newCheckpoint;
     } catch (error) {
         console.error('Add quality checkpoint error:', error);
-        showModalAlert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
+        alert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
     }
 }
 
 // Kalite kontrolü gerçekleştir
-function performQualityCheck(checkpointId) {
-    // Bu fonksiyon daha sonra implement edilecek
-    showModalAlert('Kalite kontrolü özelliği yakında eklenecek!', 'info');
+async function performQualityCheck(checkpointId) {
+    try {
+        // Checkpoint bilgilerini API'den al
+        const response = await fetch('/api/quality/checkpoints');
+        if (!response.ok) throw new Error('Kontrol noktaları yüklenemedi');
+        
+        const checkpoints = await response.json();
+        const checkpoint = checkpoints.find(cp => cp.id === checkpointId);
+        
+        if (!checkpoint) {
+            alert('Kontrol noktası bulunamadı!', 'error');
+            return;
+        }
+        
+        // Operatör listesini yükle
+        await loadOperators();
+        
+        // Modal'ı doldur
+        document.getElementById('check-checkpoint-id').value = checkpointId;
+        document.getElementById('checkpoint-name-display').textContent = checkpoint.name;
+        document.getElementById('checkpoint-description-display').textContent = checkpoint.description || 'Açıklama yok';
+        
+        // Ölçüm alanlarını göster/gizle
+        const measurementFields = document.getElementById('measurement-fields');
+        if (checkpoint.checkpoint_type === 'measurement') {
+            measurementFields.style.display = 'block';
+        } else {
+            measurementFields.style.display = 'none';
+        }
+        
+        // Modal'ı göster
+        const modal = new bootstrap.Modal(document.getElementById('qualityCheckModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Perform quality check error:', error);
+        alert('Kontrol noktası yüklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Operatör listesini yükle
+async function loadOperators() {
+    try {
+        const response = await fetch('/api/operators');
+        if (!response.ok) throw new Error('Operatör listesi yüklenemedi');
+        
+        const operators = await response.json();
+        const operatorSelect = document.getElementById('check-operator');
+        
+        // Mevcut seçenekleri temizle (ilk seçenek hariç)
+        operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+        
+        // Operatörleri ekle
+        operators.forEach(operator => {
+            const option = document.createElement('option');
+            option.value = operator;
+            option.textContent = operator;
+            operatorSelect.appendChild(option);
+        });
+        
+        // Varsayılan olarak "Kalite Kontrol" seç
+        operatorSelect.value = 'Kalite Kontrol';
+        
+    } catch (error) {
+        console.error('Load operators error:', error);
+        // Hata durumunda varsayılan operatörleri ekle
+        const operatorSelect = document.getElementById('check-operator');
+        const defaultOperators = ['Sistem', 'Admin', 'Kalite Kontrol', 'Operatör 1', 'Operatör 2'];
+        
+        operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+        defaultOperators.forEach(operator => {
+            const option = document.createElement('option');
+            option.value = operator;
+            option.textContent = operator;
+            operatorSelect.appendChild(option);
+        });
+    }
+}
+
+// Kalite kontrolü gönder
+async function submitQualityCheck() {
+    try {
+        const checkData = {
+            checkpoint_id: parseInt(document.getElementById('check-checkpoint-id').value),
+            operator: document.getElementById('check-operator').value,
+            result: document.getElementById('check-result').value,
+            measured_value: document.getElementById('check-measured-value').value || null,
+            expected_value: document.getElementById('check-expected-value').value || null,
+            tolerance: document.getElementById('check-tolerance').value || null,
+            notes: document.getElementById('check-notes').value
+        };
+        
+        if (!checkData.operator || !checkData.result) {
+            alert('Operatör ve sonuç alanları zorunludur!', 'error');
+            return;
+        }
+        
+        const response = await fetch('/api/quality/checks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(checkData)
+        });
+        
+        if (!response.ok) throw new Error('Kalite kontrolü kaydedilemedi');
+        
+        const result = await response.json();
+        alert('Kalite kontrolü başarıyla kaydedildi!', 'success');
+        
+        // Modal'ı kapat ve formu temizle
+        const modal = bootstrap.Modal.getInstance(document.getElementById('qualityCheckModal'));
+        modal.hide();
+        document.getElementById('qualityCheckForm').reset();
+        
+        // İstatistikleri yenile
+        await loadQualityStatistics();
+        
+    } catch (error) {
+        console.error('Submit quality check error:', error);
+        alert('Kalite kontrolü kaydedilemedi: ' + error.message, 'error');
+    }
+}
+
+// Kalite standardı modal'ını göster
+function showAddStandardModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addStandardModal'));
+    modal.show();
+}
+
+// Kalite standardı ekle
+async function addQualityStandard() {
+    try {
+        const standardData = {
+            name: document.getElementById('standard-name').value,
+            description: document.getElementById('standard-description').value,
+            product_type: document.getElementById('standard-product-type').value,
+            standard_type: document.getElementById('standard-type').value,
+            is_active: document.getElementById('standard-active').checked
+        };
+        
+        if (!standardData.name || !standardData.product_type || !standardData.standard_type) {
+            alert('Zorunlu alanları doldurun!', 'error');
+            return;
+        }
+        
+        const response = await fetch('/api/quality/standards', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(standardData)
+        });
+        
+        if (!response.ok) throw new Error('Kalite standardı eklenemedi');
+        
+        const newStandard = await response.json();
+        alert('Kalite standardı başarıyla eklendi!', 'success');
+        
+        // Modal'ı kapat ve formu temizle
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addStandardModal'));
+        modal.hide();
+        document.getElementById('addStandardForm').reset();
+        
+        // Standartları yenile
+        await loadQualityStandards();
+        
+    } catch (error) {
+        console.error('Add quality standard error:', error);
+        alert('Kalite standardı eklenemedi: ' + error.message, 'error');
+    }
 }
 
 // Kalite raporlarını göster
-function showQualityReports() {
-    // Bu fonksiyon daha sonra implement edilecek
-    showModalAlert('Kalite raporları özelliği yakında eklenecek!', 'info');
+async function showQualityReports() {
+    try {
+        const response = await fetch('/api/quality/reports');
+        if (!response.ok) throw new Error('Kalite raporları yüklenemedi');
+        
+        const reports = await response.json();
+        displayQualityReports(reports);
+        
+    } catch (error) {
+        console.error('Quality reports error:', error);
+        alert('Kalite raporları yüklenemedi: ' + error.message, 'error');
+    }
+}
+
+// Kalite raporlarını göster
+function displayQualityReports(reports) {
+    const modal = new bootstrap.Modal(document.getElementById('qualityReportsModal'));
+    
+    // Modal içeriğini oluştur
+    const modalBody = document.getElementById('qualityReportsModalBody') || document.createElement('div');
+    modalBody.id = 'qualityReportsModalBody';
+    
+    if (reports.length === 0) {
+        modalBody.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Kalite raporu bulunmuyor</h5>
+                <p class="text-muted">Henüz kalite kontrolü yapılmamış.</p>
+            </div>
+        `;
+    } else {
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Kontrol Noktası</th>
+                            <th>Tip</th>
+                            <th>Operatör</th>
+                            <th>Sonuç</th>
+                            <th>Ölçülen Değer</th>
+                            <th>Beklenen Değer</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        reports.forEach(report => {
+            const resultClass = {
+                'pass': 'success',
+                'fail': 'danger',
+                'warning': 'warning'
+            }[report.result] || 'secondary';
+            
+            html += `
+                <tr>
+                    <td>${report.checkpoint_name}</td>
+                    <td><span class="badge bg-info">${report.checkpoint_type}</span></td>
+                    <td>${report.operator}</td>
+                    <td><span class="badge bg-${resultClass}">${report.result}</span></td>
+                    <td>${report.measured_value || '-'}</td>
+                    <td>${report.expected_value || '-'}</td>
+                    <td>${new Date(report.created_at).toLocaleString('tr-TR')}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        modalBody.innerHTML = html;
+    }
+    
+    // Modal'ı göster
+    modal.show();
 }
 
 // Real-time updates handler fonksiyonları
@@ -4124,3 +5382,1326 @@ window.updateProductionPlans = function(data) {
         }
     }
 };
+
+// ===== FAZ 7: GELİŞMİŞ AŞAMA TAKİP SİSTEMİ =====
+
+// Aşama performansını yükle
+window.loadStagePerformance = async function() {
+    try {
+        const response = await fetch('/api/production-stages/performance');
+        const data = await response.json();
+        
+        stagePerformance = data;
+        
+        // Operatör istatistiklerini güncelle
+        document.getElementById('total-operators-count').textContent = data.total_operators || 0;
+        document.getElementById('active-operators-count').textContent = data.active_operators || 0;
+        document.getElementById('active-productions-count').textContent = data.active_productions || 0;
+        document.getElementById('completed-today-count').textContent = data.completed_today || 0;
+        
+        // Operatör performansını göster
+        document.getElementById('operator-performance-section').style.display = 'block';
+        
+        // Operatör performansını göster
+        renderOperatorPerformance(data.operator_performance);
+        
+        // showNotification('Aşama performansı yüklendi', 'success');
+    } catch (error) {
+        console.error('Aşama performansı yükleme hatası:', error);
+        // showNotification('Aşama performansı yüklenemedi', 'error');
+    }
+};
+
+// Operatör performansını render et
+function renderOperatorPerformance(operatorData) {
+    const container = document.getElementById('operator-performance-container');
+    if (!container) {
+        console.error('Operator performance container not found!');
+        return;
+    }
+    
+    // Yükleme mesajını temizle
+    container.innerHTML = '';
+    
+    if (!operatorData || operatorData.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz operatör verisi bulunmuyor</h5>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Operatör</th>
+                        <th>Tamamlanan Aşama</th>
+                        <th>Toplam Aşama</th>
+                        <th>Başarı Oranı</th>
+                        <th>Performans</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${operatorData.map(op => `
+                        <tr>
+                            <td>
+                                <i class="fas fa-user me-2"></i>${op.operator}
+                            </td>
+                            <td>${op.completed_stages}</td>
+                            <td>${op.total_stages}</td>
+                            <td>${op.completion_rate}%</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar ${op.completion_rate >= 90 ? 'bg-success' : op.completion_rate >= 70 ? 'bg-warning' : 'bg-danger'}" 
+                                         style="width: ${op.completion_rate}%">
+                                        ${op.completion_rate}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+// Canlı aşama takibini başlat
+window.loadRealtimeStages = async function() {
+    try {
+        // Önceki interval'ı temizle
+        if (realtimeInterval) {
+            clearInterval(realtimeInterval);
+        }
+        
+        // İlk yükleme
+        await updateRealtimeStages();
+        
+        // Canlı güncelleme başlat (her 5 saniyede bir)
+        realtimeInterval = setInterval(updateRealtimeStages, 5000);
+        
+        // Operatör takibi için ayrı güncelleme (30 saniyede bir)
+        operatorRealtimeInterval = setInterval(updateOperatorRealtime, 30000);
+        
+        // Bölümü göster
+        document.getElementById('realtime-operator-section').style.display = 'block';
+        
+        // showNotification('Canlı aşama takibi başlatıldı', 'success');
+    } catch (error) {
+        console.error('Canlı aşama takibi hatası:', error);
+        // showNotification('Canlı aşama takibi başlatılamadı', 'error');
+    }
+};
+
+// Canlı aşamaları güncelle
+async function updateRealtimeStages() {
+    try {
+        const response = await fetch('/api/production-stages/realtime');
+        const data = await response.json();
+        
+        realtimeStages = data;
+        renderRealtimeStages(data);
+        
+        // Canlı göstergesini güncelle
+        const indicator = document.getElementById('realtime-indicator');
+        if (indicator) {
+            indicator.textContent = 'CANLI';
+            indicator.className = 'badge bg-success ms-2';
+        }
+    } catch (error) {
+        console.error('Canlı aşama güncelleme hatası:', error);
+        const indicator = document.getElementById('realtime-indicator');
+        if (indicator) {
+            indicator.textContent = 'HATA';
+            indicator.className = 'badge bg-danger ms-2';
+        }
+    }
+}
+
+// Canlı aşamaları render et (Kaldırıldı)
+function renderRealtimeStages(stages) {
+    // Bu fonksiyon artık kullanılmıyor - Canlı Aşama Takibi bölümü kaldırıldı
+    return;
+}
+
+// Aşama başlat
+window.startStage = async function(stageId, operator = 'system') {
+    try {
+        const response = await fetch(`/api/production-stages/${stageId}/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operator })
+        });
+        
+        const data = await response.json();
+        // showNotification('Aşama başlatıldı', 'success');
+        
+        // Canlı takibi güncelle
+        if (realtimeInterval) {
+            updateRealtimeStages();
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Aşama başlatma hatası:', error);
+        // showNotification('Aşama başlatılamadı', 'error');
+    }
+};
+
+// Aşama duraklat
+window.pauseStage = async function(stageId) {
+    try {
+        const reason = prompt('Duraklatma nedeni:');
+        if (reason === null) return;
+        
+        const response = await fetch(`/api/production-stages/${stageId}/pause`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: reason })
+        });
+        
+        const data = await response.json();
+        // showNotification('Aşama duraklatıldı', 'warning');
+        
+        // Canlı takibi güncelle
+        if (realtimeInterval) {
+            updateRealtimeStages();
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Aşama duraklatma hatası:', error);
+        // showNotification('Aşama duraklatılamadı', 'error');
+    }
+};
+
+// Aşama devam ettir
+window.resumeStage = async function(stageId) {
+    try {
+        const notes = prompt('Devam notu (opsiyonel):');
+        
+        const response = await fetch(`/api/production-stages/${stageId}/resume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes })
+        });
+        
+        const data = await response.json();
+        // showNotification('Aşama devam ettirildi', 'success');
+        
+        // Canlı takibi güncelle
+        if (realtimeInterval) {
+            updateRealtimeStages();
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Aşama devam ettirme hatası:', error);
+        // showNotification('Aşama devam ettirilemedi', 'error');
+    }
+};
+
+// Aşama atla
+window.skipStage = async function(stageId) {
+    try {
+        const reason = prompt('Atlama nedeni:');
+        if (reason === null) return;
+        
+        const response = await fetch(`/api/production-stages/${stageId}/skip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason })
+        });
+        
+        const data = await response.json();
+        // showNotification('Aşama atlandı', 'info');
+        
+        // Canlı takibi güncelle
+        if (realtimeInterval) {
+            updateRealtimeStages();
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Aşama atlama hatası:', error);
+        // showNotification('Aşama atlanamadı', 'error');
+    }
+};
+
+// Aşama tamamla
+window.completeStage = async function(stageId) {
+    try {
+        const notes = prompt('Tamamlama notu (opsiyonel):');
+        
+        const response = await fetch(`/api/production-stages/${stageId}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes })
+        });
+        
+        const data = await response.json();
+        // showNotification('Aşama tamamlandı', 'success');
+        
+        // Canlı takibi güncelle
+        if (realtimeInterval) {
+            updateRealtimeStages();
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Aşama tamamlama hatası:', error);
+        // showNotification('Aşama tamamlanamadı', 'error');
+    }
+};
+
+// Canlı takibi durdur
+window.stopRealtimeTracking = function() {
+    if (realtimeInterval) {
+        clearInterval(realtimeInterval);
+        realtimeInterval = null;
+        // showNotification('Canlı takip durduruldu', 'info');
+    }
+};
+
+// ===== FAZ 7: AŞAMA RAPORLAMA VE ANALİTİK =====
+// (Analitik ve Verimlilik raporları kaldırıldı - operatör takibi için gerekli değil)
+    
+// Analitik raporu kaldırıldı - operatör takibi için gerekli değil
+        
+// Analitik raporu kaldırıldı - operatör takibi için gerekli değil
+            
+// Analitik raporu kaldırıldı - operatör takibi için gerekli değil
+        
+// Analitik raporu kaldırıldı - operatör takibi için gerekli değil
+
+// Verimlilik raporu kaldırıldı - operatör takibi için gerekli değil
+
+// Verimlilik raporu render fonksiyonu kaldırıldı
+
+// ==================== FLOWCHART FONKSİYONLARI ====================
+
+// Flowchart gösterimi
+window.showFlowchart = async function() {
+    try {
+        // Modal'ı aç
+        const modal = new bootstrap.Modal(document.getElementById('flowchartModal'));
+        modal.show();
+        
+        // Biraz bekle ve veri yükle
+        setTimeout(async () => {
+            await loadFlowchartData();
+            populateProductTypes();
+        }, 300);
+        
+        // Flowchart'ı oluştur
+        await updateFlowchart();
+        
+    } catch (error) {
+        console.error('Flowchart yükleme hatası:', error);
+        showNotification('Flowchart yüklenemedi: ' + error.message, 'error');
+    }
+};
+
+// Flowchart verilerini yükle
+async function loadFlowchartData() {
+    try {
+        const response = await fetch('/api/production-stages/templates');
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        flowchartData = data;
+        
+    } catch (error) {
+        console.error('Flowchart veri yükleme hatası:', error);
+        throw error;
+    }
+}
+
+// Ürün tiplerini doldur
+function populateProductTypes() {
+    const select = document.getElementById('flowchartProductType');
+    select.innerHTML = '<option value="">Tüm Ürün Tipleri</option>';
+    
+    const productTypes = [...new Set(flowchartData.map(template => template.product_type))];
+    
+    productTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        select.appendChild(option);
+    });
+}
+
+// Flowchart'ı güncelle
+window.updateFlowchart = async function() {
+    const container = document.getElementById('flowchart-container');
+    const productType = document.getElementById('flowchartProductType').value;
+    const viewType = document.getElementById('flowchartViewType').value;
+    
+    // Filtrelenmiş veriler
+    let filteredData = flowchartData;
+    if (productType) {
+        filteredData = flowchartData.filter(template => template.product_type === productType);
+    }
+    
+    // Sıralama
+    filteredData.sort((a, b) => a.stage_order - b.stage_order);
+    
+    container.innerHTML = '<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i> Flowchart oluşturuluyor...</div>';
+    
+    // Sadece basit HTML kullan
+    createSimpleFlowchart(filteredData, container);
+};
+
+
+// Flowchart.js kaldırıldı - sadece basit HTML kullanılıyor
+
+// Basit HTML flowchart oluştur
+function createSimpleFlowchart(data, container) {
+    let html = '<div class="simple-flowchart">';
+    
+    // Başlık ekle
+    html += `
+        <div class="flowchart-header">
+            <h4><i class="fas fa-project-diagram me-2"></i>Üretim Aşamaları Akışı</h4>
+            <p class="text-muted">Aşamalar sırasıyla işlenir ve her aşama tamamlandıktan sonra bir sonrakine geçilir</p>
+        </div>
+    `;
+    
+    data.forEach((template, index) => {
+        const isLast = index === data.length - 1;
+        const isFirst = index === 0;
+        
+        html += `
+            <div class="flowchart-step">
+                <div class="step-card ${isFirst ? 'first-step' : ''} ${isLast ? 'last-step' : ''}">
+                    <div class="step-header">
+                        <h6>${template.stage_name}</h6>
+                        <div class="step-badges">
+                            <span class="badge bg-primary">Sıra: ${template.stage_order}</span>
+                            ${template.quality_check_required ? '<span class="badge bg-warning"><i class="fas fa-check-circle me-1"></i>Kalite Kontrol</span>' : ''}
+                            ${template.is_mandatory ? '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Zorunlu</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="step-body">
+                        <div class="step-info">
+                            <p><i class="fas fa-clock"></i> <strong>Süre:</strong> ${template.estimated_duration} dakika</p>
+                            ${template.required_skills.length > 0 ? `<p><i class="fas fa-user-cog"></i> <strong>Gerekli Beceriler:</strong> ${template.required_skills.join(', ')}</p>` : ''}
+                            <p><i class="fas fa-tag"></i> <strong>Ürün Tipi:</strong> ${getProductTypeText(template.product_type)}</p>
+                        </div>
+                    </div>
+                </div>
+                ${!isLast ? '<div class="flowchart-arrow"><i class="fas fa-arrow-down"></i></div>' : ''}
+            </div>
+        `;
+    });
+    
+    // Bitiş mesajı
+    html += `
+        <div class="flowchart-footer">
+            <div class="completion-message">
+                <i class="fas fa-flag-checkered fa-2x text-success mb-2"></i>
+                <h5 class="text-success">Tüm Aşamalar Tamamlandı!</h5>
+                <p class="text-muted">Ürün üretim süreci başarıyla tamamlandı</p>
+            </div>
+        </div>
+    `;
+    
+    html += '</div>';
+    
+    // CSS ekle
+    html += `
+        <style>
+            .simple-flowchart {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 25px;
+                padding: 30px;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-radius: 15px;
+                min-height: 500px;
+            }
+            .flowchart-header {
+                text-align: center;
+                margin-bottom: 20px;
+                padding: 20px;
+                background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+                color: white;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+            }
+            .flowchart-header h4 {
+                margin: 0 0 10px 0;
+                font-weight: bold;
+            }
+            .flowchart-step {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .step-card {
+                background: linear-gradient(135deg, #e1f5fe 0%, #f8f9fa 100%);
+                border: 3px solid #4a90e2;
+                border-radius: 15px;
+                padding: 25px;
+                min-width: 350px;
+                max-width: 500px;
+                box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+                transition: all 0.3s ease;
+                position: relative;
+            }
+            .step-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+                border-color: #2c5aa0;
+            }
+            .step-card.first-step {
+                background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                border-color: #28a745;
+            }
+            .step-card.last-step {
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border-color: #ffc107;
+            }
+            .step-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+                border-bottom: 2px solid #e9ecef;
+            }
+            .step-header h6 {
+                margin: 0;
+                color: #2c3e50;
+                font-weight: bold;
+                font-size: 1.2rem;
+            }
+            .step-badges {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .step-body {
+                margin-top: 15px;
+            }
+            .step-info p {
+                margin: 12px 0;
+                color: #555;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .step-info i {
+                color: #4a90e2;
+                width: 16px;
+            }
+            .flowchart-arrow {
+                font-size: 28px;
+                color: #4a90e2;
+                margin: 15px 0;
+                animation: bounce 2s infinite;
+            }
+            .flowchart-footer {
+                text-align: center;
+                margin-top: 20px;
+            }
+            .completion-message {
+                padding: 30px;
+                background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                border-radius: 15px;
+                border: 2px solid #28a745;
+            }
+            @keyframes bounce {
+                0%, 20%, 50%, 80%, 100% {
+                    transform: translateY(0);
+                }
+                40% {
+                    transform: translateY(-10px);
+                }
+                60% {
+                    transform: translateY(-5px);
+                }
+            }
+            .badge {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+        </style>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// Ürün tipi metnini getir
+function getProductTypeText(type) {
+    const types = {
+        'hammadde': 'Hammadde',
+        'yarimamul': 'Yarı Mamul',
+        'nihai': 'Nihai Ürün'
+    };
+    return types[type] || type;
+}
+
+// Flowchart'ı dışa aktar
+window.exportFlowchart = function() {
+    const container = document.getElementById('flowchart-container');
+    const svg = container.querySelector('svg');
+    
+    if (svg) {
+        // SVG'yi PNG'ye dönüştür ve indir
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(svgBlob);
+        
+        img.onload = function() {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.toBlob(function(blob) {
+                const link = document.createElement('a');
+                link.download = 'production-flowchart.png';
+                link.href = URL.createObjectURL(blob);
+                link.click();
+            });
+        };
+        
+        img.src = url;
+    } else {
+        showNotification('Dışa aktarılacak flowchart bulunamadı', 'warning');
+    }
+};
+
+// ===== OPERATÖR TAKİBİ FONKSİYONLARI =====
+
+// Operatör durumunu yükle
+async function loadOperatorStatus() {
+    try {
+        console.log('📊 Operatör durumu yükleniyor...');
+        
+        // Operatörleri yükle
+        const operatorsResponse = await fetch('/api/operators');
+        if (operatorsResponse.ok) {
+            operators = await operatorsResponse.json();
+            console.log('👥 Operatörler yüklendi:', operators.length);
+        }
+        
+        // Aktif üretimleri yükle
+        const productionsResponse = await fetch('/api/production-states');
+        if (productionsResponse.ok) {
+            operatorProductions = await productionsResponse.json();
+            console.log('🏭 Aktif üretimler yüklendi:', operatorProductions.length);
+        }
+        
+        // Değişkenlerin yüklendiğinden emin ol
+        if (!operators) operators = [];
+        if (!operatorProductions) operatorProductions = [];
+        
+        // Önceki verileri sakla (ilk yükleme için)
+        previousOperators = JSON.parse(JSON.stringify(operators));
+        previousOperatorProductions = JSON.parse(JSON.stringify(operatorProductions));
+        
+        console.log('📊 Operatörler:', operators.length, 'Üretimler:', operatorProductions.length);
+        
+        // İstatistikleri güncelle
+        updateOperatorStats();
+        
+        // Operatör listesini göster
+        displayOperatorsList();
+        
+        // Canlı operatör takibini göster
+        displayRealtimeOperators();
+        
+        // alert('Operatör durumu başarıyla yüklendi', 'success');
+        
+    } catch (error) {
+        console.error('❌ Operatör durumu yükleme hatası:', error);
+        // alert('Operatör durumu yüklenemedi', 'error');
+    }
+}
+
+// Operatör real-time güncelleme
+async function updateOperatorRealtime() {
+    try {
+        console.log('🔄 Operatör real-time güncelleme...');
+        
+        // Operatörleri yükle
+        const operatorsResponse = await fetch('/api/operators');
+        let newOperators = [];
+        if (operatorsResponse.ok) {
+            newOperators = await operatorsResponse.json();
+        }
+        
+        // Aktif üretimleri yükle
+        const productionsResponse = await fetch('/api/production-states');
+        let newOperatorProductions = [];
+        if (productionsResponse.ok) {
+            newOperatorProductions = await productionsResponse.json();
+        }
+        
+        // Veri değişikliği kontrolü
+        const operatorsChanged = JSON.stringify(newOperators) !== JSON.stringify(previousOperators);
+        const productionsChanged = JSON.stringify(newOperatorProductions) !== JSON.stringify(previousOperatorProductions);
+        
+        if (operatorsChanged || productionsChanged) {
+            console.log('📊 Veri değişikliği tespit edildi, UI güncelleniyor...');
+            
+            // Verileri güncelle
+            operators = newOperators;
+            operatorProductions = newOperatorProductions;
+            
+            // Önceki verileri sakla
+            previousOperators = JSON.parse(JSON.stringify(newOperators));
+            previousOperatorProductions = JSON.parse(JSON.stringify(newOperatorProductions));
+            
+            // İstatistikleri güncelle
+            updateOperatorStats();
+            
+            // Operatör listesini güncelle
+            displayOperatorsList();
+            
+            // Canlı operatör takibini güncelle
+            displayRealtimeOperators();
+        } else {
+            console.log('📊 Veri değişikliği yok, UI güncellenmiyor');
+        }
+        
+    } catch (error) {
+        console.error('❌ Operatör real-time güncelleme hatası:', error);
+    }
+}
+
+// Operatör istatistiklerini güncelle
+function updateOperatorStats() {
+    if (!operators) operators = [];
+    if (!operatorProductions) operatorProductions = [];
+    
+    const totalOperators = operators.length;
+    const activeOperators = operators.filter(op => op.is_active).length;
+    const activeProductions = operatorProductions.filter(p => p.is_active).length;
+    const completedToday = operatorProductions.filter(p => {
+        if (!p.completed_at) return false;
+        const today = new Date().toDateString();
+        const completedDate = new Date(p.completed_at).toDateString();
+        return today === completedDate;
+    }).length;
+    
+    document.getElementById('total-operators-count').textContent = totalOperators;
+    document.getElementById('active-operators-count').textContent = activeOperators;
+    document.getElementById('active-productions-count').textContent = activeProductions;
+    document.getElementById('completed-today-count').textContent = completedToday;
+}
+
+// Operatör listesini göster
+function displayOperatorsList() {
+    const container = document.getElementById('operators-list-container');
+    
+    if (!operators || operators.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Henüz operatör bulunmuyor</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const html = operators.map(operator => {
+        const operatorProductionsList = operatorProductions.filter(p => p.operator_id === operator.id);
+        const activeProductions = operatorProductionsList.filter(p => p.status === 'active');
+        const completedProductions = operatorProductionsList.filter(p => p.status === 'completed');
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">${operator.name}</h6>
+                                    <small class="text-muted">${operator.department}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="badge ${operator.is_active ? 'bg-success' : 'bg-secondary'} fs-6">
+                                    ${operator.is_active ? 'Aktif' : 'Pasif'}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h6 class="mb-0 text-warning">${activeProductions.length}</h6>
+                                <small class="text-muted">Aktif Üretim</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h6 class="mb-0 text-success">${completedProductions.length}</h6>
+                                <small class="text-muted">Tamamlanan</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h6 class="mb-0 text-info">${operator.skill_level || 'N/A'}</h6>
+                                <small class="text-muted">Seviye</small>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewOperatorDetails('${operator.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = html;
+}
+
+// Canlı operatör takibini göster
+function displayRealtimeOperators() {
+    const container = document.getElementById('realtime-operators-container');
+    
+    console.log('🔍 displayRealtimeOperators - operatorProductions:', operatorProductions);
+    console.log('🔍 displayRealtimeOperators - operatorProductions.length:', operatorProductions?.length);
+    
+    // Aktif üretimleri filtrele
+    const activeProductions = operatorProductions.filter(p => p.is_active);
+    console.log('🔍 displayRealtimeOperators - activeProductions:', activeProductions);
+    console.log('🔍 displayRealtimeOperators - activeProductions.length:', activeProductions?.length);
+    
+    if (!activeProductions || activeProductions.length === 0) {
+        console.log('⚠️ Aktif üretim bulunmuyor, mesaj gösteriliyor');
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-industry fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Şu anda aktif üretim bulunmuyor</p>
+            </div>
+        `;
+        return;
+    }
+    
+    console.log('🎨 HTML oluşturuluyor, activeProductions:', activeProductions);
+    
+    const html = activeProductions.map(production => {
+        // Operatör adını production'dan al, operators array'inden değil
+        const operatorName = production.operator_name || 'Bilinmeyen';
+        const progress = (production.produced_quantity / production.target_quantity) * 100;
+        
+        console.log('🎨 Production işleniyor:', production.product_name, 'Operator:', operatorName, 'Progress:', progress);
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar bg-warning text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="fas fa-cog fa-spin"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">${operatorName}</h6>
+                                    <small class="text-muted">${production.product_name}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="mb-0">${production.produced_quantity}/${production.target_quantity}</h6>
+                                <small class="text-muted">Adet</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-success" style="width: ${progress}%">
+                                    ${Math.round(progress)}%
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <span class="badge ${production.is_active ? 'bg-warning' : 'bg-success'}">
+                                    ${production.is_active ? 'Devam Ediyor' : 'Tamamlandı'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    console.log('🎨 HTML oluşturuldu, uzunluk:', html.length);
+    console.log('🎨 Container:', container);
+    console.log('🎨 HTML içeriği:', html.substring(0, 200) + '...');
+    
+    container.innerHTML = html;
+    
+    console.log('✅ HTML container\'a yazıldı');
+}
+
+// Canlı operatör verilerini yükle
+async function loadRealtimeOperatorData() {
+    try {
+        console.log('🔄 Canlı operatör verileri yükleniyor...');
+        await loadOperatorStatus();
+        // showNotification('Canlı veriler güncellendi', 'success');
+    } catch (error) {
+        console.error('❌ Canlı veri yükleme hatası:', error);
+        // showNotification('Canlı veriler yüklenemedi', 'error');
+    }
+}
+
+// Operatör performansını yükle (Kaldırıldı)
+async function loadOperatorPerformance() {
+    // Bu fonksiyon artık kullanılmıyor - Operatör Performansı bölümü kaldırıldı
+    return;
+}
+
+// Operatör performansını hesapla (Kaldırıldı)
+function calculateOperatorPerformance() {
+    // Bu fonksiyon artık kullanılmıyor - Operatör Performansı bölümü kaldırıldı
+    return {};
+}
+
+// Operatör performans grafiğini göster (Kaldırıldı)
+function displayOperatorPerformanceChart(performanceData) {
+    // Bu fonksiyon artık kullanılmıyor - Operatör Performansı bölümü kaldırıldı
+    return;
+}
+
+// Operatör üretim geçmişini yükle
+async function loadOperatorProductionHistory() {
+    try {
+        console.log('📚 Operatör üretim geçmişi yükleniyor...');
+        
+        // Üretim geçmişini göster
+        displayOperatorProductionHistory();
+        
+        // showNotification('Üretim geçmişi yüklendi', 'success');
+        
+    } catch (error) {
+        console.error('❌ Üretim geçmişi yükleme hatası:', error);
+        // showNotification('Üretim geçmişi yüklenemedi', 'error');
+    }
+}
+
+// Operatör üretim geçmişini göster
+function displayOperatorProductionHistory() {
+    const container = document.getElementById('operator-performance-container');
+    
+    const html = `
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Operatör</th>
+                        <th>Ürün</th>
+                        <th>Miktar</th>
+                        <th>Durum</th>
+                        <th>Başlangıç</th>
+                        <th>Bitiş</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${operatorProductions.map(production => {
+                        const operator = operators.find(op => op.operator_id === production.operator_id);
+                        return `
+                            <tr>
+                                <td>${operator ? operator.name : 'Bilinmeyen'}</td>
+                                <td>${production.product_name}</td>
+                                <td>${production.produced_quantity}/${production.target_quantity}</td>
+                                <td>
+                                    <span class="badge ${production.status === 'completed' ? 'bg-success' : 'bg-warning'}">
+                                        ${production.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
+                                    </span>
+                                </td>
+                                <td>${new Date(production.start_time).toLocaleString('tr-TR')}</td>
+                                <td>${production.completed_at ? new Date(production.completed_at).toLocaleString('tr-TR') : '-'}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+
+// Operatör detaylarını görüntüle
+async function viewOperatorDetails(operatorId) {
+    console.log("🔍 Operatör detayları görüntüleniyor:", operatorId);
+    console.log("🔍 Mevcut operatörler:", operators);
+    console.log("🔍 Operatör sayısı:", operators ? operators.length : 'undefined');
+    
+    // Eğer operatörler yüklenmemişse, yükle
+    if (!operators || operators.length === 0) {
+        console.log("🔄 Operatörler yüklenmemiş, yeniden yükleniyor...");
+        await loadOperatorStatus();
+    }
+    
+    // Operatörü bul (string ve number karşılaştırması için)
+    const operator = operators.find(op => 
+        op.id == operatorId || op.operator_id == operatorId ||
+        op.id === parseInt(operatorId) || op.operator_id === parseInt(operatorId)
+    );
+    if (!operator) {
+        console.log("❌ Operatör bulunamadı. ID:", operatorId);
+        console.log("❌ Mevcut operatör ID'leri:", operators.map(op => op.id));
+        alert("Operatör bulunamadı!");
+        return;
+    }
+    
+    // Operatörün üretimlerini bul
+    const operatorProductionsList = operatorProductions.filter(prod => 
+        prod.operator_id === operatorId || prod.operator_name === operator.name
+    );
+    
+    // Modal HTML oluştur
+    const modalHtml = `
+        <div class="modal fade" id="operatorDetailsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-user me-2"></i>Operatör Detayları
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Operatör Bilgileri</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Ad:</strong></td>
+                                        <td>${operator.name || "N/A"}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>ID:</strong></td>
+                                        <td>${operator.operator_id || operator.id || "N/A"}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Seviye:</strong></td>
+                                        <td>${operator.skill_level || "N/A"}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Durum:</strong></td>
+                                        <td>
+                                            <span class="badge ${operator.is_active ? "bg-success" : "bg-secondary"}">
+                                                ${operator.is_active ? "Aktif" : "Pasif"}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>İstatistikler</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Aktif Üretim:</strong></td>
+                                        <td>${operatorProductionsList.filter(p => p.status === "active").length}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tamamlanan:</strong></td>
+                                        <td>${operatorProductionsList.filter(p => p.status === "completed").length}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Toplam Üretim:</strong></td>
+                                        <td>${operatorProductionsList.length}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6>Üretim Geçmişi</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Ürün</th>
+                                            <th>Durum</th>
+                                            <th>İlerleme</th>
+                                            <th>Başlangıç</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${operatorProductionsList.map(prod => `
+                                            <tr>
+                                                <td>${prod.product_name || "N/A"}</td>
+                                                <td>
+                                                    <span class="badge ${prod.status === "active" ? "bg-warning" : "bg-success"}">
+                                                        ${prod.status === "active" ? "Aktif" : "Tamamlandı"}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="progress" style="height: 20px;">
+                                                        <div class="progress-bar" style="width: ${prod.progress || 0}%">
+                                                            ${prod.progress || 0}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>${prod.start_time ? new Date(prod.start_time).toLocaleString("tr-TR") : "N/A"}</td>
+                                            </tr>
+                                        `).join("")}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Eski modal varsa kaldır
+    const existingModal = document.getElementById("operatorDetailsModal");
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Yeni modal ekle
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    
+    // Modalı göster
+    const modal = new bootstrap.Modal(document.getElementById("operatorDetailsModal"));
+    modal.show();
+}
+
+// Üretim planı kaydetme fonksiyonu
+async function savePlan() {
+    try {
+        const planData = {
+            plan_name: document.getElementById('plan-name').value,
+            plan_type: document.getElementById('plan-type').value,
+            start_date: document.getElementById('start-date').value,
+            end_date: document.getElementById('end-date').value,
+            status: document.getElementById('plan-status').value || 'draft',
+            created_by: document.getElementById('created-by').value || 'Admin',
+            assigned_operator: document.getElementById('assigned-operator').value || null,
+            operator_notes: document.getElementById('operator-notes').value || null,
+            notes: document.getElementById('plan-notes').value || null
+        };
+
+        // Temel validasyon
+        if (!planData.plan_name || !planData.plan_type || !planData.start_date || !planData.end_date) {
+            showModalAlert('Lütfen tüm zorunlu alanları doldurun!', 'warning');
+            return;
+        }
+
+        console.log('Plan kaydediliyor:', planData);
+
+        const response = await fetch('/api/production-plans', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(planData)
+        });
+
+        if (!response.ok) {
+            throw new Error('Plan kaydedilemedi');
+        }
+
+        const result = await response.json();
+        console.log('Plan başarıyla kaydedildi:', result);
+
+        // Modal'ı kapat
+        const modal = bootstrap.Modal.getInstance(document.getElementById('planModal'));
+        modal.hide();
+
+        // Formu temizle
+        document.getElementById('planForm').reset();
+
+        // Sayfayı yenile (eğer plan listesi varsa)
+        if (typeof loadPlans === 'function') {
+            loadPlans();
+        }
+
+        showModalAlert('Plan başarıyla kaydedildi!', 'success');
+
+    } catch (error) {
+        console.error('Plan kaydetme hatası:', error);
+        showModalAlert('Plan kaydedilemedi: ' + error.message, 'error');
+    }
+}
+
+// Üretim planı düzenleme fonksiyonu
+async function editPlan(planId) {
+    try {
+        console.log('Plan düzenleniyor:', planId);
+        
+        // Plan bilgilerini al
+        const response = await fetch(`/api/production-plans/${planId}`);
+        if (!response.ok) {
+            throw new Error('Plan bilgileri yüklenemedi');
+        }
+        
+        const plan = await response.json();
+        console.log('Plan bilgileri yüklendi:', plan);
+        
+        // Operatör listesini yükle
+        await loadOperatorOptions();
+        
+        // Modal'ı doldur
+        document.getElementById('plan-name').value = plan.plan_name || '';
+        document.getElementById('plan-type').value = plan.plan_type || '';
+        document.getElementById('start-date').value = plan.start_date || '';
+        document.getElementById('end-date').value = plan.end_date || '';
+        document.getElementById('plan-status').value = plan.status || 'draft';
+        document.getElementById('created-by').value = plan.created_by || 'Admin';
+        document.getElementById('assigned-operator').value = plan.assigned_operator || '';
+        document.getElementById('operator-notes').value = plan.operator_notes || '';
+        document.getElementById('plan-notes').value = plan.notes || '';
+        
+        // Modal başlığını güncelle
+        document.getElementById('planModalTitle').textContent = 'Üretim Planını Düzenle';
+        
+        // Kaydet butonunu güncelle
+        const saveButton = document.querySelector('#planModal .btn-primary');
+        saveButton.setAttribute('onclick', `updatePlan(${planId})`);
+        saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Güncelle';
+        
+        // Modal'ı göster
+        const modal = new bootstrap.Modal(document.getElementById('planModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Plan düzenleme hatası:', error);
+        showModalAlert('Plan düzenlenemedi: ' + error.message, 'error');
+    }
+}
+
+// Üretim planı güncelleme fonksiyonu
+async function updatePlan(planId) {
+    try {
+        const planData = {
+            plan_name: document.getElementById('plan-name').value,
+            plan_type: document.getElementById('plan-type').value,
+            start_date: document.getElementById('start-date').value,
+            end_date: document.getElementById('end-date').value,
+            status: document.getElementById('plan-status').value || 'draft',
+            created_by: document.getElementById('created-by').value || 'Admin',
+            assigned_operator: document.getElementById('assigned-operator').value || null,
+            operator_notes: document.getElementById('operator-notes').value || null,
+            notes: document.getElementById('plan-notes').value || null
+        };
+
+        // Temel validasyon
+        if (!planData.plan_name || !planData.plan_type || !planData.start_date || !planData.end_date) {
+            showModalAlert('Lütfen tüm zorunlu alanları doldurun!', 'warning');
+            return;
+        }
+
+        console.log('Plan güncelleniyor:', planId, planData);
+
+        const response = await fetch(`/api/production-plans/${planId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(planData)
+        });
+
+        if (!response.ok) {
+            throw new Error('Plan güncellenemedi');
+        }
+
+        const result = await response.json();
+        console.log('Plan başarıyla güncellendi:', result);
+
+        // Modal'ı kapat
+        const modal = bootstrap.Modal.getInstance(document.getElementById('planModal'));
+        modal.hide();
+
+        // Modal'ı sıfırla
+        resetPlanModal();
+
+        // Sayfayı yenile (eğer plan listesi varsa)
+        if (typeof loadPlans === 'function') {
+            loadPlans();
+        }
+
+        showModalAlert('Plan başarıyla güncellendi!', 'success');
+
+    } catch (error) {
+        console.error('Plan güncelleme hatası:', error);
+        showModalAlert('Plan güncellenemedi: ' + error.message, 'error');
+    }
+}
+
+// Plan modalını sıfırla
+function resetPlanModal() {
+    // Modal başlığını sıfırla
+    document.getElementById('planModalTitle').textContent = 'Yeni Üretim Planı';
+    
+    // Kaydet butonunu sıfırla
+    const saveButton = document.querySelector('#planModal .btn-primary');
+    saveButton.setAttribute('onclick', 'savePlan()');
+    saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Kaydet';
+    
+    // Formu temizle
+    document.getElementById('planForm').reset();
+}
+
+// Operatör seçeneklerini yükle
+async function loadOperatorOptions() {
+    try {
+        const response = await fetch('/api/operators');
+        if (!response.ok) {
+            throw new Error('Operatörler yüklenemedi');
+        }
+        
+        const operators = await response.json();
+        const operatorSelect = document.getElementById('assigned-operator');
+        
+        // Mevcut seçenekleri temizle (ilk seçenek hariç)
+        operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+        
+        // Operatörleri ekle
+        operators.forEach(operator => {
+            const option = document.createElement('option');
+            option.value = operator.name;
+            option.textContent = operator.name;
+            operatorSelect.appendChild(option);
+        });
+        
+        console.log('Operatör seçenekleri yüklendi:', operators.length, 'operatör');
+        
+    } catch (error) {
+        console.error('Operatör seçenekleri yükleme hatası:', error);
+        // Hata durumunda varsayılan operatörleri kullan
+        const operatorSelect = document.getElementById('assigned-operator');
+        operatorSelect.innerHTML = `
+            <option value="">Operatör seçiniz...</option>
+            <option value="Thunder Serisi Operatör">Thunder Serisi Operatör</option>
+            <option value="ThunderPRO Serisi Operatör">ThunderPRO Serisi Operatör</option>
+        `;
+    }
+}

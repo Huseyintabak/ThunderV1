@@ -92,12 +92,22 @@ class RealTimeUpdates {
     setupErrorHandling() {
         try {
             window.addEventListener('error', (event) => {
-                console.error('Real-time Updates hatası:', event.error);
                 // Null hataları kontrol et
-                if (event && event.error) {
+                if (event && event.error && event.error !== null) {
+                    console.error('Real-time Updates hatası:', event.error);
                     this.handleError(event.error);
                 } else {
                     console.warn('Null error event - sessizce geçiliyor');
+                }
+            });
+            
+            // Unhandled promise rejection'ları yakala
+            window.addEventListener('unhandledrejection', (event) => {
+                if (event && event.reason && event.reason !== null) {
+                    console.error('Real-time Updates promise hatası:', event.reason);
+                    this.handleError(event.reason);
+                } else {
+                    console.warn('Null promise rejection - sessizce geçiliyor');
                 }
             });
         } catch (error) {
@@ -144,7 +154,16 @@ class RealTimeUpdates {
                 try {
                     await this.updateDataType(dataType, config);
                 } catch (error) {
-                    // Kritik hataları kullanıcıya göster, network hatalarını sessizce geç
+                    // Network hatalarını sessizce geç
+                    if (error.name === 'AbortError' || 
+                        error.message.includes('fetch') || 
+                        error.message.includes('Load failed') ||
+                        error.message.includes('Failed to fetch')) {
+                        console.warn(`${dataType} güncellenirken network hatası:`, error.message);
+                        return;
+                    }
+                    
+                    // Kritik hataları kullanıcıya göster
                     if (this.shouldShowErrorToUser(error)) {
                         console.error(`${dataType} güncellenirken kritik hata:`, error);
                         if (window.stateManager) {
@@ -152,7 +171,7 @@ class RealTimeUpdates {
                             window.stateManager.addNotification(errorMessage, 'error');
                         }
                     } else {
-                        console.warn(`${dataType} güncellenirken geçici hata:`, error);
+                        console.warn(`${dataType} güncellenirken geçici hata:`, error.message);
                     }
                 }
             }, config.frequency);
@@ -210,7 +229,10 @@ class RealTimeUpdates {
             console.log(`${dataType} başarıyla güncellendi`);
         } catch (error) {
             // Timeout ve network hatalarını sessizce geç
-            if (error.name === 'AbortError' || error.message.includes('fetch')) {
+            if (error.name === 'AbortError' || 
+                error.message.includes('fetch') || 
+                error.message.includes('Load failed') ||
+                error.message.includes('Failed to fetch')) {
                 console.warn(`${dataType} güncelleme timeout: ${config.endpoint}`);
                 return;
             }
@@ -224,7 +246,8 @@ class RealTimeUpdates {
                 }
             }
             
-            throw error;
+            // Hata fırlatma yerine sadece log
+            console.warn(`${dataType} güncelleme hatası, devam ediliyor:`, error.message);
         }
     }
 

@@ -45,6 +45,18 @@
             background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
             color: #333;
         }
+        .workflow-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .workorder-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .stock-movement-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
         .quick-action-btn {
             border-radius: 15px;
             padding: 15px 20px;
@@ -306,6 +318,71 @@
                                 </button>
                                 <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showSystemSettings()">
                                     <i class="fas fa-server me-1"></i>Sistem Ayarları
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Yeni Bölümler -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <h3 class="text-center mb-4">
+                        <i class="fas fa-cogs me-2"></i>Gelişmiş Yönetim
+                    </h3>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card workflow-card h-100" onclick="showWorkflowManagement()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-project-diagram fa-4x mb-3"></i>
+                            <h4 class="card-title">İş Akışı Yönetimi</h4>
+                            <p class="card-text">Workflow tanımları ve çalıştırma geçmişi</p>
+                            <div class="mt-3">
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showWorkflows()">
+                                    <i class="fas fa-list me-1"></i>Workflow Listesi
+                                </button>
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showWorkflowExecutions()">
+                                    <i class="fas fa-history me-1"></i>Çalıştırma Geçmişi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card workorder-card h-100" onclick="showWorkOrderManagement()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clipboard-list fa-4x mb-3"></i>
+                            <h4 class="card-title">İş Emirleri</h4>
+                            <p class="card-text">İş emirleri oluşturma ve takip</p>
+                            <div class="mt-3">
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showWorkOrders()">
+                                    <i class="fas fa-list me-1"></i>İş Emri Listesi
+                                </button>
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); createWorkOrder()">
+                                    <i class="fas fa-plus me-1"></i>Yeni İş Emri
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="card dashboard-card stock-movement-card h-100" onclick="showStockMovementManagement()">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exchange-alt fa-4x mb-3"></i>
+                            <h4 class="card-title">Stok Hareketleri</h4>
+                            <p class="card-text">Stok giriş/çıkış takibi</p>
+                            <div class="mt-3">
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); showStockMovements()">
+                                    <i class="fas fa-list me-1"></i>Hareket Listesi
+                                </button>
+                                <button class="btn btn-dark quick-action-btn" onclick="event.stopPropagation(); createStockMovement()">
+                                    <i class="fas fa-plus me-1"></i>Yeni Hareket
                                 </button>
                             </div>
                         </div>
@@ -1174,6 +1251,43 @@
 
         function showSettings() {
             showAlert('Ayarlar modülü yakında eklenecek', 'info');
+        }
+
+        // Yeni Fonksiyonlar
+        function showWorkflowManagement() {
+            showAlert('İş Akışı Yönetimi modülü yakında eklenecek', 'info');
+        }
+
+        function showWorkflows() {
+            showAlert('Workflow Listesi modülü yakında eklenecek', 'info');
+        }
+
+        function showWorkflowExecutions() {
+            showAlert('Workflow Çalıştırma Geçmişi modülü yakında eklenecek', 'info');
+        }
+
+        function showWorkOrderManagement() {
+            showAlert('İş Emirleri modülü yakında eklenecek', 'info');
+        }
+
+        function showWorkOrders() {
+            showAlert('İş Emri Listesi modülü yakında eklenecek', 'info');
+        }
+
+        function createWorkOrder() {
+            showAlert('Yeni İş Emri modülü yakında eklenecek', 'info');
+        }
+
+        function showStockMovementManagement() {
+            showAlert('Stok Hareketleri modülü yakında eklenecek', 'info');
+        }
+
+        function showStockMovements() {
+            showAlert('Stok Hareket Listesi modülü yakında eklenecek', 'info');
+        }
+
+        function createStockMovement() {
+            showAlert('Yeni Stok Hareketi modülü yakında eklenecek', 'info');
         }
 
         function showStockEntryModal() {

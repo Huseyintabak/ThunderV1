@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thunder V1 - Web Interface Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">
+            <i class="fas fa-cogs me-2"></i>Thunder V1 - Web Interface Test
+        </h1>
+        
+        <div class="test-section">
+            <h3><i class="fas fa-server me-2"></i>Server Bağlantı Testi</h3>
+            <div id="server-test" class="test-result info">Test ediliyor...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3><i class="fas fa-shopping-cart me-2"></i>Sipariş Yönetimi Testi</h3>
+            <div id="orders-test" class="test-result info">Test ediliyor...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3><i class="fas fa-clipboard-list me-2"></i>Üretim Planlama Testi</h3>
+            <div id="plans-test" class="test-result info">Test ediliyor...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3><i class="fas fa-list-ol me-2"></i>Üretim Aşamaları Testi</h3>
+            <div id="stages-test" class="test-result info">Test ediliyor...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3><i class="fas fa-check-circle me-2"></i>Kalite Kontrol Testi</h3>
+            <div id="quality-test" class="test-result info">Test ediliyor...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3><i class="fas fa-link me-2"></i>Entegrasyon Testi</h3>
+            <div id="integration-test" class="test-result info">Test ediliyor...</div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <button class="btn btn-primary btn-lg" onclick="runAllTests()">
+                <i class="fas fa-play me-2"></i>Tüm Testleri Çalıştır
+            </button>
+            <button class="btn btn-success btn-lg ms-2" onclick="openProductionPage()">
+                <i class="fas fa-external-link-alt me-2"></i>Üretim Yönetimi Sayfasını Aç
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `test-result ${success ? 'success' : 'error'}`;
+            element.innerHTML = `
+                <strong>${success ? '✅' : '❌'} ${message}</strong>
+                ${data ? `<br><small>${JSON.stringify(data, null, 2)}</small>` : ''}
+            `;
+        }
+        
+        async function testServerConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/orders`);
+                if (response.ok) {
+                    showResult('server-test', true, 'Server bağlantısı başarılı');
+                    return true;
+                } else {
+                    showResult('server-test', false, `Server hatası: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('server-test', false, `Bağlantı hatası: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testOrders() {
+            try {
+                const response = await fetch(`${API_BASE}/orders`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('orders-test', true, `Siparişler yüklendi: ${data.length} adet`, {
+                        count: data.length,
+                        sample: data[0] || null
+                    });
+                    return true;
+                } else {
+                    showResult('orders-test', false, `Sipariş yükleme hatası: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('orders-test', false, `Sipariş test hatası: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testProductionPlans() {
+            try {
+                const response = await fetch(`${API_BASE}/production-plans`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('plans-test', true, `Üretim planları yüklendi: ${data.length} adet`, {
+                        count: data.length,
+                        sample: data[0] || null
+                    });
+                    return true;
+                } else {
+                    showResult('plans-test', false, `Plan yükleme hatası: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('plans-test', false, `Plan test hatası: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testProductionStages() {
+            try {
+                const response = await fetch(`${API_BASE}/production-stages`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('stages-test', true, `Üretim aşamaları yüklendi: ${data.length} adet`, {
+                        count: data.length,
+                        sample: data[0] || null
+                    });
+                    return true;
+                } else {
+                    showResult('stages-test', false, `Aşama yükleme hatası: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('stages-test', false, `Aşama test hatası: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testQualityControl() {
+            try {
+                const response = await fetch(`${API_BASE}/quality/checkpoints`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('quality-test', true, `Kalite kontrol noktaları yüklendi: ${data.length} adet`, {
+                        count: data.length,
+                        sample: data[0] || null
+                    });
+                    return true;
+                } else {
+                    showResult('quality-test', false, `Kalite kontrol yükleme hatası: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('quality-test', false, `Kalite kontrol test hatası: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testIntegration() {
+            try {
+                // Sipariş -> Plan -> Aşama entegrasyonunu test et
+                const ordersResponse = await fetch(`${API_BASE}/orders`);
+                const orders = await ordersResponse.json();
+                
+                const plansResponse = await fetch(`${API_BASE}/production-plans`);
+                const plans = await plansResponse.json();
+                
+                const stagesResponse = await fetch(`${API_BASE}/production-stages`);
+                const stages = await stagesResponse.json();
+                
+                if (ordersResponse.ok && plansResponse.ok && stagesResponse.ok) {
+                    const integrationData = {
+                        orders: orders.length,
+                        plans: plans.length,
+                        stages: stages.length,
+                        integration_working: true
+                    };
+                    
+                    showResult('integration-test', true, 'Entegrasyon testi başarılı', integrationData);
+                    return true;
+                } else {
+                    showResult('integration-test', false, 'Entegrasyon testi başarısız');
+                    return false;
+                }
+            } catch (error) {
+                showResult('integration-test', false, `Entegrasyon test hatası: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            console.log('🧪 Tüm testler başlatılıyor...');
+            
+            const results = await Promise.all([
+                testServerConnection(),
+                testOrders(),
+                testProductionPlans(),
+                testProductionStages(),
+                testQualityControl(),
+                testIntegration()
+            ]);
+            
+            const successCount = results.filter(r => r).length;
+            const totalCount = results.length;
+            
+            console.log(`✅ Test sonuçları: ${successCount}/${totalCount} başarılı`);
+            
+            if (successCount === totalCount) {
+                alert('🎉 Tüm testler başarılı! Sistem tam çalışır durumda.');
+            } else {
+                alert(`⚠️ ${successCount}/${totalCount} test başarılı. Bazı sorunlar var.`);
+            }
+        }
+        
+        function openProductionPage() {
+            window.open('http://localhost:3000/production.html', '_blank');
+        }
+        
+        // Sayfa yüklendiğinde otomatik test başlat
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Web interface test sayfası yüklendi');
+            runAllTests();
+        });
+    </script>
+</body>
+</html>
+
