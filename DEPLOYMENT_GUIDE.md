@@ -5,7 +5,7 @@
 2. [Sunucu Gereksinimleri](#sunucu-gereksinimleri)
 3. [Veritabanı Kurulumu](#veritabanı-kurulumu)
 4. [Uygulama Deployment](#uygulama-deployment)
-5. [Domain ve SSL Kurulumu](#domain-ve-ssl-kurulumu)
+5. [Nginx Konfigürasyonu (Localhost)](#nginx-konfigürasyonu-localhost)
 6. [Monitoring ve Logging](#monitoring-ve-logging)
 7. [Backup ve Güvenlik](#backup-ve-güvenlik)
 8. [Performans Optimizasyonu](#performans-optimizasyonu)
@@ -223,7 +223,6 @@ REDIS_URL=redis://localhost:6379
 
 # Diğer Production Ayarları
 LOG_LEVEL=info
-CORS_ORIGIN=https://your-domain.com
 ```
 
 ### **4.4 PM2 Konfigürasyonu**
@@ -270,17 +269,9 @@ pm2 logs thunderv1
 
 ---
 
-## 🌐 **DOMAIN VE SSL KURULUMU**
+## 🌐 **NGINX KONFİGÜRASYONU (LOCALHOST)**
 
-### **5.1 Domain Konfigürasyonu**
-```bash
-# 1. Domain DNS ayarları
-# A Record: @ -> your-server-ip
-# CNAME: www -> your-domain.com
-# CNAME: api -> your-domain.com
-```
-
-### **5.2 Nginx Konfigürasyonu**
+### **5.1 Nginx Konfigürasyonu (Localhost)**
 ```bash
 # Nginx konfigürasyon dosyası oluşturma
 sudo nano /etc/nginx/sites-available/thunderv1
@@ -289,26 +280,7 @@ sudo nano /etc/nginx/sites-available/thunderv1
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com www.your-domain.com;
-
-    # HTTP'den HTTPS'e yönlendirme
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com www.your-domain.com;
-
-    # SSL Sertifikası
-    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-
-    # SSL Konfigürasyonu
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
+    server_name localhost;
 
     # Gzip Compression
     gzip on;
@@ -370,18 +342,18 @@ server {
 }
 ```
 
-### **5.3 SSL Sertifikası (Let's Encrypt)**
+### **5.2 Nginx'i Aktifleştirme**
 ```bash
-# 1. Certbot kurulumu
-sudo apt install certbot python3-certbot-nginx
+# 1. Site'ı aktifleştir
+sudo ln -s /etc/nginx/sites-available/thunderv1 /etc/nginx/sites-enabled/
 
-# 2. SSL sertifikası alma
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+# 2. Default site'ı kaldır (opsiyonel)
+sudo rm /etc/nginx/sites-enabled/default
 
-# 3. Otomatik yenileme testi
-sudo certbot renew --dry-run
+# 3. Nginx konfigürasyonunu test et
+sudo nginx -t
 
-# 4. Nginx'i yeniden başlatma
+# 4. Nginx'i yeniden başlat
 sudo systemctl reload nginx
 ```
 
@@ -655,22 +627,19 @@ sudo fail2ban-client status
 - [ ] Testler başarılı
 - [ ] Environment variables hazırlandı
 - [ ] Database migration'ları hazırlandı
-- [ ] SSL sertifikası hazırlandı
-- [ ] Domain DNS ayarları yapıldı
+- [ ] Supabase bağlantı bilgileri hazırlandı
 
 ### **Deployment**
 - [ ] Sunucu kurulumu tamamlandı
 - [ ] Uygulama kurulumu tamamlandı
 - [ ] Nginx konfigürasyonu yapıldı
-- [ ] SSL sertifikası kuruldu
 - [ ] PM2 ile uygulama başlatıldı
 - [ ] Monitoring kuruldu
 
 ### **Post-Deployment**
-- [ ] Uygulama erişilebilir durumda
+- [ ] Uygulama localhost'ta erişilebilir durumda
 - [ ] API endpoint'leri çalışıyor
-- [ ] Database bağlantısı aktif
-- [ ] SSL sertifikası geçerli
+- [ ] Supabase database bağlantısı aktif
 - [ ] Monitoring çalışıyor
 - [ ] Backup sistemi aktif
 
@@ -678,14 +647,15 @@ sudo fail2ban-client status
 
 ## 🎯 **SONUÇ**
 
-Bu deployment rehberi ile ThunderV1 uygulamasını güvenli ve performanslı bir şekilde canlıya alabilirsiniz. Her adımı dikkatli bir şekilde takip ederek, production-ready bir sistem kurmuş olacaksınız.
+Bu deployment rehberi ile ThunderV1 uygulamasını localhost'ta güvenli ve performanslı bir şekilde çalıştırabilirsiniz. Her adımı dikkatli bir şekilde takip ederek, production-ready bir sistem kurmuş olacaksınız.
 
 **Önemli Notlar:**
 - Her adımı test edin
-- Backup'ları düzenli olarak kontrol edin
+- Supabase bağlantısını düzenli olarak kontrol edin
 - Monitoring sistemlerini aktif tutun
 - Security güncellemelerini takip edin
 - Performance metriklerini izleyin
+- Localhost'ta çalıştığı için domain ve SSL gerekmez
 
 **Destek:**
 - GitHub Issues: https://github.com/Huseyintabak/ThunderV1/issues
