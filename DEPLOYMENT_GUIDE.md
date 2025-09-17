@@ -99,9 +99,9 @@ REDIS_URL=your_redis_url
 # 4. Mevcut veriler korunacak
 
 # Supabase bağlantı bilgileri (mevcut projeden)
-SUPABASE_URL=https://your-existing-project.supabase.co
-SUPABASE_ANON_KEY=your_existing_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_existing_service_role_key
+SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ4OTkwNywiZXhwIjoyMDczMDY1OTA3fQ.XpsgrVHXZPJ5Z0_-VrA62mL0nDxSnQQeRsm6UHGLfXA
 ```
 
 ### **3.2 Redis Kurulumu (Opsiyonel - Caching için)**
@@ -210,12 +210,12 @@ NODE_ENV=production
 PORT=3000
 
 # Supabase (Mevcut projeden aynı bilgiler)
-SUPABASE_URL=https://your-existing-project.supabase.co
-SUPABASE_ANON_KEY=your_existing_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_existing_service_role_key
+SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ4OTkwNywiZXhwIjoyMDczMDY1OTA3fQ.XpsgrVHXZPJ5Z0_-VrA62mL0nDxSnQQeRsm6UHGLfXA
 
 # JWT ve Session (Production için güçlü secret'lar)
-JWT_SECRET=your_very_secure_jwt_secret_production
+JWT_SECRET=x/v7dOYf5fRkmNyBPON7iaP82AJDXXJog+afbchTaEaLgbcP+yUbJcOQdhunD05kN9UxHtRMchQ3fJqFU4l7Gw==
 SESSION_SECRET=your_session_secret_production
 
 # Redis (Opsiyonel - caching için)
@@ -572,12 +572,12 @@ curl http://localhost:3000/api/health
 #### **Database Bağlantı Sorunu (Supabase)**
 ```bash
 # Supabase bağlantısını test et
-curl -X GET "https://your-project.supabase.co/rest/v1/" \
-  -H "apikey: your_anon_key" \
-  -H "Authorization: Bearer your_anon_key"
+curl -X GET "https://beynxlogttkrrkejvftz.supabase.co/rest/v1/" \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE"
 
 # Supabase servis durumunu kontrol et
-curl -X GET "https://your-project.supabase.co/rest/v1/health"
+curl -X GET "https://beynxlogttkrrkejvftz.supabase.co/rest/v1/health"
 
 # Environment variables'ları kontrol et
 echo $SUPABASE_URL
@@ -605,7 +605,7 @@ pm2 status
 sudo systemctl status nginx
 
 # 2. Supabase bağlantısını kontrol et
-curl -X GET "https://your-project.supabase.co/rest/v1/health"
+curl -X GET "https://beynxlogttkrrkejvftz.supabase.co/rest/v1/health"
 
 # 3. Disk kullanımını kontrol et
 df -h
