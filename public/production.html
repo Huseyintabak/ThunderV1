@@ -130,6 +130,9 @@
                                                 <button class="btn btn-warning btn-sm me-2" onclick="checkAndFixOrderStatuses()" title="Sipariş durumlarını kontrol et ve düzelt">
                                                     <i class="fas fa-sync-alt me-1"></i>Durumları Düzelt
                                                 </button>
+                                                <button class="btn btn-success btn-sm me-2" onclick="showBulkOrderModal()" title="Excel/CSV ile toplu sipariş girişi">
+                                                    <i class="fas fa-file-excel me-1"></i>Toplu Sipariş
+                                                </button>
                                                 <button class="btn btn-primary btn-sm me-2" onclick="showAddOrderModal()">
                                                     <i class="fas fa-plus me-1"></i>Yeni Sipariş
                                                 </button>
@@ -1787,7 +1790,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Flowchart.js kaldırıldı - sadece basit HTML kullanılıyor -->
-    <script src="production.js?v=20241220-125"></script>
+    <script src="production.js?v=20241220-126"></script>
     
     <script>
         // Direkt yükleme - sayfa yüklendiğinde (Sipariş Yönetimi tab'ı için)
@@ -5494,6 +5497,137 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-primary" onclick="saveSchedulingSettings()">
                         <i class="fas fa-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV/Excel Toplu Sipariş Girişi Modal -->
+    <div class="modal fade" id="bulkOrderModal" tabindex="-1" aria-labelledby="bulkOrderModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="bulkOrderModalLabel">
+                        <i class="fas fa-file-excel me-2"></i>Toplu Sipariş Girişi (CSV/Excel)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- CSV Template İndirme -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle me-2"></i>Nasıl Kullanılır?</h6>
+                                <ol class="mb-0">
+                                    <li>CSV template'ini indirin</li>
+                                    <li>Template'i Excel ile açın ve sipariş bilgilerini doldurun</li>
+                                    <li>Dosyayı CSV formatında kaydedin</li>
+                                    <li>Buraya yükleyin ve işleyin</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-download me-2"></i>CSV Template İndir
+                                    </h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <p class="text-muted">Örnek CSV dosyasını indirerek formatı öğrenin</p>
+                                    <button class="btn btn-outline-primary" onclick="downloadCSVTemplate()">
+                                        <i class="fas fa-download me-1"></i>Template İndir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-upload me-2"></i>CSV Dosyası Yükle
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" id="csvFileInput" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)">
+                                    </div>
+                                    <small class="text-muted">Desteklenen formatlar: CSV, Excel (.xlsx, .xls)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CSV Önizleme -->
+                    <div class="row" id="csvPreviewSection" style="display: none;">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-eye me-2"></i>CSV Önizleme
+                                    </h6>
+                                    <div>
+                                        <span class="badge bg-info me-2" id="csvRowCount">0 satır</span>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="clearCSVPreview()">
+                                            <i class="fas fa-times me-1"></i>Temizle
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive" style="max-height: 400px;">
+                                        <table class="table table-striped table-hover" id="csvPreviewTable">
+                                            <thead class="table-dark sticky-top">
+                                                <tr id="csvHeaders">
+                                                    <!-- Headers buraya gelecek -->
+                                                </tr>
+                                            </thead>
+                                            <tbody id="csvDataRows">
+                                                <!-- Data rows buraya gelecek -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hata Raporu -->
+                    <div class="row mt-3" id="csvErrorSection" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-danger">
+                                <h6><i class="fas fa-exclamation-triangle me-2"></i>Hata Raporu</h6>
+                                <div id="csvErrorList">
+                                    <!-- Hatalar buraya gelecek -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Başarı Raporu -->
+                    <div class="row mt-3" id="csvSuccessSection" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <h6><i class="fas fa-check-circle me-2"></i>İşlem Başarılı</h6>
+                                <div id="csvSuccessList">
+                                    <!-- Başarı mesajları buraya gelecek -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>İptal
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="clearCSVPreview()" id="clearCsvBtn" style="display: none;">
+                        <i class="fas fa-trash me-1"></i>Temizle
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="processBulkOrders()" id="processBulkBtn" style="display: none;">
+                        <i class="fas fa-upload me-1"></i>Toplu Sipariş Oluştur
                     </button>
                 </div>
             </div>

@@ -3386,29 +3386,29 @@ function displayStageTemplates(operators) {
     }
     
     let html = '';
-    html += `
-        <div class="row">
-    `;
-    
-    operators.forEach(operator => {
         html += `
-            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="row">
+        `;
+        
+    operators.forEach(operator => {
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex align-items-center mb-3">
                             <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
                                 <i class="fas fa-user"></i>
-                            </div>
+                        </div>
                             <div>
                                 <h6 class="mb-1">${operator.name}</h6>
                                 <small class="text-muted">${operator.department}</small>
                             </div>
-                        </div>
+                            </div>
                         <div class="row text-center">
                             <div class="col-6">
                                 <div class="badge ${operator.is_active ? 'bg-success' : 'bg-secondary'} fs-6">
                                     ${operator.is_active ? 'Aktif' : 'Pasif'}
-                                </div>
+                            </div>
                             </div>
                             <div class="col-6">
                                 <small class="text-muted">Seviye: ${operator.skill_level || 'N/A'}</small>
@@ -3419,15 +3419,15 @@ function displayStageTemplates(operators) {
                                 <i class="fas fa-eye me-1"></i>Detaylar
                             </button>
                         </div>
+                        </div>
                     </div>
                 </div>
+            `;
+        });
+        
+        html += `
             </div>
         `;
-    });
-    
-    html += `
-        </div>
-    `;
     
     container.innerHTML = html;
 }
@@ -6704,4 +6704,313 @@ async function loadOperatorOptions() {
             <option value="ThunderPRO Serisi Operatör">ThunderPRO Serisi Operatör</option>
         `;
     }
+}
+
+// ========================================
+// CSV/Excel Toplu Sipariş Girişi Fonksiyonları
+// ========================================
+
+let csvData = [];
+let csvHeaders = [];
+
+// CSV Import Modal'ını göster
+window.showBulkOrderModal = function() {
+    // Modal'ı temizle
+    clearCSVPreview();
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('bulkOrderModal'));
+    modal.show();
+};
+
+// CSV Template indirme
+window.downloadCSVTemplate = function() {
+    const csvContent = `customer_name,order_date,delivery_date,priority,notes,product_name,product_code,quantity,unit_price
+LTSAUTO,2025-09-17,2025-09-22,high,Örnek sipariş,Thunder Serisi Ürün 1,TS-001,100,150.50
+LTSAUTO,2025-09-17,2025-09-22,high,Örnek sipariş,Thunder Serisi Ürün 2,TS-002,50,200.75
+ACME Corp,2025-09-18,2025-09-25,medium,ACME siparişi,ThunderPRO Serisi Ürün 1,TP-001,75,300.00`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'siparis_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('CSV template indirildi!', 'success');
+};
+
+// Dosya seçimi işleme
+window.handleFileSelect = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    
+    if (fileExtension === 'csv') {
+        parseCSVFile(file);
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        parseExcelFile(file);
+    } else {
+        showNotification('Desteklenmeyen dosya formatı! Sadece CSV, XLSX ve XLS dosyaları desteklenir.', 'error');
+    }
+};
+
+// CSV dosyasını parse et
+function parseCSVFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        
+        if (lines.length < 2) {
+            showNotification('CSV dosyası en az 2 satır içermelidir (header + data)', 'error');
+            return;
+        }
+
+        // Headers'ı parse et
+        csvHeaders = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+        
+        // Data rows'ları parse et
+        csvData = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
+            if (values.length === csvHeaders.length) {
+                const row = {};
+                csvHeaders.forEach((header, index) => {
+                    row[header] = values[index];
+                });
+                csvData.push(row);
+            }
+        }
+
+        displayCSVPreview();
+    };
+    reader.readAsText(file, 'UTF-8');
+};
+
+// Excel dosyasını parse et (basit implementasyon)
+function parseExcelFile(file) {
+    // Excel parsing için SheetJS kütüphanesi gerekli
+    // Şimdilik CSV'ye dönüştürme önerisi ver
+    showNotification('Excel dosyaları için lütfen CSV formatında kaydedin. Excel\'de "Farklı Kaydet" > "CSV (Virgülle Ayrılmış)" seçin.', 'info');
+};
+
+// CSV önizlemesini göster
+function displayCSVPreview() {
+    if (csvData.length === 0) {
+        showNotification('CSV dosyasında veri bulunamadı!', 'error');
+        return;
+    }
+
+    // Önizleme bölümünü göster
+    document.getElementById('csvPreviewSection').style.display = 'block';
+    document.getElementById('clearCsvBtn').style.display = 'inline-block';
+    document.getElementById('processBulkBtn').style.display = 'inline-block';
+
+    // Satır sayısını güncelle
+    document.getElementById('csvRowCount').textContent = `${csvData.length} satır`;
+
+    // Headers'ı göster
+    const headersRow = document.getElementById('csvHeaders');
+    headersRow.innerHTML = '';
+    csvHeaders.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headersRow.appendChild(th);
+    });
+
+    // Data rows'ları göster (ilk 10 satır)
+    const dataRows = document.getElementById('csvDataRows');
+    dataRows.innerHTML = '';
+    const previewRows = csvData.slice(0, 10);
+    
+    previewRows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        csvHeaders.forEach(header => {
+            const td = document.createElement('td');
+            td.textContent = row[header] || '';
+            tr.appendChild(td);
+        });
+        dataRows.appendChild(tr);
+    });
+
+    // Eğer 10'dan fazla satır varsa bilgi ver
+    if (csvData.length > 10) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = csvHeaders.length;
+        td.className = 'text-center text-muted';
+        td.textContent = `... ve ${csvData.length - 10} satır daha`;
+        tr.appendChild(td);
+        dataRows.appendChild(tr);
+    }
+
+    showNotification(`${csvData.length} sipariş yüklendi ve önizleme hazır!`, 'success');
+};
+
+// CSV önizlemesini temizle
+window.clearCSVPreview = function() {
+    csvData = [];
+    csvHeaders = [];
+    
+    document.getElementById('csvPreviewSection').style.display = 'none';
+    document.getElementById('csvErrorSection').style.display = 'none';
+    document.getElementById('csvSuccessSection').style.display = 'none';
+    document.getElementById('clearCsvBtn').style.display = 'none';
+    document.getElementById('processBulkBtn').style.display = 'none';
+    document.getElementById('csvFileInput').value = '';
+    
+    document.getElementById('csvHeaders').innerHTML = '';
+    document.getElementById('csvDataRows').innerHTML = '';
+    document.getElementById('csvRowCount').textContent = '0 satır';
+};
+
+// Toplu siparişleri işle
+window.processBulkOrders = async function() {
+    if (csvData.length === 0) {
+        showNotification('İşlenecek veri bulunamadı!', 'error');
+        return;
+    }
+
+    // Hata ve başarı bölümlerini gizle
+    document.getElementById('csvErrorSection').style.display = 'none';
+    document.getElementById('csvSuccessSection').style.display = 'none';
+
+    const errors = [];
+    const successes = [];
+    let processedCount = 0;
+
+    // Her satır için sipariş oluştur
+    for (let i = 0; i < csvData.length; i++) {
+        const row = csvData[i];
+        const rowNumber = i + 2; // Excel satır numarası (header dahil)
+
+        try {
+            // Veri validasyonu
+            const validation = validateOrderRow(row, rowNumber);
+            if (!validation.isValid) {
+                errors.push(...validation.errors);
+                continue;
+            }
+
+            // Sipariş verisi hazırla
+            const orderData = {
+                customer_name: row.customer_name || 'Bilinmeyen Müşteri',
+                order_date: row.order_date || new Date().toISOString().split('T')[0],
+                delivery_date: row.delivery_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                priority: row.priority || 'medium',
+                notes: row.notes || '',
+                product_details: JSON.stringify([{
+                    product_name: row.product_name || 'Ürün',
+                    product_code: row.product_code || 'N/A',
+                    quantity: parseInt(row.quantity) || 1,
+                    unit_price: parseFloat(row.unit_price) || 0
+                }])
+            };
+
+            // API'ye gönder
+            const response = await fetch('/api/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                successes.push(`Satır ${rowNumber}: Sipariş oluşturuldu (ID: ${result.id})`);
+                processedCount++;
+            } else {
+                const error = await response.json();
+                errors.push(`Satır ${rowNumber}: ${error.error || 'Bilinmeyen hata'}`);
+            }
+
+        } catch (error) {
+            errors.push(`Satır ${rowNumber}: ${error.message}`);
+        }
+    }
+
+    // Sonuçları göster
+    displayProcessingResults(errors, successes, processedCount);
+};
+
+// Sipariş satırı validasyonu
+function validateOrderRow(row, rowNumber) {
+    const errors = [];
+    
+    // Zorunlu alanlar
+    if (!row.customer_name || row.customer_name.trim() === '') {
+        errors.push(`Satır ${rowNumber}: Müşteri adı boş olamaz`);
+    }
+    
+    if (!row.product_name || row.product_name.trim() === '') {
+        errors.push(`Satır ${rowNumber}: Ürün adı boş olamaz`);
+    }
+    
+    if (!row.quantity || isNaN(parseInt(row.quantity)) || parseInt(row.quantity) <= 0) {
+        errors.push(`Satır ${rowNumber}: Geçerli miktar giriniz`);
+    }
+    
+    // Tarih validasyonu
+    if (row.order_date && !isValidDate(row.order_date)) {
+        errors.push(`Satır ${rowNumber}: Geçersiz sipariş tarihi formatı (YYYY-MM-DD olmalı)`);
+    }
+    
+    if (row.delivery_date && !isValidDate(row.delivery_date)) {
+        errors.push(`Satır ${rowNumber}: Geçersiz teslim tarihi formatı (YYYY-MM-DD olmalı)`);
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+// Tarih validasyonu
+function isValidDate(dateString) {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+}
+
+// İşlem sonuçlarını göster
+function displayProcessingResults(errors, successes, processedCount) {
+    // Hata raporu
+    if (errors.length > 0) {
+        document.getElementById('csvErrorSection').style.display = 'block';
+        const errorList = document.getElementById('csvErrorList');
+        errorList.innerHTML = errors.map(error => `<div class="mb-1">• ${error}</div>`).join('');
+    }
+
+    // Başarı raporu
+    if (successes.length > 0) {
+        document.getElementById('csvSuccessSection').style.display = 'block';
+        const successList = document.getElementById('csvSuccessList');
+        successList.innerHTML = `
+            <div class="mb-2">
+                <strong>${processedCount} sipariş başarıyla oluşturuldu!</strong>
+            </div>
+            <div class="mb-1">
+                <strong>Başarılı işlemler:</strong>
+            </div>
+            ${successes.slice(0, 5).map(success => `<div class="mb-1">• ${success}</div>`).join('')}
+            ${successes.length > 5 ? `<div class="mb-1 text-muted">... ve ${successes.length - 5} tane daha</div>` : ''}
+        `;
+    }
+
+    // Siparişleri yenile
+    if (processedCount > 0) {
+        setTimeout(() => {
+            loadOrders();
+        }, 1000);
+    }
+
+    showNotification(`İşlem tamamlandı: ${processedCount} başarılı, ${errors.length} hata`, processedCount > 0 ? 'success' : 'error');
 }
