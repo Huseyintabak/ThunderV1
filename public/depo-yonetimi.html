@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depo Yönetimi - ThunderV1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .depo-card {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .depo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .depo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            padding: 1.5rem;
+        }
+        
+        .depo-tabs {
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 2rem;
+        }
+        
+        .depo-tab {
+            padding: 1rem 2rem;
+            border: none;
+            background: none;
+            color: #6c757d;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .depo-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .depo-tab:hover {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .search-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stats-row {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .table-responsive {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .btn-action {
+            padding: 0.375rem 0.75rem;
+            margin: 0 0.125rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+        
+        .loading-spinner {
+            display: none;
+        }
+        
+        .loading-spinner.show {
+            display: inline-block;
+        }
+        
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-industry me-2"></i>Thunder V1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-home me-1"></i>Ana Sayfa
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="depo-yonetimi.html">
+                            <i class="fas fa-warehouse me-1"></i>Depo Yönetimi
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="production.html">
+                            <i class="fas fa-industry me-1"></i>Üretim
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="operator-login.html">
+                            <i class="fas fa-user-cog me-1"></i>Operatör Paneli
+                        </a>
+                    </li>
+                </ul>
+                <div class="navbar-nav">
+                    <span class="navbar-text">
+                        <i class="fas fa-user me-1"></i>Admin
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Depo Yönetimi Başlığı -->
+        <div class="depo-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="fas fa-warehouse me-3"></i>Depo Yönetimi
+                    </h1>
+                    <p class="mb-0">Hammadde, Yarı Mamul ve Nihai Ürün stoklarınızı tek yerden yönetin</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <i class="fas fa-boxes fa-4x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- İstatistikler -->
+        <div class="stats-row">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-hammadde">-</div>
+                        <div class="stat-label">Toplam Hammadde</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-yarimamul">-</div>
+                        <div class="stat-label">Toplam Yarı Mamul</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-nihai">-</div>
+                        <div class="stat-label">Toplam Nihai Ürün</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-value">-</div>
+                        <div class="stat-label">Toplam Değer (₺)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arama ve Filtreleme -->
+        <div class="search-section">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Ürün ara...">
+                        <label for="searchInput">
+                            <i class="fas fa-search me-2"></i>Ürün Ara
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-floating">
+                        <select class="form-select" id="categoryFilter">
+                            <option value="">Tüm Kategoriler</option>
+                            <option value="hammadde">Hammadde</option>
+                            <option value="yarimamul">Yarı Mamul</option>
+                            <option value="nihai">Nihai Ürün</option>
+                        </select>
+                        <label for="categoryFilter">Kategori Filtresi</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-floating">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="aktif">Aktif</option>
+                            <option value="pasif">Pasif</option>
+                        </select>
+                        <label for="statusFilter">Durum Filtresi</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100 h-100" onclick="searchProducts()">
+                        <i class="fas fa-search me-2"></i>Ara
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Menü -->
+        <div class="depo-tabs">
+            <div class="row">
+                <div class="col-md-4">
+                    <button class="depo-tab active w-100" onclick="showTab('hammadde')">
+                        <i class="fas fa-boxes me-2"></i>Hammadde
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <button class="depo-tab w-100" onclick="showTab('yarimamul')">
+                        <i class="fas fa-cogs me-2"></i>Yarı Mamul
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <button class="depo-tab w-100" onclick="showTab('nihai')">
+                        <i class="fas fa-cube me-2"></i>Nihai Ürün
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hammadde Tab -->
+        <div id="hammadde-tab" class="tab-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <i class="fas fa-boxes me-2"></i>Hammadde Listesi
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-success btn-sm" onclick="addHammadde()">
+                                    <i class="fas fa-plus me-1"></i>Yeni Hammadde
+                                </button>
+                                <button class="btn btn-info btn-sm" onclick="exportHammaddeToExcel()">
+                                    <i class="fas fa-download me-1"></i>Excel Export
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="importHammaddeFromExcel()">
+                                    <i class="fas fa-upload me-1"></i>Excel Import
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Ad</th>
+                                <th>Kod</th>
+                                <th>Miktar</th>
+                                <th>Birim</th>
+                                <th>Fiyat</th>
+                                <th>Kategori</th>
+                                <th>Durum</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hammaddeTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="loading-spinner spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Yükleniyor...</span>
+                                    </div>
+                                    <div class="mt-2">Hammadde verileri yükleniyor...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yarı Mamul Tab -->
+        <div id="yarimamul-tab" class="tab-content" style="display: none;">
+            <div class="table-container">
+                <div class="table-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cogs me-2"></i>Yarı Mamul Listesi
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-success btn-sm" onclick="addYarimamul()">
+                                    <i class="fas fa-plus me-1"></i>Yeni Yarı Mamul
+                                </button>
+                                <button class="btn btn-info btn-sm" onclick="exportYarimamulToExcel()">
+                                    <i class="fas fa-download me-1"></i>Excel Export
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="importYarimamulFromExcel()">
+                                    <i class="fas fa-upload me-1"></i>Excel Import
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Ad</th>
+                                <th>Kod</th>
+                                <th>Miktar</th>
+                                <th>Birim</th>
+                                <th>Fiyat</th>
+                                <th>Kategori</th>
+                                <th>Durum</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="yarimamulTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="loading-spinner spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Yükleniyor...</span>
+                                    </div>
+                                    <div class="mt-2">Yarı mamul verileri yükleniyor...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nihai Ürün Tab -->
+        <div id="nihai-tab" class="tab-content" style="display: none;">
+            <div class="table-container">
+                <div class="table-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cube me-2"></i>Nihai Ürün Listesi
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-success btn-sm" onclick="addNihai()">
+                                    <i class="fas fa-plus me-1"></i>Yeni Nihai Ürün
+                                </button>
+                                <button class="btn btn-info btn-sm" onclick="exportNihaiToExcel()">
+                                    <i class="fas fa-download me-1"></i>Excel Export
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="importNihaiFromExcel()">
+                                    <i class="fas fa-upload me-1"></i>Excel Import
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Ad</th>
+                                <th>Kod</th>
+                                <th>Miktar</th>
+                                <th>Birim</th>
+                                <th>Fiyat</th>
+                                <th>Kategori</th>
+                                <th>Durum</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nihaiTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="loading-spinner spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Yükleniyor...</span>
+                                    </div>
+                                    <div class="mt-2">Nihai ürün verileri yükleniyor...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel Import Modal -->
+    <div class="modal fade" id="excelImportModal" tabindex="-1" aria-labelledby="excelImportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="excelImportModalLabel">
+                        <i class="fas fa-file-excel me-2"></i>Excel Dosyası İçe Aktar
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="excelFile" class="form-label">Excel Dosyası Seçin</label>
+                                <input type="file" class="form-control" id="excelFile" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+                                <div class="form-text">Sadece .xlsx ve .xls dosyaları desteklenir</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="importType" class="form-label">İçe Aktarılacak Tip</label>
+                                <select class="form-select" id="importType">
+                                    <option value="hammadde">Hammadde</option>
+                                    <option value="yarimamul">Yarı Mamul</option>
+                                    <option value="nihai">Nihai Ürün</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>Excel Dosya Formatı</h6>
+                        <p class="mb-2">Excel dosyanızda aşağıdaki sütunlar bulunmalıdır:</p>
+                        <ul class="mb-0">
+                            <li><strong>ad</strong> - Ürün adı</li>
+                            <li><strong>kod</strong> - Ürün kodu</li>
+                            <li><strong>miktar</strong> - Stok miktarı</li>
+                            <li><strong>birim</strong> - Birim (adet, kg, vb.)</li>
+                            <li><strong>satis_fiyati</strong> - Satış fiyatı</li>
+                            <li><strong>kategori</strong> - Kategori</li>
+                            <li><strong>aktif</strong> - Aktif durumu (true/false)</li>
+                        </ul>
+                    </div>
+                    
+                    <div id="importPreview" class="mt-3" style="display: none;">
+                        <h6>Önizleme:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr id="previewHeaders"></tr>
+                                </thead>
+                                <tbody id="previewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" id="importBtn" onclick="processExcelImport()" disabled>
+                        <i class="fas fa-upload me-1"></i>İçe Aktar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for programmatic file selection -->
+    <input type="file" id="hiddenFileInput" style="display: none;" accept=".xlsx,.xls">
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- SheetJS for Excel processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Depo Yönetimi JavaScript -->
+    <script src="depo-yonetimi.js"></script>
+</body>
+</html>

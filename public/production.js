@@ -89,16 +89,39 @@ let productionStats = {
     error: 0
 };
 
+// Polling ile veri güncelleme
+let pollingInterval = null;
+
+// Polling başlat
+function startPolling() {
+    console.log('🔄 Polling başlatılıyor...');
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+    
+    pollingInterval = setInterval(() => {
+        // Siparişleri ve üretim planlarını periyodik olarak yenile
+        loadOrders();
+        loadProductionPlans();
+    }, 5000); // 5 saniyede bir güncelle
+}
+
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', function() {
     // Faz 0: State Management'ı başlat
     initializeStateManagement();
+    
+    // Polling başlat
+    startPolling();
     
     loadAllData();
     setupEventListeners();
     
     // Tab event listener'ları
     setupTabEventListeners();
+    
+    // Müşteri listesini yükle
+    loadCustomers();
     
     // Sipariş Yönetimi tab'ı için direkt yükleme (varsayılan aktif tab)
     console.log('🎯 Sayfa yüklendi - Sipariş Yönetimi verileri yükleniyor...');
@@ -154,7 +177,7 @@ function setupTabEventListeners() {
             console.log('📊 Tüm aşama verilerini yüklüyor...');
             loadStageTemplates();
             loadStagePerformance();
-            loadRealtimeStages();
+            // loadRealtimeStages(); // Kaldırıldı
             // loadStageAnalytics(); // Kaldırıldı
             // loadEfficiencyReport(); // Kaldırıldı
         });
@@ -165,12 +188,12 @@ function setupTabEventListeners() {
     // Kalite Kontrol tab
     const qualityTab = document.getElementById('quality-control-tab');
     if (qualityTab) {
-        qualityTab.addEventListener('shown.bs.tab', function() {
-            console.log('Kalite Kontrol tab\'ı açıldı');
-            loadQualityCheckpoints();
-            loadQualityStandards();
-            loadQualityStatistics();
-        });
+        // qualityTab.addEventListener('shown.bs.tab', function() {
+        //     console.log('Kalite Kontrol tab\'ı açıldı');
+        //     loadQualityCheckpoints();
+        //     loadQualityStandards();
+        //     loadQualityStatistics();
+        // }); // KALDIRILDI: Kalite kontrol özelliği kaldırıldı
     }
     
     // Üretim Geçmişi tab
@@ -197,7 +220,7 @@ function setupTabEventListeners() {
                 console.log('Üretim Aşamaları tab\'ı aktif, veriler yükleniyor...');
                 loadStageTemplates();
                 loadStagePerformance();
-                loadRealtimeStages();
+                // loadRealtimeStages(); // Kaldırıldı
                 // loadStageAnalytics(); // Kaldırıldı
                 // loadEfficiencyReport(); // Kaldırıldı
             }
@@ -464,10 +487,10 @@ function handleDataUpdate(dataType, data) {
             }
             break;
         case 'quality-checkpoints':
-            // Quality checkpoints güncellendi
-            if (typeof loadQualityCheckpoints === 'function') {
-                loadQualityCheckpoints();
-            }
+            // Quality checkpoints güncellendi - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+            // if (typeof loadQualityCheckpoints === 'function') {
+            //     loadQualityCheckpoints();
+            // }
             break;
         case 'production-plans':
             productionPlans = data;
@@ -538,17 +561,18 @@ function loadTabData(tabId) {
             if (typeof loadStageTemplates === 'function') {
                 loadStageTemplates();
                 loadStagePerformance();
-                loadRealtimeStages();
+                // loadRealtimeStages(); // Kaldırıldı
                 // loadStageAnalytics(); // Kaldırıldı
                 // loadEfficiencyReport(); // Kaldırıldı
             }
             break;
         case 'quality-control-tab':
-            if (typeof loadQualityCheckpoints === 'function') {
-                loadQualityCheckpoints();
-                loadQualityStandards();
-                loadQualityStatistics();
-            }
+            // KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+            // if (typeof loadQualityCheckpoints === 'function') {
+            //     loadQualityCheckpoints();
+            //     loadQualityStandards();
+            //     loadQualityStatistics();
+            // }
             break;
         case 'production-history-tab':
             if (typeof loadProductionHistory === 'function') {
@@ -607,11 +631,11 @@ function setupEventListeners() {
         loadOperatorStatus();
     });
     
-    document.getElementById('quality-control-tab').addEventListener('shown.bs.tab', function() {
-        loadQualityCheckpoints();
-        loadQualityStandards();
-        loadQualityStatistics();
-    });
+    // document.getElementById('quality-control-tab').addEventListener('shown.bs.tab', function() {
+    //     loadQualityCheckpoints();
+    //     loadQualityStandards();
+    //     loadQualityStatistics();
+    // }); // KALDIRILDI: Kalite kontrol özelliği kaldırıldı
     
     document.getElementById('production-history-tab').addEventListener('shown.bs.tab', function() {
         loadProductionHistory();
@@ -724,12 +748,23 @@ function displayActiveProductions() {
 // Üretim geçmişini yükle
 async function loadProductionHistory() {
     try {
-        // Bu fonksiyon backend'de üretim geçmişini getirecek
-        // Şimdilik boş array
-        productionHistory = [];
-        displayProductionHistory();
+        console.log('🔄 Tamamlanan üretimler yükleniyor...');
+        const response = await fetch('/api/completed-productions');
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Tamamlanan üretimler yüklendi:', data);
+            productionHistory = data;
+            displayCompletedProductions();
+        } else {
+            console.error('❌ Tamamlanan üretimler yüklenemedi:', data.error);
+            productionHistory = [];
+            displayCompletedProductions();
+        }
     } catch (error) {
-        console.error('Üretim geçmişi yüklenemedi:', error);
+        console.error('❌ Üretim geçmişi yüklenemedi:', error);
+        productionHistory = [];
+        displayCompletedProductions();
     }
 }
 
@@ -1650,98 +1685,328 @@ function createProductionCard(production) {
     return card;
 }
 
-// Üretim geçmişini göster
-function displayProductionHistory() {
+// Tamamlanan üretimleri göster
+function displayCompletedProductions() {
     const container = document.getElementById('production-history-container');
     if (!container) {
         console.error('Production history container bulunamadı');
         return;
     }
-    container.innerHTML = '';
     
-    if (productionHistory.length === 0) {
+    // Hem tamamlanan hem de aktif üretimleri birleştir
+    const allProductions = [...(productionHistory || []), ...(operatorProductions || [])];
+    
+    if (allProductions.length === 0) {
         container.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center text-muted py-4">
-                    <i class="fas fa-history fa-2x mb-2"></i><br>
-                    Henüz üretim geçmişi bulunmuyor
-                </td>
-            </tr>
+            <div class="text-center py-5">
+                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz üretim bulunmuyor</h5>
+                <p class="text-muted">Operatörler üretimleri başlattığında burada görünecek</p>
+            </div>
         `;
-        updateProductionStatistics();
         return;
     }
     
-    productionHistory.forEach((production, index) => {
-        const product = production.type === 'yarimamul' 
-            ? yarimamuller.find(y => y.id === production.productId)
-            : (window.nihaiUrunler || []).find(n => n.id === production.productId);
-        
-        const startTime = new Date(production.startTime).toLocaleString('tr-TR');
-        const endTime = production.endTime ? new Date(production.endTime).toLocaleString('tr-TR') : '-';
+    let html = `
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-industry me-2"></i>Üretim Geçmişi
+                            <span class="badge bg-primary ms-2">${allProductions.length}</span>
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th><i class="fas fa-calendar me-1"></i>Tarih</th>
+                                        <th><i class="fas fa-box me-1"></i>Ürün</th>
+                                        <th><i class="fas fa-hashtag me-1"></i>Sipariş</th>
+                                        <th><i class="fas fa-user me-1"></i>Operatör</th>
+                                        <th><i class="fas fa-cubes me-1"></i>Miktar</th>
+                                        <th><i class="fas fa-clock me-1"></i>Süre</th>
+                                        <th><i class="fas fa-info-circle me-1"></i>Durum</th>
+                                        <th><i class="fas fa-cog me-1"></i>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+    `;
+    
+    allProductions.forEach((production, index) => {
+        const startTime = new Date(production.start_time).toLocaleString('tr-TR');
+        const completedTime = production.completed_at ? new Date(production.completed_at).toLocaleString('tr-TR') : '-';
         
         // Süre hesaplama
-        const duration = production.endTime ? 
-            Math.round((new Date(production.endTime) - new Date(production.startTime)) / 1000 / 60) : 0;
+        const duration = production.completed_at ? 
+            Math.round((new Date(production.completed_at) - new Date(production.start_time)) / 1000 / 60) : 0;
         
-        // Başarı oranı
-        const successRate = production.successRate ? production.successRate.toFixed(1) : '100.0';
+        const durationText = duration > 60 ? 
+            `${Math.floor(duration / 60)}s ${duration % 60}dk` : 
+            `${duration}dk`;
         
-        // Maliyet hesaplama (basit)
-        const unitCost = product ? (product.birim_maliyet || product.birim_fiyat || 0) : 0;
-        const totalCost = production.quantity * unitCost;
+        // Sipariş bilgileri
+        const orderNumber = production.order ? production.order.order_number : 'Bilinmiyor';
+        const customerName = production.order ? production.order.customer_name : 'Bilinmiyor';
         
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <div class="fw-bold">${startTime}</div>
-                <small class="text-muted">${endTime}</small>
-            </td>
-            <td>
-                <div class="fw-bold">${product ? product.ad : 'Bilinmeyen Ürün'}</div>
-                <small class="text-muted">${product ? product.kod : ''}</small>
-            </td>
-            <td>
-                <div class="fw-bold">${production.quantity} ${product ? product.birim : ''}</div>
-                ${production.targetQuantity ? 
-                    `<small class="text-muted">Hedef: ${production.targetQuantity}</small>` : ''
-                }
-            </td>
-            <td>
-                <span class="badge bg-${production.type === 'yarimamul' ? 'primary' : 'success'}">
-                    ${production.type === 'yarimamul' ? 'Yarı Mamul' : 'Nihai Ürün'}
-                </span>
-            </td>
-            <td>
-                <span class="badge bg-${production.status === 'completed' ? 'success' : 'warning'}">
-                    ${production.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
-                </span>
-                ${production.status === 'completed' ? 
-                    `<div class="mt-1"><small class="text-muted">${duration} dk</small></div>` : ''
-                }
-            </td>
-            <td>
-                <div class="fw-bold">₺${totalCost.toFixed(2)}</div>
-                <small class="text-muted">₺${unitCost.toFixed(2)}/adet</small>
-            </td>
-            <td>
-                <div class="d-flex gap-1">
-                    <button class="btn btn-outline-info btn-sm" onclick="viewProductionDetails(${index})" title="Detayları Görüntüle">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${production.scannedBarcodes && production.scannedBarcodes.length > 0 ? 
-                        `<button class="btn btn-outline-success btn-sm" onclick="viewBarcodeHistory(${index})" title="Barkod Geçmişi">
-                            <i class="fas fa-barcode"></i>
-                        </button>` : ''
-                    }
-                </div>
-            </td>
+        // Operatör bilgileri
+        const operatorName = production.operator_name || 'Sistem';
+        
+        html += `
+            <tr>
+                <td>
+                    <div class="fw-bold">${startTime}</div>
+                    <small class="text-muted">${completedTime}</small>
+                </td>
+                <td>
+                    <div class="fw-bold">${production.product_name || 'Bilinmeyen Ürün'}</div>
+                    <small class="text-muted">${production.product_code || ''}</small>
+                </td>
+                <td>
+                    <div class="fw-bold">${orderNumber}</div>
+                    <small class="text-muted">${customerName}</small>
+                </td>
+                <td>
+                    <span class="badge bg-info">${operatorName}</span>
+                </td>
+                <td>
+                    <div class="fw-bold">${production.produced_quantity || 0} / ${production.target_quantity || 0}</div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${durationText}</span>
+                </td>
+                <td>
+                    <span class="badge ${getStatusInfo(production.status).class}">
+                        ${getStatusInfo(production.status).text}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="viewProductionDetails(${production.id})" title="Detayları Görüntüle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="viewProductionHistory(${production.id})" title="Geçmişi Görüntüle">
+                            <i class="fas fa-history"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
         `;
-        container.appendChild(row);
     });
     
-    // İstatistikleri güncelle
-    updateProductionStatistics();
+    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// Üretim geçmişini göster (eski fonksiyon - geriye uyumluluk için)
+function displayProductionHistory() {
+    displayCompletedProductions();
+}
+
+// Üretim detaylarını görüntüle
+function viewProductionDetails(productionId) {
+    const production = productionHistory.find(p => p.id === productionId);
+    if (!production) {
+        showAlert('Üretim bulunamadı', 'error');
+        return;
+    }
+    
+    const startTime = new Date(production.start_time).toLocaleString('tr-TR');
+    const completedTime = production.completed_at ? new Date(production.completed_at).toLocaleString('tr-TR') : '-';
+    const duration = production.completed_at ? 
+        Math.round((new Date(production.completed_at) - new Date(production.start_time)) / 1000 / 60) : 0;
+    
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Üretim Bilgileri</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Ürün:</strong> ${production.product_name || 'Bilinmiyor'}</p>
+                        <p><strong>Ürün Kodu:</strong> ${production.product_code || 'Bilinmiyor'}</p>
+                        <p><strong>Hedef Miktar:</strong> ${production.target_quantity || 0}</p>
+                        <p><strong>Üretilen Miktar:</strong> ${production.produced_quantity || 0}</p>
+                        <p><strong>Operatör:</strong> ${production.operator_name || 'Sistem'}</p>
+                        <p><strong>Başlangıç:</strong> ${startTime}</p>
+                        <p><strong>Tamamlanma:</strong> ${completedTime}</p>
+                        <p><strong>Süre:</strong> ${duration} dakika</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Sipariş Bilgileri</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Sipariş No:</strong> ${production.order ? production.order.order_number : 'Bilinmiyor'}</p>
+                        <p><strong>Müşteri:</strong> ${production.order ? production.order.customer_name : 'Bilinmiyor'}</p>
+                        <p><strong>Sipariş Tarihi:</strong> ${production.order ? new Date(production.order.order_date).toLocaleDateString('tr-TR') : 'Bilinmiyor'}</p>
+                        <p><strong>Teslimat Tarihi:</strong> ${production.order ? new Date(production.order.delivery_date).toLocaleDateString('tr-TR') : 'Bilinmiyor'}</p>
+                        <p><strong>Öncelik:</strong> ${production.order ? production.order.priority : 'Bilinmiyor'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    showModal('Üretim Detayları', content, 'lg');
+}
+
+// Üretim geçmişini görüntüle
+async function viewProductionHistory(productionId) {
+    try {
+        const response = await fetch(`/api/production-history/${productionId}`);
+        const history = await response.json();
+        
+        if (response.ok) {
+            let content = `
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-history me-2"></i>Üretim Geçmişi</h6>
+                    </div>
+                    <div class="card-body">
+            `;
+            
+            if (history && history.length > 0) {
+                content += `
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>İşlem</th>
+                                    <th>Miktar</th>
+                                    <th>Operatör</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                history.forEach(record => {
+                    const timestamp = new Date(record.timestamp).toLocaleString('tr-TR');
+                    content += `
+                        <tr>
+                            <td>${timestamp}</td>
+                            <td>${record.action || record.barcode || 'Üretim'}</td>
+                            <td>${record.quantity || 0}</td>
+                            <td>${record.operator_name || 'Sistem'}</td>
+                        </tr>
+                    `;
+                });
+                
+                content += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                content += `
+                    <div class="text-center py-4">
+                        <i class="fas fa-history fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">Bu üretim için geçmiş kaydı bulunmuyor</p>
+                    </div>
+                `;
+            }
+            
+            content += `
+                    </div>
+                </div>
+            `;
+            
+            showModal('Üretim Geçmişi', content, 'lg');
+        } else {
+            showAlert('Üretim geçmişi yüklenemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Üretim geçmişi yükleme hatası:', error);
+        showAlert('Üretim geçmişi yüklenemedi', 'error');
+    }
+}
+
+// Modal gösterme fonksiyonu
+function showModal(title, content, size = 'lg') {
+    const modalHtml = `
+        <div class="modal fade" id="dynamicModal" tabindex="-1" aria-labelledby="dynamicModalLabel" aria-hidden="true" style="z-index: 9998 !important;">
+            <div class="modal-dialog modal-${size}" style="z-index: 9999 !important;">
+                <div class="modal-content" style="z-index: 10000 !important;">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="dynamicModalLabel">${title}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${content}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Eski modal'ı kaldır
+    const existingModal = document.getElementById('dynamicModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Yeni modal'ı ekle
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('dynamicModal'));
+    modal.show();
+}
+
+// Alert gösterme fonksiyonu
+function showAlert(message, type = 'info') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert" style="z-index: 10001 !important;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Alert container'ı bul veya oluştur
+    let alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alertContainer';
+        alertContainer.style.position = 'fixed';
+        alertContainer.style.top = '20px';
+        alertContainer.style.right = '20px';
+        alertContainer.style.zIndex = '10000';
+        document.body.appendChild(alertContainer);
+    }
+    
+    // Alert'i ekle
+    alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // 5 saniye sonra otomatik kapat
+    setTimeout(() => {
+        const alert = alertContainer.lastElementChild;
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 5000);
 }
 
 // Üretim istatistiklerini güncelle
@@ -1779,10 +2044,6 @@ function updateProductionStatistics() {
         activeProductionsCountElement.textContent = activeProductions;
     }
     
-    const totalCostElement = document.getElementById('total-cost');
-    if (totalCostElement) {
-        totalCostElement.textContent = `₺${totalCost.toFixed(2)}`;
-    }
 }
 
 // Üretim detaylarını görüntüle
@@ -1828,8 +2089,8 @@ function viewProductionDetails(productionIndex) {
                     <tr><td><strong>Birim Maliyet:</strong></td><td>₺${unitCost.toFixed(2)}</td></tr>
                     <tr><td><strong>Toplam Maliyet:</strong></td><td>₺${totalCost.toFixed(2)}</td></tr>
                     <tr><td><strong>Durum:</strong></td><td>
-                        <span class="badge bg-${production.status === 'completed' ? 'success' : 'warning'}">
-                            ${production.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
+                        <span class="badge ${getStatusInfo(production.status).class}">
+                            ${getStatusInfo(production.status).text}
                         </span>
                     </td></tr>
                     ${production.successRate ? 
@@ -2075,8 +2336,8 @@ function displayFilteredProductionHistory(filteredHistory) {
                 </span>
             </td>
             <td>
-                <span class="badge bg-${production.status === 'completed' ? 'success' : 'warning'}">
-                    ${production.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
+                <span class="badge ${getStatusInfo(production.status).class}">
+                    ${getStatusInfo(production.status).text}
                 </span>
                 ${production.status === 'completed' ? 
                     `<div class="mt-1"><small class="text-muted">${duration} dk</small></div>` : ''
@@ -2472,13 +2733,19 @@ function getStatusColor(status) {
 function getStatusText(status) {
     const texts = {
         'draft': 'Taslak',
-        'pending': 'Bekliyor',
-        'approved': 'Onaylandı',
+        'pending': 'Bekleyen',
+        'approved': 'Onaylanmış',
         'active': 'Aktif',
-        'in_progress': 'Devam Ediyor',
+        'in_progress': 'İşleniyor',
         'in_production': 'Üretimde',
+        'processing': 'İşleniyor',
         'completed': 'Tamamlandı',
-        'cancelled': 'İptal'
+        'delivered': 'Teslim Edildi',
+        'cancelled': 'İptal Edildi',
+        'paused': 'Duraklatıldı',
+        'inactive': 'Pasif',
+        'confirmed': 'Onaylandı',
+        'shipped': 'Sevk Edildi'
     };
     return texts[status] || status;
 }
@@ -2507,11 +2774,13 @@ function getStageStatusColor(status) {
 
 function getStageStatusText(status) {
     const texts = {
-        'pending': 'Bekliyor',
-        'in_progress': 'Devam Ediyor',
+        'pending': 'Bekleyen',
+        'in_progress': 'İşleniyor',
+        'processing': 'İşleniyor',
         'completed': 'Tamamlandı',
+        'delivered': 'Teslim Edildi',
         'paused': 'Duraklatıldı',
-        'cancelled': 'İptal'
+        'cancelled': 'İptal Edildi'
     };
     return texts[status] || status;
 }
@@ -2614,19 +2883,7 @@ async function showOperatorStatus(operatorName) {
     }
 }
 
-// Durum metni döndür
-function getStatusText(status) {
-    const statusMap = {
-        'draft': 'Taslak',
-        'approved': 'Onaylandı',
-        'active': 'Aktif',
-        'in_progress': 'Devam Ediyor',
-        'in_production': 'Üretimde',
-        'completed': 'Tamamlandı',
-        'cancelled': 'İptal Edildi'
-    };
-    return statusMap[status] || status;
-}
+// Bu fonksiyon kaldırıldı - ana getStatusText fonksiyonu kullanılacak
 
 // Durum rengi döndür
 function getStatusColor(status) {
@@ -2648,10 +2905,15 @@ function getStatusColor(status) {
 function getPlanStatusText(status) {
     const statusMap = {
         'draft': 'Taslak',
-        'approved': 'Onaylandı',
+        'approved': 'Onaylanmış',
         'active': 'Aktif',
+        'in_progress': 'İşleniyor',
+        'processing': 'İşleniyor',
         'completed': 'Tamamlandı',
-        'cancelled': 'İptal Edildi'
+        'delivered': 'Teslim Edildi',
+        'cancelled': 'İptal Edildi',
+        'paused': 'Duraklatıldı',
+        'inactive': 'Pasif'
     };
     return statusMap[status] || status;
 }
@@ -2677,9 +2939,13 @@ function getPlanStatusColor(status) {
 function getProductionStatusText(status) {
     const statusMap = {
         'active': 'Aktif',
-        'paused': 'Durduruldu',
+        'paused': 'Duraklatıldı',
+        'in_progress': 'İşleniyor',
+        'processing': 'İşleniyor',
         'completed': 'Tamamlandı',
-        'cancelled': 'İptal Edildi'
+        'delivered': 'Teslim Edildi',
+        'cancelled': 'İptal Edildi',
+        'inactive': 'Pasif'
     };
     return statusMap[status] || status;
 }
@@ -3521,10 +3787,15 @@ function displayProductionStages(stages) {
     stages.forEach((stage, index) => {
         const statusClass = stage.status;
         const statusText = {
-            'pending': 'Bekliyor',
+            'pending': 'Bekleyen',
             'active': 'Aktif',
+            'in_progress': 'İşleniyor',
+            'processing': 'İşleniyor',
             'completed': 'Tamamlandı',
-            'skipped': 'Atlandı'
+            'delivered': 'Teslim Edildi',
+            'skipped': 'Atlandı',
+            'paused': 'Duraklatıldı',
+            'cancelled': 'İptal Edildi'
         }[stage.status] || stage.status;
         
         const statusColor = {
@@ -3722,6 +3993,9 @@ function displayProductionPlans(plans) {
                             <button class="btn btn-sm btn-outline-primary" onclick="viewPlanDetails(${plan.id})">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="generateWorkOrder(${plan.id})" title="İş Emri Oluştur">
+                                <i class="fas fa-file-alt"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-warning" onclick="editPlan(${plan.id})">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -3759,6 +4033,35 @@ async function loadResources() {
     }
 }
 
+// Operatör kullanım bilgilerini hesapla
+async function calculateOperatorUsage() {
+    try {
+        console.log('Operatör kullanım bilgileri hesaplanıyor...');
+        const response = await fetch('/api/operator-usage');
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Operatör kullanım bilgileri:', data);
+            console.log('Operatör sayısı:', Object.keys(data).length);
+            Object.entries(data).forEach(([operator, usage]) => {
+                console.log(`Operatör: ${operator}`, usage);
+            });
+            return data;
+        } else {
+            console.error('Operatör kullanım bilgileri alınamadı:', data.error);
+            return {};
+        }
+    } catch (error) {
+        console.error('Operatör kullanım bilgileri fetch error:', error);
+        return {};
+    }
+}
+
+// Operatör detaylarını görüntüle
+function viewOperatorDetails(operatorName) {
+    alert('Operatör: ' + operatorName + '\n\nDetaylı bilgiler yakında eklenecek.');
+}
+
 // Kaynakları görüntüleme
 async function displayResources(resources) {
     const container = document.getElementById('resources-container');
@@ -3775,13 +4078,13 @@ async function displayResources(resources) {
     }
     
     // Operatör kullanım bilgilerini hesapla
-    let operatorUsage = { 4: 0, 5: 0 };
+    let operatorUsage = {};
     try {
         operatorUsage = await calculateOperatorUsage();
         console.log('Operatör kullanım bilgisi:', operatorUsage);
     } catch (error) {
         console.error('Operatör kullanım hesaplama hatası:', error);
-        operatorUsage = { 4: 0, 5: 0 };
+        operatorUsage = {};
     }
     
     // Kaynakları türlerine göre grupla
@@ -3795,6 +4098,61 @@ async function displayResources(resources) {
     
     // HTML oluştur
     let html = '';
+    
+    // Operatör kullanım bilgileri bölümü - mevcut tasarımla uyumlu
+    if (Object.keys(operatorUsage).length > 0) {
+        html += '<div class="mb-4">';
+        html += '<h6 class="text-capitalize mb-3">';
+        html += '<i class="fas fa-users me-2"></i>Operatör Kapasite Kullanımı';
+        html += '</h6>';
+        html += '<div class="row">';
+        
+        Object.entries(operatorUsage).forEach(([operatorName, usage]) => {
+            // Güvenli değer kontrolü
+            const usedCapacity = usage.used_capacity || 0;
+            const remainingCapacity = usage.remaining_capacity || 0;
+            const usagePercentage = Math.round(usage.usage_percentage || 0);
+            const activeProductions = usage.active_productions || 0;
+            const activeStages = usage.active_stages || 0;
+            
+            const progressBarClass = usagePercentage > 80 ? 'bg-danger' : usagePercentage > 60 ? 'bg-warning' : 'bg-success';
+            
+            html += '<div class="col-md-6 col-lg-4 mb-3">';
+            html += '<div class="card h-100">';
+            html += '<div class="card-body">';
+            html += '<h6 class="card-title">';
+            html += '<i class="fas fa-user me-2"></i>' + operatorName;
+            html += '</h6>';
+            html += '<p class="card-text small text-muted">';
+            html += '<i class="fas fa-clock me-1"></i>Kapasite: 8 saat<br>';
+            html += '<i class="fas fa-chart-pie me-1"></i>Kullanım: ' + usagePercentage + '%<br>';
+            html += '<i class="fas fa-tasks me-1"></i>Aktif Üretimler: ' + activeProductions + '<br>';
+            html += '<i class="fas fa-cogs me-1"></i>Aktif Aşamalar: ' + activeStages;
+            html += '</p>';
+            html += '<div class="mb-2">';
+            html += '<div class="d-flex justify-content-between mb-1">';
+            html += '<small class="text-muted">Kullanım</small>';
+            html += '<small class="text-muted">' + usedCapacity.toFixed(1) + 'h / 8h</small>';
+            html += '</div>';
+            html += '<div class="progress" style="height: 6px;">';
+            html += '<div class="progress-bar ' + progressBarClass + '" role="progressbar" style="width: ' + usagePercentage + '%"></div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="d-flex gap-2">';
+            html += '<button class="btn btn-sm btn-outline-primary" onclick="viewOperatorDetails(\'' + operatorName + '\')">';
+            html += '<i class="fas fa-eye me-1"></i>Detaylar';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    // Kaynak türleri bölümü
     Object.entries(groupedResources).forEach(([type, typeResources]) => {
         const typeIcon = getResourceIcon(type);
         const typeName = getResourceTypeText(type);
@@ -3854,42 +4212,116 @@ function isWorkingDay(date) {
 window.loadOrders = async function loadOrders() {
     try {
         console.log('Siparişler yükleniyor...');
+        
+        // Sadece orders tablosundan veri çek
         const response = await fetch('/api/orders');
         const data = await response.json();
         
-        console.log('Sipariş API yanıtı:', data);
+        console.log('Orders API yanıtı:', data);
         
         if (response.ok) {
             orders = data;
-            displayOrders(orders);
-            console.log('Siparişler başarıyla yüklendi:', orders.length);
         } else {
             console.error('Siparişler yüklenemedi:', data.error);
-            alert('Siparişler yüklenemedi: ' + data.error, 'error');
+            orders = [];
         }
+        displayOrders(orders);
+        console.log('Tüm siparişler başarıyla yüklendi:', orders.length);
+        
     } catch (error) {
         console.error('Siparişler fetch error:', error);
         alert('Siparişler yüklenirken hata oluştu', 'error');
     }
 }
 
-// İstatistikleri güncelle
-function updateOrderStatistics(orders) {
-    const totalOrders = orders.length;
-    const pendingOrders = orders.filter(order => order.status === 'pending').length;
-    const processingOrders = orders.filter(order => order.status === 'processing').length;
-    const completedOrders = orders.filter(order => order.status === 'completed').length;
-    
-    // İstatistik elementlerini güncelle
+// İstatistikleri güncelle - API'den veri çek
+async function updateOrderStatistics(orders = null) {
+    try {
+        // Eğer orders parametresi verilmişse eski yöntemi kullan
+        if (orders) {
+            const totalOrders = orders.length;
+            const pendingOrders = orders.filter(order => order.status === 'pending').length;
+            const processingOrders = orders.filter(order => order.status === 'processing').length;
+            const completedOrders = orders.filter(order => order.status === 'completed').length;
+            
+            updateOrderStatisticsElements(totalOrders, pendingOrders, processingOrders, completedOrders);
+            return;
+        }
+        
+        // Sadece orders tablosundan istatistikleri çek
+        const response = await fetch('/api/orders');
+        const ordersData = await response.json();
+        
+        if (response.ok && ordersData) {
+            // İstatistikleri hesapla
+            const totalOrders = ordersData.length;
+            const pendingOrders = ordersData.filter(order => order.status === 'pending').length;
+            const processingOrders = ordersData.filter(order => order.status === 'processing').length;
+            const completedOrders = ordersData.filter(order => order.status === 'completed').length;
+            
+            updateOrderStatisticsElements(totalOrders, pendingOrders, processingOrders, completedOrders);
+        } else {
+            updateOrderStatisticsElements(0, 0, 0, 0);
+        }
+        
+    } catch (error) {
+        console.error('Sipariş istatistikleri yüklenirken hata:', error);
+        // Hata durumunda varsayılan değerler
+        updateOrderStatisticsElements(0, 0, 0, 0);
+    }
+}
+
+// İstatistik elementlerini güncelle
+function updateOrderStatisticsElements(total, pending, processing, completed) {
     const totalElement = document.getElementById('total-orders');
     const pendingElement = document.getElementById('pending-orders');
     const processingElement = document.getElementById('processing-orders');
     const completedElement = document.getElementById('completed-orders');
     
-    if (totalElement) totalElement.textContent = totalOrders;
-    if (pendingElement) pendingElement.textContent = pendingOrders;
-    if (processingElement) processingElement.textContent = processingOrders;
-    if (completedElement) completedElement.textContent = completedOrders;
+    if (totalElement) totalElement.textContent = total;
+    if (pendingElement) pendingElement.textContent = pending;
+    if (processingElement) processingElement.textContent = processing;
+    if (completedElement) completedElement.textContent = completed;
+}
+
+// Durum mesajlarını Türkçeleştir
+function translateStatus(status) {
+    const statusTranslations = {
+        'pending': 'Bekleyen',
+        'draft': 'Taslak',
+        'approved': 'Onaylanmış',
+        'in_production': 'Üretimde',
+        'in_progress': 'İşleniyor',
+        'processing': 'İşleniyor',
+        'completed': 'Tamamlandı',
+        'delivered': 'Teslim Edildi',
+        'cancelled': 'İptal Edildi',
+        'paused': 'Duraklatıldı',
+        'active': 'Aktif',
+        'inactive': 'Pasif'
+    };
+    
+    return statusTranslations[status] || status;
+}
+
+// Durum rengini belirle
+function getStatusColor(status) {
+    const statusColors = {
+        'pending': 'warning',
+        'draft': 'secondary',
+        'approved': 'info',
+        'in_production': 'primary',
+        'in_progress': 'info',
+        'processing': 'info',
+        'completed': 'success',
+        'delivered': 'success',
+        'cancelled': 'danger',
+        'paused': 'warning',
+        'active': 'success',
+        'inactive': 'secondary'
+    };
+    
+    return statusColors[status] || 'secondary';
 }
 
 // Sipariş detaylarını görüntüleme
@@ -4041,7 +4473,22 @@ function createOrderDetailsHTML(order) {
 
 // Ürün detayları tablosu oluşturma
 function createProductDetailsTable(productDetails) {
-    if (!productDetails || productDetails.length === 0) {
+    // product_details string ise parse et
+    let products = [];
+    if (typeof productDetails === 'string') {
+        try {
+            products = JSON.parse(productDetails);
+        } catch (e) {
+            console.error('❌ Ürün detayları parse edilemedi:', e);
+            return '<p class="text-muted">Ürün detayları parse edilemedi.</p>';
+        }
+    } else if (Array.isArray(productDetails)) {
+        products = productDetails;
+    } else {
+        return '<p class="text-muted">Geçersiz ürün detayları formatı.</p>';
+    }
+    
+    if (!products || products.length === 0) {
         return '<p class="text-muted">Ürün detayları bulunamadı.</p>';
     }
     
@@ -4058,10 +4505,10 @@ function createProductDetailsTable(productDetails) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${productDetails.map(product => `
+                    ${products.map(product => `
                         <tr>
-                            <td><code>${product.code || 'N/A'}</code></td>
-                            <td>${product.name || 'N/A'}</td>
+                            <td><code>${product.product_code || product.code || 'N/A'}</code></td>
+                            <td>${product.product_name || product.name || 'N/A'}</td>
                             <td><span class="badge bg-info">${product.quantity || 0}</span></td>
                             <td>₺${product.unit_price || 0}</td>
                             <td><strong>₺${(product.quantity || 0) * (product.unit_price || 0)}</strong></td>
@@ -4112,11 +4559,18 @@ function createOrderHistory(order) {
 // Durum badge'i oluşturma
 function getStatusBadge(status) {
     const statusMap = {
-        'pending': { class: 'warning', text: 'Taslak' },
-        'approved': { class: 'success', text: 'Aktif' },
+        'pending': { class: 'warning', text: 'Bekleyen' },
+        'draft': { class: 'secondary', text: 'Taslak' },
+        'approved': { class: 'success', text: 'Onaylanmış' },
         'processing': { class: 'info', text: 'İşleniyor' },
-        'completed': { class: 'primary', text: 'Tamamlandı' },
-        'cancelled': { class: 'danger', text: 'İptal' }
+        'in_progress': { class: 'info', text: 'İşleniyor' },
+        'in_production': { class: 'primary', text: 'Üretimde' },
+        'completed': { class: 'success', text: 'Tamamlandı' },
+        'delivered': { class: 'success', text: 'Teslim Edildi' },
+        'cancelled': { class: 'danger', text: 'İptal Edildi' },
+        'paused': { class: 'warning', text: 'Duraklatıldı' },
+        'active': { class: 'success', text: 'Aktif' },
+        'inactive': { class: 'secondary', text: 'Pasif' }
     };
     
     const statusInfo = statusMap[status] || { class: 'secondary', text: status };
@@ -4148,6 +4602,423 @@ function editOrderFromDetails() {
     }, 300);
 }
 
+// İş Emri Oluşturma Fonksiyonu
+async function generateWorkOrder(planId) {
+    try {
+        console.log('İş emri oluşturuluyor, Plan ID:', planId);
+        
+        // Plan detaylarını getir
+        const response = await fetch(`/api/production-plans/${planId}`);
+        const plan = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(plan.error || 'Plan detayları alınamadı');
+        }
+        
+        // Sipariş detaylarını getir
+        const orderResponse = await fetch(`/api/orders/${plan.order_id}`);
+        const order = orderResponse.ok ? await orderResponse.json() : null;
+        
+        console.log('🔍 Order Response Status:', orderResponse.status);
+        console.log('🔍 Order Response OK:', orderResponse.ok);
+        console.log('🔍 Order Data:', order);
+        
+        // Debug: Sadece gerekli bilgileri konsola yazdır
+        console.log('🔍 Order product_details type:', typeof order?.product_details);
+        console.log('🔍 Order product_details length:', order?.product_details?.length);
+        
+        // İş emri HTML'ini oluştur
+        const workOrderHTML = createWorkOrderHTML(plan, order);
+        
+        // Önce yeni pencerede açmayı dene
+        try {
+            const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            
+            if (printWindow && !printWindow.closed) {
+                printWindow.document.write(workOrderHTML);
+                printWindow.document.close();
+                
+                // Yazdırma işlemini başlat
+                setTimeout(() => {
+                    printWindow.print();
+                }, 1000);
+                return;
+            }
+        } catch (popupError) {
+            console.warn('Popup açılamadı, modal kullanılacak:', popupError);
+        }
+        
+        // Popup açılamazsa modal göster
+        showWorkOrderModal(workOrderHTML);
+        
+    } catch (error) {
+        console.error('İş emri oluşturma hatası:', error);
+        alert('İş emri oluşturulamadı: ' + error.message, 'error');
+    }
+}
+
+// İş Emri Modal Gösterme
+function showWorkOrderModal(workOrderHTML) {
+    // Modal HTML'ini oluştur
+    const modalHTML = `
+        <div class="modal fade" id="workOrderModal" tabindex="-1" aria-labelledby="workOrderModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="workOrderModalLabel">
+                            <i class="fas fa-file-alt me-2"></i>İş Emri
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <button class="btn btn-primary" onclick="printWorkOrder()">
+                                <i class="fas fa-print me-2"></i>Yazdır
+                            </button>
+                            <button class="btn btn-success" onclick="downloadWorkOrder()">
+                                <i class="fas fa-download me-2"></i>İndir
+                            </button>
+                        </div>
+                        <div id="workOrderContent" style="border: 1px solid #ddd; padding: 20px; background: white;">
+                            ${workOrderHTML}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Eski modal varsa kaldır
+    const existingModal = document.getElementById('workOrderModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Yeni modal ekle
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('workOrderModal'));
+    modal.show();
+    
+    // Modal kapatıldığında temizle
+    document.getElementById('workOrderModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// İş Emri Yazdırma
+function printWorkOrder() {
+    const content = document.getElementById('workOrderContent').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>İş Emri</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                @media print { body { margin: 0; } }
+            </style>
+        </head>
+        <body>${content}</body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// İş Emri İndirme
+function downloadWorkOrder() {
+    const content = document.getElementById('workOrderContent').innerHTML;
+    const blob = new Blob([`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>İş Emri</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+            </style>
+        </head>
+        <body>${content}</body>
+        </html>
+    `], { type: 'text/html' });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `is-emri-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// İş Emri HTML Oluşturma
+function createWorkOrderHTML(plan, order) {
+    const currentDate = new Date().toLocaleDateString('tr-TR');
+    const customerName = order ? order.customer_name : 'Bilinmiyor';
+    
+    // Plan ürünlerini listele
+    let productsList = '';
+    
+    console.log('🔍 createWorkOrderHTML - Plan product_details:', plan.product_details);
+    console.log('🔍 createWorkOrderHTML - Order product_details:', order ? order.product_details : 'Order yok');
+    console.log('🔍 createWorkOrderHTML - Plan notes:', plan.notes);
+    
+    // Önce plan.product_details kontrol et
+    if (plan.product_details && Array.isArray(plan.product_details)) {
+        productsList = plan.product_details.map(product => 
+            `<tr>
+                <td>${product.product_code || product.code || 'N/A'}</td>
+                <td>${product.quantity || 0}</td>
+                <td>${product.unit || 'Adet'}</td>
+            </tr>`
+        ).join('');
+    } 
+    // Eğer plan.product_details yoksa, order.product_details kontrol et
+    else if (order && order.product_details) {
+        let products = [];
+        
+        // Eğer string ise parse et
+        if (typeof order.product_details === 'string') {
+            try {
+                products = JSON.parse(order.product_details);
+                console.log('🔍 Parsed products:', products);
+            } catch (error) {
+                console.error('❌ Product details parse edilemedi:', error);
+                products = [];
+            }
+        } else if (Array.isArray(order.product_details)) {
+            products = order.product_details;
+        }
+        
+        if (products && products.length > 0) {
+            productsList = products.map(product => 
+                `<tr>
+                    <td>${product.product_code || product.code || 'N/A'}</td>
+                    <td>${product.quantity || 0}</td>
+                    <td>${product.unit || 'Adet'}</td>
+                </tr>`
+            ).join('');
+        } else {
+            productsList = '<tr><td colspan="3" class="text-center">Ürün detayları parse edilemedi</td></tr>';
+        }
+    }
+    // Eğer hiçbiri yoksa, plan.notes alanından sipariş bilgilerini çıkar
+    else if (plan.notes && plan.notes.includes('[SEÇİLEN SİPARİŞLER:')) {
+        try {
+            const parts = plan.notes.split('[SEÇİLEN SİPARİŞLER:');
+            if (parts[1]) {
+                const jsonPart = parts[1].replace(']', '').trim();
+                const selectedOrders = JSON.parse(jsonPart);
+                
+                // Her sipariş için ürün detaylarını çıkar
+                productsList = selectedOrders.map(order => {
+                    if (order.product_details && Array.isArray(order.product_details)) {
+                        return order.product_details.map(product => 
+                            `<tr>
+                                <td>${product.product_code || product.code || 'N/A'}</td>
+                                <td>${product.quantity || 0}</td>
+                                <td>${product.unit || 'Adet'}</td>
+                            </tr>`
+                        ).join('');
+                    } else {
+                        return `<tr>
+                            <td>${order.product_code || order.code || 'N/A'}</td>
+                            <td>${order.quantity || 0}</td>
+                            <td>${order.unit || 'Adet'}</td>
+                        </tr>`;
+                    }
+                }).join('');
+            } else {
+                productsList = '<tr><td colspan="3" class="text-center">Ürün bilgisi bulunamadı</td></tr>';
+            }
+        } catch (error) {
+            console.error('Sipariş bilgileri parse edilemedi:', error);
+            productsList = '<tr><td colspan="3" class="text-center">Ürün bilgisi bulunamadı</td></tr>';
+        }
+    }
+    // Son çare olarak plan adını kullan
+    else if (plan.plan_name) {
+        productsList = `<tr>
+            <td>PLAN-${plan.id}</td>
+            <td>${plan.total_quantity || 1}</td>
+            <td>Adet</td>
+        </tr>`;
+    } else {
+        productsList = '<tr><td colspan="3" class="text-center">Ürün bilgisi bulunamadı</td></tr>';
+    }
+    
+    return `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İş Emri - ${plan.plan_name}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #333;
+            margin: 0;
+            font-size: 28px;
+        }
+        .header h2 {
+            color: #666;
+            margin: 10px 0 0 0;
+            font-size: 18px;
+            font-weight: normal;
+        }
+        .info-section {
+            margin-bottom: 30px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .info-value {
+            flex: 1;
+        }
+        .info-value.description {
+            max-width: 500px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .products-table th,
+        .products-table td {
+            border: 1px solid #333;
+            padding: 12px;
+            text-align: left;
+        }
+        .products-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .signature-section {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            width: 200px;
+            text-align: center;
+        }
+        .signature-line {
+            border-bottom: 1px solid #333;
+            height: 40px;
+            margin-bottom: 10px;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>İŞ EMRİ</h1>
+        <h2>WORK ORDER</h2>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-row">
+            <div class="info-label">İş Emri No:</div>
+            <div class="info-value">${plan.plan_name || 'PLAN-' + plan.id}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">İş Emri Tarihi:</div>
+            <div class="info-value">${currentDate}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Müşteri Adı:</div>
+            <div class="info-value">${customerName}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Plan Başlangıç:</div>
+            <div class="info-value">${new Date(plan.start_date).toLocaleDateString('tr-TR')}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Plan Bitiş:</div>
+            <div class="info-value">${new Date(plan.end_date).toLocaleDateString('tr-TR')}</div>
+        </div>
+        ${order && order.notes ? `
+        <div class="info-row">
+            <div class="info-label">Açıklama:</div>
+            <div class="info-value description">${order.notes}</div>
+        </div>
+        ` : ''}
+    </div>
+    
+    <div class="info-section">
+        <h3>Üretilecek Ürünler</h3>
+        <table class="products-table">
+            <thead>
+                <tr>
+                    <th>Ürün Kodu</th>
+                    <th>Miktar</th>
+                    <th>Birim</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${productsList}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div>Planlayan</div>
+            <div style="font-size: 12px; color: #666;">İmza & Tarih</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div>Üretim Sorumlusu</div>
+            <div style="font-size: 12px; color: #666;">İmza & Tarih</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div>Operatör</div>
+            <div style="font-size: 12px; color: #666;">İmza & Tarih</div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Bu iş emri otomatik olarak oluşturulmuştur. - ${currentDate}</p>
+    </div>
+</body>
+</html>`;
+}
+
 // renderPlansView fonksiyonu - Basit placeholder
 window.renderPlansView = function(plans) {
     console.log('renderPlansView çağrıldı:', plans);
@@ -4166,6 +5037,15 @@ window.renderPlansView = function(plans) {
 // Siparişleri görüntüleme
 function displayOrders(orders) {
     const container = document.getElementById('orders-container');
+    
+    // Siparişleri en son eklenen en üstte olacak şekilde sırala
+    if (orders && orders.length > 0) {
+        orders.sort((a, b) => {
+            const dateA = new Date(a.created_at || a.order_date || 0);
+            const dateB = new Date(b.created_at || b.order_date || 0);
+            return dateB - dateA; // En yeni tarih en üstte
+        });
+    }
     
     // İstatistikleri güncelle
     updateOrderStatistics(orders);
@@ -4190,7 +5070,6 @@ function displayOrders(orders) {
                         <th>Müşteri</th>
                         <th>Ürün</th>
                         <th>Miktar</th>
-                        <th>Tutar</th>
                         <th>Teslim Tarihi</th>
                         <th>Öncelik</th>
                         <th>Durum</th>
@@ -4198,12 +5077,38 @@ function displayOrders(orders) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${orders.map(order => `
+                    ${orders.map(order => {
+                        // Ürün detaylarını hesapla
+                        let productCount = 0;
+                        let totalQuantity = 0;
+                        let productNames = [];
+                        
+                        if (order.product_details && Array.isArray(order.product_details)) {
+                            productCount = order.product_details.length;
+                            totalQuantity = order.product_details.reduce((sum, product) => sum + (parseInt(product.quantity) || 0), 0);
+                            productNames = order.product_details.slice(0, 2).map(p => p.product_name || p.name || 'Ürün').join(', ');
+                            if (order.product_details.length > 2) {
+                                productNames += ` +${order.product_details.length - 2} daha`;
+                            }
+                        } else {
+                            productCount = 0;
+                            totalQuantity = 0;
+                            productNames = 'Ürün yok';
+                        }
+                        
+                        return `
                         <tr>
                             <td><strong>${order.order_number}</strong></td>
                             <td>${order.customer_name}</td>
-                            <td>Çoklu Ürün</td>
-                            <td>Toplam Miktar</td>
+                            <td>
+                                <div class="small">
+                                    <strong>${productCount} ürün</strong><br>
+                                    <span class="text-muted">${productNames}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">${totalQuantity}</span>
+                            </td>
                             <td>
                                 ${new Date(order.delivery_date).toLocaleDateString('tr-TR')}
                                 ${!isWorkingDay(new Date(order.delivery_date)) ? 
@@ -4240,7 +5145,8 @@ function displayOrders(orders) {
                                 </div>
                             </td>
                         </tr>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -4269,7 +5175,7 @@ function updatePlanningStatistics(stats) {
     document.getElementById('total-plans').textContent = stats.total_plans || 0;
     document.getElementById('active-plans').textContent = stats.active_plans || 0;
     document.getElementById('total-orders').textContent = stats.total_orders || 0;
-    document.getElementById('total-value').textContent = `₺${(stats.total_value || 0).toLocaleString('tr-TR')}`;
+    // total-value güncellemesi kaldırıldı - HTML'den de kaldırıldı
 }
 
 // Yardımcı fonksiyonlar
@@ -4287,21 +5193,7 @@ function getStatusColor(status) {
     return colors[status] || 'secondary';
 }
 
-function getStatusText(status) {
-    const texts = {
-        'draft': 'Taslak',
-        'active': 'Aktif',
-        'completed': 'Tamamlandı',
-        'cancelled': 'İptal',
-        'pending': 'Taslak',
-        'approved': 'Aktif',
-        'confirmed': 'Onaylandı',
-        'in_production': 'Üretimde',
-        'in_progress': 'Devam Ediyor',
-        'shipped': 'Sevk Edildi'
-    };
-    return texts[status] || status;
-}
+// Bu fonksiyon kaldırıldı - ana getStatusText fonksiyonu kullanılacak
 
 function getResourceIcon(type) {
     const icons = {
@@ -4459,7 +5351,7 @@ async function updateStageTemplate(templateId) {
             stage_order: parseInt(document.getElementById('editStageOrder').value),
             estimated_duration: parseInt(document.getElementById('editEstimatedDuration').value),
             required_skills: document.getElementById('editRequiredSkills').value.split(',').map(s => s.trim()).filter(s => s),
-            quality_check_required: document.getElementById('editQualityCheckRequired').checked,
+            // quality_check_required: document.getElementById('editQualityCheckRequired').checked, // KALDIRILDI: Kalite kontrol özelliği kaldırıldı
             is_mandatory: document.getElementById('editIsMandatory').checked
         };
         
@@ -4707,7 +5599,7 @@ async function saveOrder() {
             priority: parseInt(document.getElementById('priority').value),
             quantity: parseInt(document.getElementById('total-quantity').value) || 0,
             product_details: document.getElementById('product-name').value,
-            notes: document.getElementById('notes').value,
+            notes: document.getElementById('notes').value, // Sadece kullanıcının girdiği notlar
             assigned_operator: document.getElementById('assigned-operator').value,
             status: document.querySelector('input[name="status"]:checked').value
         };
@@ -4716,8 +5608,8 @@ async function saveOrder() {
         const isUpdate = currentOrderId !== null;
         
         // Validasyon
-        if (!formData.customer_name || !formData.order_date || !formData.delivery_date || !formData.priority) {
-            alert('Lütfen tüm zorunlu alanları doldurun', 'warning');
+        if (!formData.customer_name || !formData.order_date || !formData.delivery_date || !formData.priority || !formData.assigned_operator) {
+            alert('Lütfen tüm zorunlu alanları doldurun (Operatör seçimi zorunludur)', 'warning');
             return;
         }
         
@@ -4778,534 +5670,534 @@ async function saveOrder() {
 // KALİTE KONTROL SİSTEMİ - FAZ 2
 // ========================================
 
-// Kalite kontrol noktalarını yükle
-async function loadQualityCheckpoints() {
-    try {
-        const response = await fetch('/api/quality/checkpoints');
-        if (!response.ok) throw new Error('Kalite kontrol noktaları yüklenemedi');
-        
-        const checkpoints = await response.json();
-        displayQualityCheckpoints(checkpoints);
-        return checkpoints;
-    } catch (error) {
-        console.error('Quality checkpoints load error:', error);
-        alert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
-        return [];
-    }
-}
+// Kalite kontrol noktalarını yükle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function loadQualityCheckpoints() {
+//     try {
+//         const response = await fetch('/api/quality/checkpoints');
+//         if (!response.ok) throw new Error('Kalite kontrol noktaları yüklenemedi');
+//         
+//         const checkpoints = await response.json();
+//         displayQualityCheckpoints(checkpoints);
+//         return checkpoints;
+//     } catch (error) {
+//         console.error('Quality checkpoints load error:', error);
+//         alert('Kalite kontrol noktaları yüklenemedi: ' + error.message, 'error');
+//         return [];
+//     }
+// }
 
-// Kalite kontrol noktalarını göster
-function displayQualityCheckpoints(checkpoints) {
-    const container = document.getElementById('quality-checkpoints-container');
-    if (!container) return;
-    
-    if (checkpoints.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-list-check fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Kalite kontrol noktası bulunmuyor</h5>
-                <p class="text-muted">Yeni kontrol noktası eklemek için "Yeni Kontrol Noktası" butonunu kullanın.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // Ürün tipine göre grupla
-    const groupedCheckpoints = checkpoints.reduce((acc, checkpoint) => {
-        if (!acc[checkpoint.product_type]) {
-            acc[checkpoint.product_type] = [];
-        }
-        acc[checkpoint.product_type].push(checkpoint);
-        return acc;
-    }, {});
-    
-    let html = '';
-    Object.keys(groupedCheckpoints).forEach(productType => {
-        const typeCheckpoints = groupedCheckpoints[productType];
-        const typeName = {
-            'hammadde': 'Hammadde',
-            'yarimamul': 'Yarı Mamul',
-            'nihai': 'Nihai Ürün'
-        }[productType] || productType;
-        
-        html += `
-            <div class="mb-4">
-                <h6 class="text-primary mb-3">
-                    <i class="fas fa-cube me-2"></i>${typeName} Kontrol Noktaları
-                </h6>
-                <div class="row">
-        `;
-        
-        typeCheckpoints.forEach(checkpoint => {
-            const typeIcon = {
-                'visual': 'fas fa-eye',
-                'measurement': 'fas fa-ruler',
-                'test': 'fas fa-flask',
-                'inspection': 'fas fa-search'
-            }[checkpoint.checkpoint_type] || 'fas fa-check-circle';
-            
-            const typeColor = {
-                'visual': 'primary',
-                'measurement': 'info',
-                'test': 'success',
-                'inspection': 'warning'
-            }[checkpoint.checkpoint_type] || 'secondary';
-            
-            html += `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">
-                                <i class="${typeIcon} me-2 text-${typeColor}"></i>
-                                ${checkpoint.name}
-                            </h6>
-                            <span class="badge bg-${typeColor}">${checkpoint.checkpoint_type}</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text">${checkpoint.description || 'Açıklama yok'}</p>
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <small class="text-muted">Sıklık</small>
-                                    <div class="fw-bold">${checkpoint.frequency}</div>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted">Zorunlu</small>
-                                    <div class="fw-bold">${checkpoint.is_mandatory ? 'Evet' : 'Hayır'}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="btn-group w-100" role="group">
-                                <button class="btn btn-outline-primary btn-sm" onclick="performQualityCheck(${checkpoint.id})">
-                                    <i class="fas fa-play me-1"></i>Kontrol Et
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" onclick="editQualityCheckpoint(${checkpoint.id})">
-                                    <i class="fas fa-edit me-1"></i>Düzenle
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        html += `
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
-}
+// Kalite kontrol noktalarını göster - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// function displayQualityCheckpoints(checkpoints) {
+//     const container = document.getElementById('quality-checkpoints-container');
+//     if (!container) return;
+//     
+//     if (checkpoints.length === 0) {
+//         container.innerHTML = `
+//             <div class="text-center py-4">
+//                 <i class="fas fa-list-check fa-3x text-muted mb-3"></i>
+//                 <h5 class="text-muted">Kalite kontrol noktası bulunmuyor</h5>
+//                 <p class="text-muted">Yeni kontrol noktası eklemek için "Yeni Kontrol Noktası" butonunu kullanın.</p>
+//             </div>
+//         `;
+//         return;
+//     }
+//     
+//     // Ürün tipine göre grupla
+//     const groupedCheckpoints = checkpoints.reduce((acc, checkpoint) => {
+//         if (!acc[checkpoint.product_type]) {
+//             acc[checkpoint.product_type] = [];
+//         }
+//         acc[checkpoint.product_type].push(checkpoint);
+//         return acc;
+//     }, {});
+//     
+//     let html = '';
+//     Object.keys(groupedCheckpoints).forEach(productType => {
+//         const typeCheckpoints = groupedCheckpoints[productType];
+//         const typeName = {
+//             'hammadde': 'Hammadde',
+//             'yarimamul': 'Yarı Mamul',
+//             'nihai': 'Nihai Ürün'
+//         }[productType] || productType;
+//         
+//         html += `
+//             <div class="mb-4">
+//                 <h6 class="text-primary mb-3">
+//                     <i class="fas fa-cube me-2"></i>${typeName} Kontrol Noktaları
+//                 </h6>
+//                 <div class="row">
+//         `;
+//         
+//         typeCheckpoints.forEach(checkpoint => {
+//             const typeIcon = {
+//                 'visual': 'fas fa-eye',
+//                 'measurement': 'fas fa-ruler',
+//                 'test': 'fas fa-flask',
+//                 'inspection': 'fas fa-search'
+//             }[checkpoint.checkpoint_type] || 'fas fa-check-circle';
+//             
+//             const typeColor = {
+//                 'visual': 'primary',
+//                 'measurement': 'info',
+//                 'test': 'success',
+//                 'inspection': 'warning'
+//             }[checkpoint.checkpoint_type] || 'secondary';
+//             
+//             html += `
+//                 <div class="col-md-6 col-lg-4 mb-3">
+//                     <div class="card h-100">
+//                         <div class="card-header d-flex justify-content-between align-items-center">
+//                             <h6 class="mb-0">
+//                                 <i class="${typeIcon} me-2 text-${typeColor}"></i>
+//                                 ${checkpoint.name}
+//                             </h6>
+//                             <span class="badge bg-${typeColor}">${checkpoint.checkpoint_type}</span>
+//                         </div>
+//                         <div class="card-body">
+//                             <p class="card-text">${checkpoint.description || 'Açıklama yok'}</p>
+//                             <div class="row text-center">
+//                                 <div class="col-6">
+//                                     <small class="text-muted">Sıklık</small>
+//                                     <div class="fw-bold">${checkpoint.frequency}</div>
+//                                 </div>
+//                                 <div class="col-6">
+//                                     <small class="text-muted">Zorunlu</small>
+//                                     <div class="fw-bold">${checkpoint.is_mandatory ? 'Evet' : 'Hayır'}</div>
+//                                 </div>
+//                             </div>
+//                         </div>
+//                         <div class="card-footer">
+//                             <div class="btn-group w-100" role="group">
+//                                 <button class="btn btn-outline-primary btn-sm" onclick="performQualityCheck(${checkpoint.id})">
+//                                     <i class="fas fa-play me-1"></i>Kontrol Et
+//                                 </button>
+//                                 <button class="btn btn-outline-secondary btn-sm" onclick="editQualityCheckpoint(${checkpoint.id})">
+//                                     <i class="fas fa-edit me-1"></i>Düzenle
+//                                 </button>
+//                             </div>
+//                         </div>
+//                     </div>
+//                 </div>
+//             `;
+//         });
+//         
+//         html += `
+//                 </div>
+//             </div>
+//         `;
+//     });
+//     
+//     container.innerHTML = html;
+// }
 
-// Kalite standartlarını yükle
-async function loadQualityStandards() {
-    try {
-        const response = await fetch('/api/quality/standards');
-        if (!response.ok) throw new Error('Kalite standartları yüklenemedi');
-        
-        const standards = await response.json();
-        displayQualityStandards(standards);
-        return standards;
-    } catch (error) {
-        console.error('Quality standards load error:', error);
-        alert('Kalite standartları yüklenemedi: ' + error.message, 'error');
-        return [];
-    }
-}
+// Kalite standartlarını yükle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function loadQualityStandards() {
+//     try {
+//         const response = await fetch('/api/quality/standards');
+//         if (!response.ok) throw new Error('Kalite standartları yüklenemedi');
+//         
+//         const standards = await response.json();
+//         displayQualityStandards(standards);
+//         return standards;
+//     } catch (error) {
+//         console.error('Quality standards load error:', error);
+//         alert('Kalite standartları yüklenemedi: ' + error.message, 'error');
+//         return [];
+//     }
+// }
 
-// Kalite standartlarını göster
-function displayQualityStandards(standards) {
-    const container = document.getElementById('quality-standards-container');
-    if (!container) return;
-    
-    if (standards.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-award fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Kalite standardı bulunmuyor</h5>
-                <p class="text-muted">Henüz kalite standardı tanımlanmamış.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '';
-    standards.forEach(standard => {
-        const typeIcon = {
-            'internal': 'fas fa-building',
-            'external': 'fas fa-globe',
-            'iso': 'fas fa-certificate',
-            'customer': 'fas fa-user-tie'
-        }[standard.standard_type] || 'fas fa-award';
-        
-        const typeColor = {
-            'internal': 'primary',
-            'external': 'info',
-            'iso': 'success',
-            'customer': 'warning'
-        }[standard.standard_type] || 'secondary';
-        
-        html += `
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="${typeIcon} me-2 text-${typeColor}"></i>
-                            ${standard.name}
-                        </h6>
-                        <span class="badge bg-${typeColor}">${standard.standard_type}</span>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-text">${standard.description || 'Açıklama yok'}</p>
-                        <div class="row text-center">
-                            <div class="col-6">
-                                <small class="text-muted">Ürün Tipi</small>
-                                <div class="fw-bold">${standard.product_type}</div>
-                            </div>
-                            <div class="col-6">
-                                <small class="text-muted">Durum</small>
-                                <div class="fw-bold">
-                                    <span class="badge bg-${standard.is_active ? 'success' : 'secondary'}">
-                                        ${standard.is_active ? 'Aktif' : 'Pasif'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = `<div class="row">${html}</div>`;
-}
+// Kalite standartlarını göster - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// function displayQualityStandards(standards) {
+//     const container = document.getElementById('quality-standards-container');
+//     if (!container) return;
+//     
+//     if (standards.length === 0) {
+//         container.innerHTML = `
+//             <div class="text-center py-4">
+//                 <i class="fas fa-award fa-3x text-muted mb-3"></i>
+//                 <h5 class="text-muted">Kalite standardı bulunmuyor</h5>
+//                 <p class="text-muted">Henüz kalite standardı tanımlanmamış.</p>
+//             </div>
+//         `;
+//         return;
+//     }
+//     
+//     let html = '';
+//     standards.forEach(standard => {
+//         const typeIcon = {
+//             'internal': 'fas fa-building',
+//             'external': 'fas fa-globe',
+//             'iso': 'fas fa-certificate',
+//             'customer': 'fas fa-user-tie'
+//         }[standard.standard_type] || 'fas fa-award';
+//         
+//         const typeColor = {
+//             'internal': 'primary',
+//             'external': 'info',
+//             'iso': 'success',
+//             'customer': 'warning'
+//         }[standard.standard_type] || 'secondary';
+//         
+//         html += `
+//             <div class="col-md-6 col-lg-4 mb-3">
+//                 <div class="card h-100">
+//                     <div class="card-header d-flex justify-content-between align-items-center">
+//                         <h6 class="mb-0">
+//                             <i class="${typeIcon} me-2 text-${typeColor}"></i>
+//                             ${standard.name}
+//                         </h6>
+//                         <span class="badge bg-${typeColor}">${standard.standard_type}</span>
+//                     </div>
+//                     <div class="card-body">
+//                         <p class="card-text">${standard.description || 'Açıklama yok'}</p>
+//                         <div class="row text-center">
+//                             <div class="col-6">
+//                                 <small class="text-muted">Ürün Tipi</small>
+//                                 <div class="fw-bold">${standard.product_type}</div>
+//                             </div>
+//                             <div class="col-6">
+//                                 <small class="text-muted">Durum</small>
+//                                 <div class="fw-bold">
+//                                     <span class="badge bg-${standard.is_active ? 'success' : 'secondary'}">
+//                                         ${standard.is_active ? 'Aktif' : 'Pasif'}
+//                                     </span>
+//                                 </div>
+//                             </div>
+//                         </div>
+//                     </div>
+//                 </div>
+//             </div>
+//         `;
+//     });
+//     
+//     container.innerHTML = `<div class="row">${html}</div>`;
+// }
 
-// Kalite istatistiklerini yükle
-async function loadQualityStatistics() {
-    try {
-        const response = await fetch('/api/quality/statistics');
-        if (!response.ok) throw new Error('Kalite istatistikleri yüklenemedi');
-        
-        const stats = await response.json();
-        updateQualityStatistics(stats);
-        return stats;
-    } catch (error) {
-        console.error('Quality statistics load error:', error);
-        alert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
-    }
-}
+// Kalite istatistiklerini yükle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function loadQualityStatistics() {
+//     try {
+//         const response = await fetch('/api/quality/statistics');
+//         if (!response.ok) throw new Error('Kalite istatistikleri yüklenemedi');
+//         
+//         const stats = await response.json();
+//         updateQualityStatistics(stats);
+//         return stats;
+//     } catch (error) {
+//         console.error('Quality statistics load error:', error);
+//         alert('Kalite istatistikleri yüklenemedi: ' + error.message, 'error');
+//     }
+// }
 
-// Kalite istatistiklerini güncelle
-function updateQualityStatistics(stats) {
-    document.getElementById('quality-pass-rate').textContent = stats.pass_rate + '%';
-    document.getElementById('quality-fail-rate').textContent = stats.fail_rate + '%';
-    document.getElementById('quality-warning-rate').textContent = 
-        stats.total_checks > 0 ? ((stats.warning_checks / stats.total_checks * 100).toFixed(1) + '%') : '0%';
-    document.getElementById('quality-score').textContent = stats.quality_score;
-}
+// Kalite istatistiklerini güncelle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// function updateQualityStatistics(stats) {
+//     document.getElementById('quality-pass-rate').textContent = stats.pass_rate + '%';
+//     document.getElementById('quality-fail-rate').textContent = stats.fail_rate + '%';
+//     document.getElementById('quality-warning-rate').textContent = 
+//         stats.total_checks > 0 ? ((stats.warning_checks / stats.total_checks * 100).toFixed(1) + '%') : '0%';
+//     document.getElementById('quality-score').textContent = stats.quality_score;
+// }
 
-// Yeni kontrol noktası modal'ını göster
-function showAddCheckpointModal() {
-    const modal = new bootstrap.Modal(document.getElementById('addCheckpointModal'));
-    modal.show();
-}
+// Yeni kontrol noktası modal'ını göster - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// function showAddCheckpointModal() {
+//     const modal = new bootstrap.Modal(document.getElementById('addCheckpointModal'));
+//     modal.show();
+// }
 
-// Kalite kontrol noktası ekle
-async function addQualityCheckpoint() {
-    try {
-        const checkpointData = {
-            name: document.getElementById('checkpoint-name').value,
-            description: document.getElementById('checkpoint-description').value,
-            product_type: document.getElementById('checkpoint-product-type').value,
-            checkpoint_type: document.getElementById('checkpoint-type').value,
-            frequency: document.getElementById('checkpoint-frequency').value,
-            is_mandatory: document.getElementById('checkpoint-mandatory').checked
-        };
-        
-        const response = await fetch('/api/quality/checkpoints', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(checkpointData)
-        });
-        
-        if (!response.ok) throw new Error('Kalite kontrol noktası eklenemedi');
-        
-        const newCheckpoint = await response.json();
-        alert('Kalite kontrol noktası başarıyla eklendi!', 'success');
-        
-        // Modal'ı kapat ve formu temizle
-        const modal = bootstrap.Modal.getInstance(document.getElementById('addCheckpointModal'));
-        modal.hide();
-        document.getElementById('addCheckpointForm').reset();
-        
-        // Kontrol noktalarını yenile
-        await loadQualityCheckpoints();
-        
-        return newCheckpoint;
-    } catch (error) {
-        console.error('Add quality checkpoint error:', error);
-        alert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
-    }
-}
+// Kalite kontrol noktası ekle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function addQualityCheckpoint() {
+//     try {
+//         const checkpointData = {
+//             name: document.getElementById('checkpoint-name').value,
+//             description: document.getElementById('checkpoint-description').value,
+//             product_type: document.getElementById('checkpoint-product-type').value,
+//             checkpoint_type: document.getElementById('checkpoint-type').value,
+//             frequency: document.getElementById('checkpoint-frequency').value,
+//             is_mandatory: document.getElementById('checkpoint-mandatory').checked
+//         };
+//         
+//         const response = await fetch('/api/quality/checkpoints', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify(checkpointData)
+//         });
+//         
+//         if (!response.ok) throw new Error('Kalite kontrol noktası eklenemedi');
+//         
+//         const newCheckpoint = await response.json();
+//         alert('Kalite kontrol noktası başarıyla eklendi!', 'success');
+//         
+//         // Modal'ı kapat ve formu temizle
+//         const modal = bootstrap.Modal.getInstance(document.getElementById('addCheckpointModal'));
+//         modal.hide();
+//         document.getElementById('addCheckpointForm').reset();
+//         
+//         // Kontrol noktalarını yenile
+//         await loadQualityCheckpoints();
+//         
+//         return newCheckpoint;
+//     } catch (error) {
+//         console.error('Add quality checkpoint error:', error);
+//         alert('Kalite kontrol noktası eklenemedi: ' + error.message, 'error');
+//     }
+// }
 
-// Kalite kontrolü gerçekleştir
-async function performQualityCheck(checkpointId) {
-    try {
-        // Checkpoint bilgilerini API'den al
-        const response = await fetch('/api/quality/checkpoints');
-        if (!response.ok) throw new Error('Kontrol noktaları yüklenemedi');
-        
-        const checkpoints = await response.json();
-        const checkpoint = checkpoints.find(cp => cp.id === checkpointId);
-        
-        if (!checkpoint) {
-            alert('Kontrol noktası bulunamadı!', 'error');
-            return;
-        }
-        
-        // Operatör listesini yükle
-        await loadOperators();
-        
-        // Modal'ı doldur
-        document.getElementById('check-checkpoint-id').value = checkpointId;
-        document.getElementById('checkpoint-name-display').textContent = checkpoint.name;
-        document.getElementById('checkpoint-description-display').textContent = checkpoint.description || 'Açıklama yok';
-        
-        // Ölçüm alanlarını göster/gizle
-        const measurementFields = document.getElementById('measurement-fields');
-        if (checkpoint.checkpoint_type === 'measurement') {
-            measurementFields.style.display = 'block';
-        } else {
-            measurementFields.style.display = 'none';
-        }
-        
-        // Modal'ı göster
-        const modal = new bootstrap.Modal(document.getElementById('qualityCheckModal'));
-        modal.show();
-        
-    } catch (error) {
-        console.error('Perform quality check error:', error);
-        alert('Kontrol noktası yüklenemedi: ' + error.message, 'error');
-    }
-}
+// Kalite kontrolü gerçekleştir - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function performQualityCheck(checkpointId) {
+//     try {
+//         // Checkpoint bilgilerini API'den al
+//         const response = await fetch('/api/quality/checkpoints');
+//         if (!response.ok) throw new Error('Kontrol noktaları yüklenemedi');
+//         
+//         const checkpoints = await response.json();
+//         const checkpoint = checkpoints.find(cp => cp.id === checkpointId);
+//         
+//         if (!checkpoint) {
+//             alert('Kontrol noktası bulunamadı!', 'error');
+//             return;
+//         }
+//         
+//         // Operatör listesini yükle
+//         await loadOperators();
+//         
+//         // Modal'ı doldur
+//         document.getElementById('check-checkpoint-id').value = checkpointId;
+//         document.getElementById('checkpoint-name-display').textContent = checkpoint.name;
+//         document.getElementById('checkpoint-description-display').textContent = checkpoint.description || 'Açıklama yok';
+//         
+//         // Ölçüm alanlarını göster/gizle
+//         const measurementFields = document.getElementById('measurement-fields');
+//         if (checkpoint.checkpoint_type === 'measurement') {
+//             measurementFields.style.display = 'block';
+//         } else {
+//             measurementFields.style.display = 'none';
+//         }
+//         
+//         // Modal'ı göster
+//         const modal = new bootstrap.Modal(document.getElementById('qualityCheckModal'));
+//         modal.show();
+//         
+//     } catch (error) {
+//         console.error('Perform quality check error:', error);
+//         alert('Kontrol noktası yüklenemedi: ' + error.message, 'error');
+//     }
+// }
 
-// Operatör listesini yükle
-async function loadOperators() {
-    try {
-        const response = await fetch('/api/operators');
-        if (!response.ok) throw new Error('Operatör listesi yüklenemedi');
-        
-        const operators = await response.json();
-        const operatorSelect = document.getElementById('check-operator');
-        
-        // Mevcut seçenekleri temizle (ilk seçenek hariç)
-        operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
-        
-        // Operatörleri ekle
-        operators.forEach(operator => {
-            const option = document.createElement('option');
-            option.value = operator;
-            option.textContent = operator;
-            operatorSelect.appendChild(option);
-        });
-        
-        // Varsayılan olarak "Kalite Kontrol" seç
-        operatorSelect.value = 'Kalite Kontrol';
-        
-    } catch (error) {
-        console.error('Load operators error:', error);
-        // Hata durumunda varsayılan operatörleri ekle
-        const operatorSelect = document.getElementById('check-operator');
-        const defaultOperators = ['Sistem', 'Admin', 'Kalite Kontrol', 'Operatör 1', 'Operatör 2'];
-        
-        operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
-        defaultOperators.forEach(operator => {
-            const option = document.createElement('option');
-            option.value = operator;
-            option.textContent = operator;
-            operatorSelect.appendChild(option);
-        });
-    }
-}
+// Operatör listesini yükle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function loadOperators() {
+//     try {
+//         const response = await fetch('/api/operators');
+//         if (!response.ok) throw new Error('Operatör listesi yüklenemedi');
+//         
+//         const operators = await response.json();
+//         const operatorSelect = document.getElementById('check-operator');
+//         
+//         // Mevcut seçenekleri temizle (ilk seçenek hariç)
+//         operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+//         
+//         // Operatörleri ekle
+//         operators.forEach(operator => {
+//             const option = document.createElement('option');
+//             option.value = operator;
+//             option.textContent = operator;
+//             operatorSelect.appendChild(option);
+//         });
+//         
+//         // Varsayılan olarak "Kalite Kontrol" seç
+//         operatorSelect.value = 'Kalite Kontrol';
+//         
+//     } catch (error) {
+//         console.error('Load operators error:', error);
+//         // Hata durumunda varsayılan operatörleri ekle
+//         const operatorSelect = document.getElementById('check-operator');
+//         const defaultOperators = ['Sistem', 'Admin', 'Kalite Kontrol', 'Operatör 1', 'Operatör 2'];
+//         
+//         operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+//         defaultOperators.forEach(operator => {
+//             const option = document.createElement('option');
+//             option.value = operator;
+//             option.textContent = operator;
+//             operatorSelect.appendChild(option);
+//         });
+//     }
+// }
 
-// Kalite kontrolü gönder
-async function submitQualityCheck() {
-    try {
-        const checkData = {
-            checkpoint_id: parseInt(document.getElementById('check-checkpoint-id').value),
-            operator: document.getElementById('check-operator').value,
-            result: document.getElementById('check-result').value,
-            measured_value: document.getElementById('check-measured-value').value || null,
-            expected_value: document.getElementById('check-expected-value').value || null,
-            tolerance: document.getElementById('check-tolerance').value || null,
-            notes: document.getElementById('check-notes').value
-        };
-        
-        if (!checkData.operator || !checkData.result) {
-            alert('Operatör ve sonuç alanları zorunludur!', 'error');
-            return;
-        }
-        
-        const response = await fetch('/api/quality/checks', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(checkData)
-        });
-        
-        if (!response.ok) throw new Error('Kalite kontrolü kaydedilemedi');
-        
-        const result = await response.json();
-        alert('Kalite kontrolü başarıyla kaydedildi!', 'success');
-        
-        // Modal'ı kapat ve formu temizle
-        const modal = bootstrap.Modal.getInstance(document.getElementById('qualityCheckModal'));
-        modal.hide();
-        document.getElementById('qualityCheckForm').reset();
-        
-        // İstatistikleri yenile
-        await loadQualityStatistics();
-        
-    } catch (error) {
-        console.error('Submit quality check error:', error);
-        alert('Kalite kontrolü kaydedilemedi: ' + error.message, 'error');
-    }
-}
+// Kalite kontrolü gönder - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function submitQualityCheck() {
+//     try {
+//         const checkData = {
+//             checkpoint_id: parseInt(document.getElementById('check-checkpoint-id').value),
+//             operator: document.getElementById('check-operator').value,
+//             result: document.getElementById('check-result').value,
+//             measured_value: document.getElementById('check-measured-value').value || null,
+//             expected_value: document.getElementById('check-expected-value').value || null,
+//             tolerance: document.getElementById('check-tolerance').value || null,
+//             notes: document.getElementById('check-notes').value
+//         };
+//         
+//         if (!checkData.operator || !checkData.result) {
+//             alert('Operatör ve sonuç alanları zorunludur!', 'error');
+//             return;
+//         }
+//         
+//         const response = await fetch('/api/quality/checks', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify(checkData)
+//         });
+//         
+//         if (!response.ok) throw new Error('Kalite kontrolü kaydedilemedi');
+//         
+//         const result = await response.json();
+//         alert('Kalite kontrolü başarıyla kaydedildi!', 'success');
+//         
+//         // Modal'ı kapat ve formu temizle
+//         const modal = bootstrap.Modal.getInstance(document.getElementById('qualityCheckModal'));
+//         modal.hide();
+//         document.getElementById('qualityCheckForm').reset();
+//         
+//         // İstatistikleri yenile
+//         await loadQualityStatistics();
+//         
+//     } catch (error) {
+//         console.error('Submit quality check error:', error);
+//         alert('Kalite kontrolü kaydedilemedi: ' + error.message, 'error');
+//     }
+// }
 
-// Kalite standardı modal'ını göster
-function showAddStandardModal() {
-    const modal = new bootstrap.Modal(document.getElementById('addStandardModal'));
-    modal.show();
-}
+// Kalite standardı modal'ını göster - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// function showAddStandardModal() {
+//     const modal = new bootstrap.Modal(document.getElementById('addStandardModal'));
+//     modal.show();
+// }
 
-// Kalite standardı ekle
-async function addQualityStandard() {
-    try {
-        const standardData = {
-            name: document.getElementById('standard-name').value,
-            description: document.getElementById('standard-description').value,
-            product_type: document.getElementById('standard-product-type').value,
-            standard_type: document.getElementById('standard-type').value,
-            is_active: document.getElementById('standard-active').checked
-        };
-        
-        if (!standardData.name || !standardData.product_type || !standardData.standard_type) {
-            alert('Zorunlu alanları doldurun!', 'error');
-            return;
-        }
-        
-        const response = await fetch('/api/quality/standards', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(standardData)
-        });
-        
-        if (!response.ok) throw new Error('Kalite standardı eklenemedi');
-        
-        const newStandard = await response.json();
-        alert('Kalite standardı başarıyla eklendi!', 'success');
-        
-        // Modal'ı kapat ve formu temizle
-        const modal = bootstrap.Modal.getInstance(document.getElementById('addStandardModal'));
-        modal.hide();
-        document.getElementById('addStandardForm').reset();
-        
-        // Standartları yenile
-        await loadQualityStandards();
-        
-    } catch (error) {
-        console.error('Add quality standard error:', error);
-        alert('Kalite standardı eklenemedi: ' + error.message, 'error');
-    }
-}
+// Kalite standardı ekle - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function addQualityStandard() {
+//     try {
+//         const standardData = {
+//             name: document.getElementById('standard-name').value,
+//             description: document.getElementById('standard-description').value,
+//             product_type: document.getElementById('standard-product-type').value,
+//             standard_type: document.getElementById('standard-type').value,
+//             is_active: document.getElementById('standard-active').checked
+//         };
+//         
+//         if (!standardData.name || !standardData.product_type || !standardData.standard_type) {
+//             alert('Zorunlu alanları doldurun!', 'error');
+//             return;
+//         }
+//         
+//         const response = await fetch('/api/quality/standards', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify(standardData)
+//         });
+//         
+//         if (!response.ok) throw new Error('Kalite standardı eklenemedi');
+//         
+//         const newStandard = await response.json();
+//         alert('Kalite standardı başarıyla eklendi!', 'success');
+//         
+//         // Modal'ı kapat ve formu temizle
+//         const modal = bootstrap.Modal.getInstance(document.getElementById('addStandardModal'));
+//         modal.hide();
+//         document.getElementById('addStandardForm').reset();
+//         
+//         // Standartları yenile
+//         await loadQualityStandards();
+//         
+//     } catch (error) {
+//         console.error('Add quality standard error:', error);
+//         alert('Kalite standardı eklenemedi: ' + error.message, 'error');
+//     }
+// }
 
-// Kalite raporlarını göster
-async function showQualityReports() {
-    try {
-        const response = await fetch('/api/quality/reports');
-        if (!response.ok) throw new Error('Kalite raporları yüklenemedi');
-        
-        const reports = await response.json();
-        displayQualityReports(reports);
-        
-    } catch (error) {
-        console.error('Quality reports error:', error);
-        alert('Kalite raporları yüklenemedi: ' + error.message, 'error');
-    }
-}
+// Kalite raporlarını göster - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// async function showQualityReports() {
+//     try {
+//         const response = await fetch('/api/quality/reports');
+//         if (!response.ok) throw new Error('Kalite raporları yüklenemedi');
+//         
+//         const reports = await response.json();
+//         displayQualityReports(reports);
+//         
+//     } catch (error) {
+//         console.error('Quality reports error:', error);
+//         alert('Kalite raporları yüklenemedi: ' + error.message, 'error');
+//     }
+// }
 
-// Kalite raporlarını göster
-function displayQualityReports(reports) {
-    const modal = new bootstrap.Modal(document.getElementById('qualityReportsModal'));
-    
-    // Modal içeriğini oluştur
-    const modalBody = document.getElementById('qualityReportsModalBody') || document.createElement('div');
-    modalBody.id = 'qualityReportsModalBody';
-    
-    if (reports.length === 0) {
-        modalBody.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Kalite raporu bulunmuyor</h5>
-                <p class="text-muted">Henüz kalite kontrolü yapılmamış.</p>
-            </div>
-        `;
-    } else {
-        let html = `
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Kontrol Noktası</th>
-                            <th>Tip</th>
-                            <th>Operatör</th>
-                            <th>Sonuç</th>
-                            <th>Ölçülen Değer</th>
-                            <th>Beklenen Değer</th>
-                            <th>Tarih</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        
-        reports.forEach(report => {
-            const resultClass = {
-                'pass': 'success',
-                'fail': 'danger',
-                'warning': 'warning'
-            }[report.result] || 'secondary';
-            
-            html += `
-                <tr>
-                    <td>${report.checkpoint_name}</td>
-                    <td><span class="badge bg-info">${report.checkpoint_type}</span></td>
-                    <td>${report.operator}</td>
-                    <td><span class="badge bg-${resultClass}">${report.result}</span></td>
-                    <td>${report.measured_value || '-'}</td>
-                    <td>${report.expected_value || '-'}</td>
-                    <td>${new Date(report.created_at).toLocaleString('tr-TR')}</td>
-                </tr>
-            `;
-        });
-        
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
-        modalBody.innerHTML = html;
-    }
-    
-    // Modal'ı göster
-    modal.show();
-}
+// Kalite raporlarını göster - KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+// function displayQualityReports(reports) {
+//     const modal = new bootstrap.Modal(document.getElementById('qualityReportsModal'));
+//     
+//     // Modal içeriğini oluştur
+//     const modalBody = document.getElementById('qualityReportsModalBody') || document.createElement('div');
+//     modalBody.id = 'qualityReportsModalBody';
+//     
+//     if (reports.length === 0) {
+//         modalBody.innerHTML = `
+//             <div class="text-center py-4">
+//                 <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+//                 <h5 class="text-muted">Kalite raporu bulunmuyor</h5>
+//                 <p class="text-muted">Henüz kalite kontrolü yapılmamış.</p>
+//             </div>
+//         `;
+//     } else {
+//         let html = `
+//             <div class="table-responsive">
+//                 <table class="table table-striped">
+//                     <thead>
+//                         <tr>
+//                             <th>Kontrol Noktası</th>
+//                             <th>Tip</th>
+//                             <th>Operatör</th>
+//                             <th>Sonuç</th>
+//                             <th>Ölçülen Değer</th>
+//                             <th>Beklenen Değer</th>
+//                             <th>Tarih</th>
+//                         </tr>
+//                     </thead>
+//                     <tbody>
+//         `;
+//         
+//         reports.forEach(report => {
+//             const resultClass = {
+//                 'pass': 'success',
+//                 'fail': 'danger',
+//                 'warning': 'warning'
+//             }[report.result] || 'secondary';
+//             
+//             html += `
+//                 <tr>
+//                     <td>${report.checkpoint_name}</td>
+//                     <td><span class="badge bg-info">${report.checkpoint_type}</span></td>
+//                     <td>${report.operator}</td>
+//                     <td><span class="badge bg-${resultClass}">${report.result}</span></td>
+//                     <td>${report.measured_value || '-'}</td>
+//                     <td>${report.expected_value || '-'}</td>
+//                     <td>${new Date(report.created_at).toLocaleString('tr-TR')}</td>
+//                 </tr>
+//             `;
+//         });
+//         
+//         html += `
+//                     </tbody>
+//                 </table>
+//             </div>
+//         `;
+//         
+//         modalBody.innerHTML = html;
+//     }
+//     
+//     // Modal'ı göster
+//     modal.show();
+// }
 
 // Real-time updates handler fonksiyonları
 window.updateActiveProductions = function(data) {
@@ -5356,9 +6248,10 @@ window.updateStageTemplates = function(data) {
 window.updateQualityCheckpoints = function(data) {
     try {
         console.log('Quality checkpoints güncellendi:', data);
-        if (data && Array.isArray(data)) {
-            window.qualityCheckpoints = data;
-        }
+        // KALDIRILDI: Kalite kontrol özelliği kaldırıldı
+        // if (data && Array.isArray(data)) {
+        //     window.qualityCheckpoints = data;
+        // }
     } catch (error) {
         console.error('updateQualityCheckpoints hatası:', error);
     }
@@ -5400,10 +6293,15 @@ window.loadStagePerformance = async function() {
         document.getElementById('completed-today-count').textContent = data.completed_today || 0;
         
         // Operatör performansını göster
-        document.getElementById('operator-performance-section').style.display = 'block';
+        const operatorPerformanceSection = document.getElementById('operator-performance-section');
+        if (operatorPerformanceSection) {
+            operatorPerformanceSection.style.display = 'block';
+        }
         
-        // Operatör performansını göster
-        renderOperatorPerformance(data.operator_performance);
+        // Operatör performansını göster (kaldırıldı)
+        // if (data.operator_performance) {
+        //     renderOperatorPerformance(data.operator_performance);
+        // }
         
         // showNotification('Aşama performansı yüklendi', 'success');
     } catch (error) {
@@ -5412,90 +6310,7 @@ window.loadStagePerformance = async function() {
     }
 };
 
-// Operatör performansını render et
-function renderOperatorPerformance(operatorData) {
-    const container = document.getElementById('operator-performance-container');
-    if (!container) {
-        console.error('Operator performance container not found!');
-        return;
-    }
-    
-    // Yükleme mesajını temizle
-    container.innerHTML = '';
-    
-    if (!operatorData || operatorData.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Henüz operatör verisi bulunmuyor</h5>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = `
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Operatör</th>
-                        <th>Tamamlanan Aşama</th>
-                        <th>Toplam Aşama</th>
-                        <th>Başarı Oranı</th>
-                        <th>Performans</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${operatorData.map(op => `
-                        <tr>
-                            <td>
-                                <i class="fas fa-user me-2"></i>${op.operator}
-                            </td>
-                            <td>${op.completed_stages}</td>
-                            <td>${op.total_stages}</td>
-                            <td>${op.completion_rate}%</td>
-                            <td>
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar ${op.completion_rate >= 90 ? 'bg-success' : op.completion_rate >= 70 ? 'bg-warning' : 'bg-danger'}" 
-                                         style="width: ${op.completion_rate}%">
-                                        ${op.completion_rate}%
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-}
 
-// Canlı aşama takibini başlat
-window.loadRealtimeStages = async function() {
-    try {
-        // Önceki interval'ı temizle
-        if (realtimeInterval) {
-            clearInterval(realtimeInterval);
-        }
-        
-        // İlk yükleme
-        await updateRealtimeStages();
-        
-        // Canlı güncelleme başlat (her 5 saniyede bir)
-        realtimeInterval = setInterval(updateRealtimeStages, 5000);
-        
-        // Operatör takibi için ayrı güncelleme (30 saniyede bir)
-        operatorRealtimeInterval = setInterval(updateOperatorRealtime, 30000);
-        
-        // Bölümü göster
-        document.getElementById('realtime-operator-section').style.display = 'block';
-        
-        // showNotification('Canlı aşama takibi başlatıldı', 'success');
-    } catch (error) {
-        console.error('Canlı aşama takibi hatası:', error);
-        // showNotification('Canlı aşama takibi başlatılamadı', 'error');
-    }
-};
 
 // Canlı aşamaları güncelle
 async function updateRealtimeStages() {
@@ -5999,12 +6814,35 @@ async function loadOperatorStatus() {
             console.log('👥 Operatörler yüklendi:', operators.length);
         }
         
-        // Aktif üretimleri yükle
-        const productionsResponse = await fetch('/api/production-states');
-        if (productionsResponse.ok) {
-            operatorProductions = await productionsResponse.json();
-            console.log('🏭 Aktif üretimler yüklendi:', operatorProductions.length);
+        // Tüm üretimleri yükle - aktif, tamamlanan ve production-states'ten
+        const [statesResponse, activeResponse, completedResponse] = await Promise.all([
+            fetch('/api/production-states'),
+            fetch('/api/active-productions'),
+            fetch('/api/completed-productions')
+        ]);
+        
+        let allProductions = [];
+        
+        if (statesResponse.ok) {
+            const states = await statesResponse.json();
+            allProductions = allProductions.concat(states);
+            console.log('🏭 Production states yüklendi:', states.length);
         }
+        
+        if (activeResponse.ok) {
+            const active = await activeResponse.json();
+            allProductions = allProductions.concat(active);
+            console.log('🏭 Active productions yüklendi:', active.length);
+        }
+        
+        if (completedResponse.ok) {
+            const completed = await completedResponse.json();
+            allProductions = allProductions.concat(completed);
+            console.log('🏭 Completed productions yüklendi:', completed.length);
+        }
+        
+        operatorProductions = allProductions;
+        console.log('🏭 Toplam üretimler yüklendi:', operatorProductions.length);
         
         // Değişkenlerin yüklendiğinden emin ol
         if (!operators) operators = [];
@@ -6022,8 +6860,9 @@ async function loadOperatorStatus() {
         // Operatör listesini göster
         displayOperatorsList();
         
-        // Canlı operatör takibini göster
-        displayRealtimeOperators();
+        // Canlı operatör takibini göster (kaldırıldı)
+        // displayRealtimeOperators();
+        
         
         // alert('Operatör durumu başarıyla yüklendi', 'success');
         
@@ -6045,11 +6884,28 @@ async function updateOperatorRealtime() {
             newOperators = await operatorsResponse.json();
         }
         
-        // Aktif üretimleri yükle
-        const productionsResponse = await fetch('/api/production-states');
+        // Tüm üretimleri yükle - aktif, tamamlanan ve production-states'ten
+        const [statesResponse, activeResponse, completedResponse] = await Promise.all([
+            fetch('/api/production-states'),
+            fetch('/api/active-productions'),
+            fetch('/api/completed-productions')
+        ]);
+        
         let newOperatorProductions = [];
-        if (productionsResponse.ok) {
-            newOperatorProductions = await productionsResponse.json();
+        
+        if (statesResponse.ok) {
+            const states = await statesResponse.json();
+            newOperatorProductions = newOperatorProductions.concat(states);
+        }
+        
+        if (activeResponse.ok) {
+            const active = await activeResponse.json();
+            newOperatorProductions = newOperatorProductions.concat(active);
+        }
+        
+        if (completedResponse.ok) {
+            const completed = await completedResponse.json();
+            newOperatorProductions = newOperatorProductions.concat(completed);
         }
         
         // Veri değişikliği kontrolü
@@ -6073,8 +6929,8 @@ async function updateOperatorRealtime() {
             // Operatör listesini güncelle
             displayOperatorsList();
             
-            // Canlı operatör takibini güncelle
-            displayRealtimeOperators();
+            // Canlı operatör takibini güncelle (kaldırıldı)
+            // displayRealtimeOperators();
         } else {
             console.log('📊 Veri değişikliği yok, UI güncellenmiyor');
         }
@@ -6091,18 +6947,40 @@ function updateOperatorStats() {
     
     const totalOperators = operators.length;
     const activeOperators = operators.filter(op => op.is_active).length;
-    const activeProductions = operatorProductions.filter(p => p.is_active).length;
-    const completedToday = operatorProductions.filter(p => {
-        if (!p.completed_at) return false;
+    
+    // Aktif üretimleri hesapla - operatör panelindeki gibi
+    const activeProductions = operatorProductions.filter(p => 
+        p.status === 'active' || p.status === 'processing' || p.status === 'in_progress' || p.status === 'planned'
+    ).length;
+    
+    // Bugün tamamlanan üretimleri hesapla - operatör panelindeki gibi
         const today = new Date().toDateString();
-        const completedDate = new Date(p.completed_at).toDateString();
+    const completedToday = operatorProductions.filter(p => {
+        if (p.status !== 'completed' && p.status !== 'finished') return false;
+        const completedDate = new Date(p.completed_at || p.updated_at).toDateString();
         return today === completedDate;
     }).length;
+    
+    // Bugün üretilen toplam miktarı hesapla
+    const todayProducedQuantity = operatorProductions.filter(p => {
+        const productionDate = new Date(p.created_at || p.start_time || p.updated_at).toDateString();
+        return productionDate === today;
+    }).reduce((sum, p) => {
+        return sum + (parseInt(p.produced_quantity) || 0);
+    }, 0);
+    
+    // Verimlilik hesapla (tamamlanan / toplam üretim)
+    const totalProductions = operatorProductions.length;
+    const efficiencyRate = totalProductions > 0 ? Math.round((completedToday / totalProductions) * 100) : 0;
     
     document.getElementById('total-operators-count').textContent = totalOperators;
     document.getElementById('active-operators-count').textContent = activeOperators;
     document.getElementById('active-productions-count').textContent = activeProductions;
     document.getElementById('completed-today-count').textContent = completedToday;
+    document.getElementById('produced-today-count').textContent = todayProducedQuantity;
+    document.getElementById('efficiency-rate').textContent = efficiencyRate + '%';
+    
+    console.log(`📊 Operatör İstatistikleri: Toplam: ${totalOperators}, Aktif: ${activeOperators}, Aktif Üretim: ${activeProductions}, Bugün Tamamlanan: ${completedToday}, Bugün Üretilen: ${todayProducedQuantity} adet, Verimlilik: ${efficiencyRate}%`);
 }
 
 // Operatör listesini göster
@@ -6120,9 +6998,49 @@ function displayOperatorsList() {
     }
     
     const html = operators.map(operator => {
-        const operatorProductionsList = operatorProductions.filter(p => p.operator_id === operator.id);
-        const activeProductions = operatorProductionsList.filter(p => p.status === 'active');
-        const completedProductions = operatorProductionsList.filter(p => p.status === 'completed');
+        // Debug: Operatör ve üretim verilerini logla
+        console.log(`🔍 Operatör: ${operator.name} (ID: ${operator.id})`);
+        console.log(`📊 Toplam üretim sayısı: ${operatorProductions.length}`);
+        
+        // Operatör adına göre filtrele - daha geniş arama
+        const operatorProductionsList = operatorProductions.filter(p => {
+            const matches = 
+                p.assigned_operator === operator.name || 
+                           p.assigned_operator === operator.id ||
+                p.operator_id === operator.id ||
+                p.assigned_operator === operator.operator_id ||
+                (p.assigned_operator && p.assigned_operator.toString().includes(operator.name)) ||
+                (p.assigned_operator && p.assigned_operator.toString().includes(operator.id));
+            
+            return matches;
+        });
+        
+        const activeProductions = operatorProductionsList.filter(p => 
+            p.status === 'active' || p.status === 'processing' || p.status === 'in_progress' || p.status === 'planned'
+        );
+        const completedProductions = operatorProductionsList.filter(p => 
+            p.status === 'completed' || p.status === 'finished'
+        );
+        
+        // Bugünkü üretim miktarlarını hesapla
+        const today = new Date().toDateString();
+        const todayProductions = operatorProductionsList.filter(p => {
+            const productionDate = new Date(p.created_at || p.start_time || p.updated_at).toDateString();
+            return productionDate === today;
+        });
+        
+        // Bugün üretilen toplam adet sayısı
+        const todayProducedQuantity = todayProductions.reduce((sum, p) => {
+            return sum + (parseInt(p.produced_quantity) || 0);
+        }, 0);
+        
+        // Bugün tamamlanan toplam adet sayısı
+        const todayCompletedQuantity = completedProductions.filter(p => {
+            const completedDate = new Date(p.completed_at || p.updated_at).toDateString();
+            return completedDate === today;
+        }).reduce((sum, p) => {
+            return sum + (parseInt(p.produced_quantity) || 0);
+        }, 0);
         
         return `
             <div class="card mb-3">
@@ -6154,11 +7072,17 @@ function displayOperatorsList() {
                         </div>
                         <div class="col-md-2">
                             <div class="text-center">
-                                <h6 class="mb-0 text-success">${completedProductions.length}</h6>
-                                <small class="text-muted">Tamamlanan</small>
+                                <h6 class="mb-0 text-primary">${todayProducedQuantity}</h6>
+                                <small class="text-muted">Bugün Üretilen</small>
                             </div>
                         </div>
                         <div class="col-md-2">
+                            <div class="text-center">
+                                <h6 class="mb-0 text-success">${todayCompletedQuantity}</h6>
+                                <small class="text-muted">Bugün Tamamlanan</small>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
                             <div class="text-center">
                                 <h6 class="mb-0 text-info">${operator.skill_level || 'N/A'}</h6>
                                 <small class="text-muted">Seviye</small>
@@ -6178,176 +7102,31 @@ function displayOperatorsList() {
     container.innerHTML = html;
 }
 
+// Status mapping fonksiyonu
+function getStatusInfo(status) {
+    const statusMap = {
+        'planned': { class: 'bg-info', text: 'Planlandı' },
+        'active': { class: 'bg-warning', text: 'Aktif' },
+        'processing': { class: 'bg-warning', text: 'İşleniyor' },
+        'in_progress': { class: 'bg-warning', text: 'Devam Ediyor' },
+        'completed': { class: 'bg-success', text: 'Tamamlandı' },
+        'finished': { class: 'bg-success', text: 'Tamamlandı' },
+        'cancelled': { class: 'bg-danger', text: 'İptal Edildi' },
+        'paused': { class: 'bg-secondary', text: 'Duraklatıldı' }
+    };
+    
+    return statusMap[status] || { class: 'bg-secondary', text: 'Bilinmiyor' };
+}
+
 // Canlı operatör takibini göster
-function displayRealtimeOperators() {
-    const container = document.getElementById('realtime-operators-container');
-    
-    console.log('🔍 displayRealtimeOperators - operatorProductions:', operatorProductions);
-    console.log('🔍 displayRealtimeOperators - operatorProductions.length:', operatorProductions?.length);
-    
-    // Aktif üretimleri filtrele
-    const activeProductions = operatorProductions.filter(p => p.is_active);
-    console.log('🔍 displayRealtimeOperators - activeProductions:', activeProductions);
-    console.log('🔍 displayRealtimeOperators - activeProductions.length:', activeProductions?.length);
-    
-    if (!activeProductions || activeProductions.length === 0) {
-        console.log('⚠️ Aktif üretim bulunmuyor, mesaj gösteriliyor');
-        container.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-industry fa-3x text-muted mb-3"></i>
-                <p class="text-muted">Şu anda aktif üretim bulunmuyor</p>
-            </div>
-        `;
-        return;
-    }
-    
-    console.log('🎨 HTML oluşturuluyor, activeProductions:', activeProductions);
-    
-    const html = activeProductions.map(production => {
-        // Operatör adını production'dan al, operators array'inden değil
-        const operatorName = production.operator_name || 'Bilinmeyen';
-        const progress = (production.produced_quantity / production.target_quantity) * 100;
-        
-        console.log('🎨 Production işleniyor:', production.product_name, 'Operator:', operatorName, 'Progress:', progress);
-        
-        return `
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar bg-warning text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                    <i class="fas fa-cog fa-spin"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-1">${operatorName}</h6>
-                                    <small class="text-muted">${production.product_name}</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="text-center">
-                                <h6 class="mb-0">${production.produced_quantity}/${production.target_quantity}</h6>
-                                <small class="text-muted">Adet</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-success" style="width: ${progress}%">
-                                    ${Math.round(progress)}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="text-center">
-                                <span class="badge ${production.is_active ? 'bg-warning' : 'bg-success'}">
-                                    ${production.is_active ? 'Devam Ediyor' : 'Tamamlandı'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    console.log('🎨 HTML oluşturuldu, uzunluk:', html.length);
-    console.log('🎨 Container:', container);
-    console.log('🎨 HTML içeriği:', html.substring(0, 200) + '...');
-    
-    container.innerHTML = html;
-    
-    console.log('✅ HTML container\'a yazıldı');
-}
 
-// Canlı operatör verilerini yükle
-async function loadRealtimeOperatorData() {
-    try {
-        console.log('🔄 Canlı operatör verileri yükleniyor...');
-        await loadOperatorStatus();
-        // showNotification('Canlı veriler güncellendi', 'success');
-    } catch (error) {
-        console.error('❌ Canlı veri yükleme hatası:', error);
-        // showNotification('Canlı veriler yüklenemedi', 'error');
-    }
-}
 
-// Operatör performansını yükle (Kaldırıldı)
-async function loadOperatorPerformance() {
-    // Bu fonksiyon artık kullanılmıyor - Operatör Performansı bölümü kaldırıldı
-    return;
-}
 
-// Operatör performansını hesapla (Kaldırıldı)
-function calculateOperatorPerformance() {
-    // Bu fonksiyon artık kullanılmıyor - Operatör Performansı bölümü kaldırıldı
-    return {};
-}
 
-// Operatör performans grafiğini göster (Kaldırıldı)
-function displayOperatorPerformanceChart(performanceData) {
-    // Bu fonksiyon artık kullanılmıyor - Operatör Performansı bölümü kaldırıldı
-    return;
-}
 
-// Operatör üretim geçmişini yükle
-async function loadOperatorProductionHistory() {
-    try {
-        console.log('📚 Operatör üretim geçmişi yükleniyor...');
-        
-        // Üretim geçmişini göster
-        displayOperatorProductionHistory();
-        
-        // showNotification('Üretim geçmişi yüklendi', 'success');
-        
-    } catch (error) {
-        console.error('❌ Üretim geçmişi yükleme hatası:', error);
-        // showNotification('Üretim geçmişi yüklenemedi', 'error');
-    }
-}
 
-// Operatör üretim geçmişini göster
-function displayOperatorProductionHistory() {
-    const container = document.getElementById('operator-performance-container');
-    
-    const html = `
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Operatör</th>
-                        <th>Ürün</th>
-                        <th>Miktar</th>
-                        <th>Durum</th>
-                        <th>Başlangıç</th>
-                        <th>Bitiş</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${operatorProductions.map(production => {
-                        const operator = operators.find(op => op.operator_id === production.operator_id);
-                        return `
-                            <tr>
-                                <td>${operator ? operator.name : 'Bilinmeyen'}</td>
-                                <td>${production.product_name}</td>
-                                <td>${production.produced_quantity}/${production.target_quantity}</td>
-                                <td>
-                                    <span class="badge ${production.status === 'completed' ? 'bg-success' : 'bg-warning'}">
-                                        ${production.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
-                                    </span>
-                                </td>
-                                <td>${new Date(production.start_time).toLocaleString('tr-TR')}</td>
-                                <td>${production.completed_at ? new Date(production.completed_at).toLocaleString('tr-TR') : '-'}</td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-}
+
+
 
 
 // Operatör detaylarını görüntüle
@@ -6374,10 +7153,44 @@ async function viewOperatorDetails(operatorId) {
         return;
     }
     
-    // Operatörün üretimlerini bul
-    const operatorProductionsList = operatorProductions.filter(prod => 
-        prod.operator_id === operatorId || prod.operator_name === operator.name
+    // Operatörün üretimlerini bul - daha geniş arama
+    const operatorProductionsList = operatorProductions.filter(prod => {
+        const matches = 
+            prod.operator_id === operatorId || 
+            prod.operator_name === operator.name ||
+            prod.assigned_operator === operator.name || 
+            prod.assigned_operator === operatorId ||
+            prod.assigned_operator === operator.operator_id ||
+            (prod.assigned_operator && prod.assigned_operator.toString().includes(operator.name)) ||
+            (prod.assigned_operator && prod.assigned_operator.toString().includes(operatorId));
+        
+        return matches;
+    });
+    
+    
+    // Bugünkü üretim miktarlarını hesapla
+    const today = new Date().toDateString();
+    const todayProductions = operatorProductionsList.filter(p => {
+        const productionDate = new Date(p.created_at || p.start_time || p.updated_at).toDateString();
+        return productionDate === today;
+    });
+    
+    // Bugün üretilen toplam adet sayısı
+    const todayProducedQuantity = todayProductions.reduce((sum, p) => {
+        return sum + (parseInt(p.produced_quantity) || 0);
+    }, 0);
+    
+    // Bugün tamamlanan toplam adet sayısı
+    const completedProductions = operatorProductionsList.filter(p => 
+        p.status === 'completed' || p.status === 'finished'
     );
+    
+    const todayCompletedQuantity = completedProductions.filter(p => {
+        const completedDate = new Date(p.completed_at || p.updated_at).toDateString();
+        return completedDate === today;
+    }).reduce((sum, p) => {
+        return sum + (parseInt(p.produced_quantity) || 0);
+    }, 0);
     
     // Modal HTML oluştur
     const modalHtml = `
@@ -6432,6 +7245,14 @@ async function viewOperatorDetails(operatorId) {
                                         <td><strong>Toplam Üretim:</strong></td>
                                         <td>${operatorProductionsList.length}</td>
                                     </tr>
+                                    <tr class="table-primary">
+                                        <td><strong>Bugün Üretilen:</strong></td>
+                                        <td><strong>${todayProducedQuantity} adet</strong></td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td><strong>Bugün Tamamlanan:</strong></td>
+                                        <td><strong>${todayCompletedQuantity} adet</strong></td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
@@ -6444,6 +7265,7 @@ async function viewOperatorDetails(operatorId) {
                                         <tr>
                                             <th>Ürün</th>
                                             <th>Durum</th>
+                                            <th>Üretilen Miktar</th>
                                             <th>İlerleme</th>
                                             <th>Başlangıç</th>
                                         </tr>
@@ -6455,6 +7277,11 @@ async function viewOperatorDetails(operatorId) {
                                                 <td>
                                                     <span class="badge ${prod.status === "active" ? "bg-warning" : "bg-success"}">
                                                         ${prod.status === "active" ? "Aktif" : "Tamamlandı"}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info">
+                                                        ${prod.produced_quantity || 0} / ${prod.planned_quantity || 0} adet
                                                     </span>
                                                 </td>
                                                 <td>
@@ -6497,6 +7324,12 @@ async function viewOperatorDetails(operatorId) {
 // Üretim planı kaydetme fonksiyonu
 async function savePlan() {
     try {
+        // Ürün bilgilerini al
+        const productType = document.getElementById('product-type').value;
+        const selectedProduct = document.getElementById('selected-product').value;
+        const productQuantity = document.getElementById('product-quantity').value;
+        const productPriority = document.getElementById('product-priority').value;
+
         const planData = {
             plan_name: document.getElementById('plan-name').value,
             plan_type: document.getElementById('plan-type').value,
@@ -6506,12 +7339,23 @@ async function savePlan() {
             created_by: document.getElementById('created-by').value || 'Admin',
             assigned_operator: document.getElementById('assigned-operator').value || null,
             operator_notes: document.getElementById('operator-notes').value || null,
-            notes: document.getElementById('plan-notes').value || null
+            notes: document.getElementById('plan-notes').value || null,
+            // Ürün bilgileri
+            product_type: productType || null,
+            product_id: selectedProduct || null,
+            product_quantity: parseInt(productQuantity) || 1,
+            product_priority: parseInt(productPriority) || 2
         };
 
         // Temel validasyon
         if (!planData.plan_name || !planData.plan_type || !planData.start_date || !planData.end_date) {
             showModalAlert('Lütfen tüm zorunlu alanları doldurun!', 'warning');
+            return;
+        }
+
+        // Ürün seçimi validasyonu
+        if (productType && !selectedProduct) {
+            showModalAlert('Lütfen bir ürün seçin!', 'warning');
             return;
         }
 
@@ -6707,6 +7551,376 @@ async function loadOperatorOptions() {
 }
 
 // ========================================
+// Müşteri Yönetimi Fonksiyonları
+// ========================================
+
+let customers = [];
+
+// Müşteri yönetimi modal'ını göster
+window.showCustomerManagementModal = async function() {
+    const modal = new bootstrap.Modal(document.getElementById('customerManagementModal'));
+    modal.show();
+    await loadCustomers();
+};
+
+// Müşteri ekleme
+window.addCustomer = async function() {
+    const customerData = {
+        name: document.getElementById('customerName').value,
+        code: document.getElementById('customerCode').value,
+        email: document.getElementById('customerEmail').value,
+        phone: document.getElementById('customerPhone').value,
+        address: document.getElementById('customerAddress').value,
+        notes: document.getElementById('customerNotes').value
+    };
+
+    if (!customerData.name) {
+        showNotification('Müşteri adı zorunludur!', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/customers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(customerData)
+        });
+
+        if (response.ok) {
+            showNotification('Müşteri başarıyla eklendi!', 'success');
+            document.getElementById('customerForm').reset();
+            loadCustomers();
+            loadCustomerOptions();
+        } else {
+            const error = await response.json();
+            showNotification('Müşteri eklenemedi: ' + error.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Müşteri eklenemedi: ' + error.message, 'error');
+    }
+};
+
+// Müşteri listesini yükle
+window.loadCustomers = async function() {
+    console.log('🔍 loadCustomers çağrıldı...');
+    try {
+        const response = await fetch('/api/customers');
+        console.log('📡 API response:', response.status);
+        
+        if (response.ok) {
+            customers = await response.json();
+            console.log('✅ API\'den müşteriler yüklendi:', customers);
+            console.log('📊 Müşteri sayısı:', customers.length);
+            displayCustomers();
+        } else {
+            console.warn('⚠️ API başarısız, varsayılan müşteriler kullanılıyor');
+            const errorText = await response.text();
+            console.error('❌ API hatası:', errorText);
+            // Eğer API yoksa varsayılan müşterileri kullan
+            customers = [
+                { id: 1, name: 'LTSAUTO', code: 'LTS-001', email: 'info@ltsauto.com', phone: '+90 555 123 45 67' },
+                { id: 2, name: 'ACME Corp', code: 'ACME-001', email: 'orders@acme.com', phone: '+90 555 234 56 78' },
+                { id: 3, name: 'Tech Solutions', code: 'TECH-001', email: 'contact@techsolutions.com', phone: '+90 555 345 67 89' },
+                { id: 4, name: 'Industrial Ltd', code: 'IND-001', email: 'sales@industrial.com', phone: '+90 555 456 78 90' },
+                { id: 5, name: 'Manufacturing Co', code: 'MFG-001', email: 'orders@manufacturing.com', phone: '+90 555 567 89 01' }
+            ];
+            console.log('📋 Varsayılan müşteriler yüklendi:', customers);
+            displayCustomers();
+        }
+    } catch (error) {
+        console.error('❌ Müşteri yükleme hatası:', error);
+        // Varsayılan müşterileri kullan
+        customers = [
+            { id: 1, name: 'LTSAUTO', code: 'LTS-001', email: 'info@ltsauto.com', phone: '+90 555 123 45 67' },
+            { id: 2, name: 'ACME Corp', code: 'ACME-001', email: 'orders@acme.com', phone: '+90 555 234 56 78' },
+            { id: 3, name: 'Tech Solutions', code: 'TECH-001', email: 'contact@techsolutions.com', phone: '+90 555 345 67 89' },
+            { id: 4, name: 'Industrial Ltd', code: 'IND-001', email: 'sales@industrial.com', phone: '+90 555 456 78 90' },
+            { id: 5, name: 'Manufacturing Co', code: 'MFG-001', email: 'orders@manufacturing.com', phone: '+90 555 567 89 01' }
+        ];
+        console.log('📋 Hata durumunda varsayılan müşteriler yüklendi:', customers);
+        displayCustomers();
+    }
+};
+
+// Müşteri listesini göster
+function displayCustomers() {
+    console.log('🎯 displayCustomers çağrıldı, customers:', customers);
+    const tbody = document.getElementById('customersList');
+    console.log('📦 tbody element:', tbody);
+    
+    if (customers.length === 0) {
+        console.log('⚠️ Müşteri listesi boş');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Müşteri bulunamadı</td></tr>';
+        return;
+    }
+    
+    console.log('📋 Müşteri listesi render ediliyor, müşteri sayısı:', customers.length);
+
+    tbody.innerHTML = customers.map(customer => `
+        <tr>
+            <td>${customer.name}</td>
+            <td>${customer.code || 'N/A'}</td>
+            <td>${customer.email || 'N/A'}</td>
+            <td>${customer.phone || 'N/A'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteCustomer(${customer.id})" title="Müşteriyi sil">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Müşteri silme
+window.deleteCustomer = async function(customerId) {
+    if (!confirm('Bu müşteriyi silmek istediğinizden emin misiniz?')) return;
+
+    try {
+        const response = await fetch(`/api/customers/${customerId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('Müşteri silindi!', 'success');
+            loadCustomers();
+            loadCustomerOptions();
+        } else {
+            showNotification('Müşteri silinemedi!', 'error');
+        }
+    } catch (error) {
+        showNotification('Müşteri silinemedi: ' + error.message, 'error');
+    }
+};
+
+// Müşteri seçeneklerini yükle
+function loadCustomerOptions() {
+    console.log('🔍 loadCustomerOptions çağrıldı, customers:', customers);
+    const select = document.getElementById('selectedCustomer');
+    if (!select) {
+        console.error('❌ selectedCustomer element bulunamadı');
+        return;
+    }
+    
+    select.innerHTML = '<option value="">Müşteri seçiniz...</option>';
+    
+    if (!customers || customers.length === 0) {
+        console.warn('⚠️ Müşteri listesi boş');
+        return;
+    }
+    
+    customers.forEach(customer => {
+        const option = document.createElement('option');
+        option.value = customer.name;
+        option.textContent = `${customer.name} (${customer.code || 'Kod yok'})`;
+        select.appendChild(option);
+    });
+    
+    console.log('✅ Müşteri seçenekleri yüklendi:', customers.length);
+}
+
+// HTML içindeki müşteri listesini kullanarak seçenekleri yükle
+function loadCustomerOptionsFromHTML() {
+    console.log('🔍 loadCustomerOptionsFromHTML çağrıldı, htmlCustomers:', window.htmlCustomers);
+    const select = document.getElementById('selectedCustomer');
+    if (!select) {
+        console.error('❌ selectedCustomer element bulunamadı');
+        return;
+    }
+    
+    select.innerHTML = '<option value="">Müşteri seçiniz...</option>';
+    
+    if (!window.htmlCustomers || window.htmlCustomers.length === 0) {
+        console.warn('⚠️ HTML müşteri listesi boş');
+        return;
+    }
+    
+    window.htmlCustomers.forEach(customer => {
+        const option = document.createElement('option');
+        option.value = customer.name;
+        option.textContent = `${customer.name} (${customer.code || 'Kod yok'})`;
+        select.appendChild(option);
+    });
+    
+    console.log('✅ HTML müşteri seçenekleri yüklendi:', window.htmlCustomers.length);
+}
+
+// CSV template'ini güncelle
+window.updateCSVTemplate = function() {
+    const selectedCustomer = document.getElementById('selectedCustomer').value;
+    const selectedOperator = document.getElementById('selectedOperator').value;
+    
+    if (selectedCustomer && selectedOperator) {
+        showNotification(`${selectedCustomer} müşterisi ve ${selectedOperator} operatörü seçildi. Template indirirken bu bilgiler kullanılacak.`, 'info');
+    } else if (selectedCustomer) {
+        showNotification(`${selectedCustomer} müşterisi seçildi. Template indirirken bu müşteri kullanılacak.`, 'info');
+    } else if (selectedOperator) {
+        showNotification(`${selectedOperator} operatörü seçildi. Template indirirken bu operatör kullanılacak.`, 'info');
+    }
+};
+
+// Sipariş ekleme modal'ını göster
+window.showAddOrderModal = async function() {
+    console.log('🔍 showAddOrderModal çağrıldı');
+    
+    // Önce müşteri listesini yükle
+    await loadCustomers();
+    
+    // Müşteri seçeneklerini yükle
+    loadOrderCustomerOptions();
+    
+    // Operatör seçeneklerini yükle
+    await loadOperatorsForOrder();
+    
+    // Modal'ı göster
+    const modal = new bootstrap.Modal(document.getElementById('orderModal'));
+    modal.show();
+};
+
+// Sipariş modal'ı için operatör seçeneklerini yükle
+async function loadOperatorsForOrder() {
+    try {
+        console.log('🔍 Operatör listesi yükleniyor...');
+        const response = await fetch('/api/operators');
+        const operators = await response.json();
+        
+        const operatorSelect = document.getElementById('assigned-operator');
+        if (operatorSelect) {
+            operatorSelect.innerHTML = '<option value="">Operatör seçiniz</option>';
+            
+            operators.forEach(operator => {
+                const option = document.createElement('option');
+                option.value = operator.name || operator;
+                option.textContent = operator.name || operator;
+                // Operatör detaylarını tooltip olarak ekle
+                if (operator.skill_level || operator.department) {
+                    option.title = `${operator.department || 'Üretim'} - ${operator.skill_level || 'Uzman'}`;
+                }
+                operatorSelect.appendChild(option);
+            });
+            
+            console.log('✅ Operatör listesi yüklendi:', operators.length, 'operatör');
+        }
+    } catch (error) {
+        console.error('❌ Operatör listesi yüklenemedi:', error);
+        // Fallback operatör listesi
+        const operatorSelect = document.getElementById('assigned-operator');
+        if (operatorSelect) {
+            operatorSelect.innerHTML = `
+                <option value="">Operatör seçiniz</option>
+                <option value="Thunder Serisi Operatör">Thunder Serisi Operatör</option>
+                <option value="ThunderPRO Serisi Operatör">ThunderPRO Serisi Operatör</option>
+            `;
+        }
+    }
+}
+
+// Sipariş modal'ı için müşteri seçeneklerini yükle
+function loadOrderCustomerOptions() {
+    console.log('🔍 loadOrderCustomerOptions çağrıldı');
+    console.log('🔍 customers array:', customers);
+    console.log('🔍 customers length:', customers ? customers.length : 'undefined');
+    
+    const select = document.getElementById('customer-name');
+    if (!select) {
+        console.error('❌ customer-name select elementi bulunamadı!');
+        return;
+    }
+    
+    console.log('✅ customer-name select elementi bulundu');
+    select.innerHTML = '<option value="">Müşteri seçiniz...</option>';
+    
+    if (!customers || customers.length === 0) {
+        console.warn('⚠️ Müşteri listesi boş! customers:', customers);
+        select.innerHTML = '<option value="">Müşteri bulunamadı</option>';
+        return;
+    }
+    
+    console.log('🔍 Müşteri listesi dolu, seçenekler ekleniyor...');
+    customers.forEach((customer, index) => {
+        console.log(`🔍 Müşteri ${index + 1}:`, customer);
+        const option = document.createElement('option');
+        option.value = customer.name;
+        option.textContent = `${customer.name} (${customer.code || 'Kod yok'})`;
+        select.appendChild(option);
+    });
+    
+    console.log('✅ Müşteri seçenekleri yüklendi:', customers.length, 'müşteri');
+    console.log('🔍 Select element options count:', select.options.length);
+}
+
+// Plan modal'ında ürün tipine göre ürünleri yükle
+window.loadProductsByType = async function() {
+    console.log('🔍 production.js loadProductsByType çağrıldı');
+    const productType = document.getElementById('product-type').value;
+    const productSelect = document.getElementById('selected-product');
+    
+    console.log('🔍 productType:', productType);
+    console.log('🔍 productSelect element:', productSelect);
+    
+    if (!productType) {
+        productSelect.innerHTML = '<option value="">Önce ürün tipi seçiniz</option>';
+        productSelect.disabled = true;
+        return;
+    }
+    
+    productSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+    productSelect.disabled = true;
+    
+    try {
+        let apiEndpoint = '';
+        switch(productType) {
+            case 'yarimamul':
+                apiEndpoint = '/api/yarimamuller';
+                break;
+            case 'nihai':
+                apiEndpoint = '/api/nihai_urunler';
+                break;
+            default:
+                throw new Error('Geçersiz ürün tipi');
+        }
+        
+        const response = await fetch(apiEndpoint);
+        if (!response.ok) {
+            throw new Error(`API hatası: ${response.status}`);
+        }
+        
+        const products = await response.json();
+        console.log(`🔍 ${productType} API'den gelen veriler:`, products);
+        
+        productSelect.innerHTML = '<option value="">Ürün seçiniz...</option>';
+        
+        if (!Array.isArray(products) || products.length === 0) {
+            console.warn(`⚠️ ${productType} için ürün bulunamadı`);
+            productSelect.innerHTML = '<option value="">Ürün bulunamadı</option>';
+            productSelect.disabled = true;
+            return;
+        }
+        
+        products.forEach((product, index) => {
+            console.log(`🔍 Ürün ${index + 1}:`, product);
+            const option = document.createElement('option');
+            option.value = product.id;
+            // Veri yapısına göre doğru alanları kullan
+            const productName = product.ad || product.name || product.urun_adi || 'Bilinmeyen Ürün';
+            const productCode = product.kod || product.code || 'Kod yok';
+            option.textContent = `${productName} (${productCode})`;
+            productSelect.appendChild(option);
+        });
+        
+        productSelect.disabled = false;
+        console.log(`✅ ${productType} ürünleri yüklendi:`, products.length, 'ürün');
+        
+    } catch (error) {
+        console.error('❌ Ürün yükleme hatası:', error);
+        productSelect.innerHTML = '<option value="">Hata: Ürünler yüklenemedi</option>';
+        productSelect.disabled = true;
+        showNotification('Ürünler yüklenemedi: ' + error.message, 'error');
+    }
+};
+
+// ========================================
 // CSV/Excel Toplu Sipariş Girişi Fonksiyonları
 // ========================================
 
@@ -6714,21 +7928,46 @@ let csvData = [];
 let csvHeaders = [];
 
 // CSV Import Modal'ını göster
-window.showBulkOrderModal = function() {
+window.showBulkOrderModal = async function() {
+    console.log('🔍 showBulkOrderModal çağrıldı');
+    
     // Modal'ı temizle
     clearCSVPreview();
+    
+    // Önce müşteri listesini yükle (HTML içindeki fonksiyon)
+    console.log('🔍 Müşteri listesi yükleniyor...');
+    await loadCustomers();
+    console.log('🔍 Müşteri listesi yüklendi, htmlCustomers:', window.htmlCustomers);
+    
+    // Müşteri seçeneklerini yükle (htmlCustomers kullanarak)
+    console.log('🔍 Müşteri seçenekleri yükleniyor...');
+    loadCustomerOptionsFromHTML();
     
     // Modal'ı göster
     const modal = new bootstrap.Modal(document.getElementById('bulkOrderModal'));
     modal.show();
+    console.log('✅ Modal gösterildi');
 };
 
 // CSV Template indirme
 window.downloadCSVTemplate = function() {
-    const csvContent = `customer_name,order_date,delivery_date,priority,notes,product_name,product_code,quantity,unit_price
-LTSAUTO,2025-09-17,2025-09-22,high,Örnek sipariş,Thunder Serisi Ürün 1,TS-001,100,150.50
-LTSAUTO,2025-09-17,2025-09-22,high,Örnek sipariş,Thunder Serisi Ürün 2,TS-002,50,200.75
-ACME Corp,2025-09-18,2025-09-25,medium,ACME siparişi,ThunderPRO Serisi Ürün 1,TP-001,75,300.00`;
+    // Seçilen müşteriyi ve operatörü al
+    const selectedCustomer = document.getElementById('selectedCustomer').value;
+    const selectedOperator = document.getElementById('selectedOperator').value;
+    const customerName = selectedCustomer || 'LTSAUTO';
+    const operatorName = selectedOperator || 'Operatör 1';
+    
+    const csvContent = `customer_name,operator,order_date,delivery_date,priority,notes,product_name,product_code,quantity,unit_price
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 1,TS-001,20,150.50
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 2,TS-002,25,200.75
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 3,TS-003,15,175.25
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 4,TS-004,30,125.80
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 5,TS-005,18,300.00
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 6,TS-006,22,250.50
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 7,TS-007,28,180.75
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 8,TS-008,12,220.25
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 9,TS-009,16,275.00
+${customerName},${operatorName},2025-09-17,2025-09-22,high,1 Müşteri 1 Sipariş 10 Farklı Kod Toplam 200 Adet,Thunder Serisi Ürün 10,TS-010,14,195.50`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -6869,6 +8108,63 @@ window.clearCSVPreview = function() {
     document.getElementById('csvRowCount').textContent = '0 satır';
 };
 
+// Ürün kodunun veritabanında karşılığını kontrol et
+async function validateProductInDatabase(productCode, rowNumber) {
+    console.log(`🔍 validateProductInDatabase çağrıldı:`, {productCode, rowNumber});
+    
+    if (!productCode || productCode === 'N/A') {
+        console.log(`❌ Ürün kodu boş:`, productCode);
+        return {
+            isValid: false,
+            errors: [`Satır ${rowNumber}: Ürün kodu boş olamaz`]
+        };
+    }
+
+    try {
+        // Tüm ürünleri veritabanından al
+        console.log(`📡 API çağrısı yapılıyor: /api/nihai_urunler`);
+        const response = await fetch('/api/nihai_urunler');
+        if (!response.ok) {
+            console.log(`❌ API hatası:`, response.status);
+            return {
+                isValid: false,
+                errors: [`Satır ${rowNumber}: Ürün veritabanına erişilemedi`]
+            };
+        }
+
+        const products = await response.json();
+        console.log(`📦 ${products.length} ürün alındı`);
+        
+        // Sadece tam eşleşme ara - esnek arama yok
+        const product = products.find(p => p.kod === productCode);
+        console.log(`🔍 Aranan kod: "${productCode}"`);
+        console.log(`🔍 Bulunan ürün:`, product);
+
+        if (!product) {
+            console.log(`❌ Ürün bulunamadı`);
+            return {
+                isValid: false,
+                errors: [`Satır ${rowNumber}: "${productCode}" ürün kodu veritabanında bulunamadı. Veritabanındaki ürün kodları: ${products.slice(0, 5).map(p => p.kod).join(', ')}${products.length > 5 ? '...' : ''}`]
+            };
+        }
+
+        console.log(`✅ Ürün bulundu:`, product.ad);
+        return {
+            isValid: true,
+            productName: product.ad,
+            productCode: product.kod,
+            barcode: product.barkod
+        };
+
+    } catch (error) {
+        console.error('❌ Ürün doğrulama hatası:', error);
+        return {
+            isValid: false,
+            errors: [`Satır ${rowNumber}: Ürün doğrulama hatası - ${error.message}`]
+        };
+    }
+}
+
 // Toplu siparişleri işle
 window.processBulkOrders = async function() {
     if (csvData.length === 0) {
@@ -6884,60 +8180,114 @@ window.processBulkOrders = async function() {
     const successes = [];
     let processedCount = 0;
 
-    // Her satır için sipariş oluştur
-    for (let i = 0; i < csvData.length; i++) {
-        const row = csvData[i];
-        const rowNumber = i + 2; // Excel satır numarası (header dahil)
+    // Tüm ürünleri tek siparişe grupla
+    const allProducts = [];
+    let orderInfo = null;
 
+    // İlk satırdan sipariş bilgilerini al
+    if (csvData.length > 0) {
+        orderInfo = csvData[0];
+    }
+
+    // Tüm ürünleri topla ve veritabanı kontrolü yap
+    for (let index = 0; index < csvData.length; index++) {
+        const row = csvData[index];
+        const rowNumber = index + 2;
+        
+        // Veri validasyonu
+        const validation = validateOrderRow(row, rowNumber);
+        if (!validation.isValid) {
+            errors.push(...validation.errors);
+            continue;
+        }
+
+        // Ürün kodunun veritabanında karşılığını kontrol et
+        console.log(`🔍 Satır ${rowNumber} ürün kontrolü:`, row.product_code);
+        const productValidation = await validateProductInDatabase(row.product_code, rowNumber);
+        console.log(`✅ Satır ${rowNumber} doğrulama sonucu:`, productValidation);
+        
+        if (!productValidation.isValid) {
+            console.log(`❌ Satır ${rowNumber} geçersiz:`, productValidation.errors);
+            errors.push(...productValidation.errors);
+            continue;
+        }
+
+        // Ürün bilgilerini ekle
+        allProducts.push({
+            product_name: productValidation.productName || row.product_name || 'Ürün',
+            product_code: row.product_code || 'N/A',
+            quantity: parseInt(row.quantity) || 1,
+            unit_price: parseFloat(row.unit_price) || 0
+        });
+    }
+
+    // Eğer geçerli ürün varsa tek sipariş oluştur
+    if (allProducts.length > 0 && orderInfo) {
         try {
-            // Veri validasyonu
-            const validation = validateOrderRow(row, rowNumber);
-            if (!validation.isValid) {
-                errors.push(...validation.errors);
-                continue;
-            }
+            // Toplam tutarı hesapla
+            const totalAmount = allProducts.reduce((sum, product) => {
+                return sum + (product.quantity * product.unit_price);
+            }, 0);
 
-            // Sipariş verisi hazırla
+            // Tek sipariş verisi hazırla
             const orderData = {
-                customer_name: row.customer_name || 'Bilinmeyen Müşteri',
-                order_date: row.order_date || new Date().toISOString().split('T')[0],
-                delivery_date: row.delivery_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                priority: row.priority || 'medium',
-                notes: row.notes || '',
-                product_details: JSON.stringify([{
-                    product_name: row.product_name || 'Ürün',
-                    product_code: row.product_code || 'N/A',
-                    quantity: parseInt(row.quantity) || 1,
-                    unit_price: parseFloat(row.unit_price) || 0
-                }])
+                customer_name: orderInfo.customer_name || 'Bilinmeyen Müşteri',
+                assigned_operator: orderInfo.operator || 'Operatör 1',
+                order_date: orderInfo.order_date || new Date().toISOString().split('T')[0],
+                delivery_date: orderInfo.delivery_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                priority: orderInfo.priority || 'medium',
+                notes: orderInfo.notes || '',
+                product_details: allProducts,
+                total_amount: totalAmount,
+                created_by: 'Toplu Sipariş Sistemi'
             };
+            
 
-            // API'ye gönder
+            // Tek sipariş oluştur
             const response = await fetch('/api/orders', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(orderData)
             });
 
             if (response.ok) {
                 const result = await response.json();
-                successes.push(`Satır ${rowNumber}: Sipariş oluşturuldu (ID: ${result.id})`);
-                processedCount++;
+                successes.push(`Tek sipariş başarıyla oluşturuldu: ${allProducts.length} ürün ile (ID: ${result.id})`);
+                processedCount = 1;
             } else {
-                const error = await response.json();
-                errors.push(`Satır ${rowNumber}: ${error.error || 'Bilinmeyen hata'}`);
+                const errorData = await response.json();
+                errors.push(`API Hatası: ${errorData.error || 'Bilinmeyen hata'}`);
             }
 
         } catch (error) {
-            errors.push(`Satır ${rowNumber}: ${error.message}`);
+            errors.push(`Toplu sipariş hatası: ${error.message}`);
         }
     }
 
     // Sonuçları göster
     displayProcessingResults(errors, successes, processedCount);
 };
+
+// Siparişleri müşteri adına göre grupla
+function groupOrdersByCustomer(csvData) {
+    const grouped = {};
+    
+    csvData.forEach((row, index) => {
+        const customerKey = `${row.customer_name}_${row.operator || 'default'}_${row.order_date}_${row.delivery_date}_${row.priority}`;
+        
+        if (!grouped[customerKey]) {
+            grouped[customerKey] = [];
+        }
+        
+        // Satır numarasını ekle (hata raporlama için)
+        row.rowNumber = index + 2;
+        grouped[customerKey].push(row);
+    });
+    
+    return grouped;
+}
 
 // Sipariş satırı validasyonu
 function validateOrderRow(row, rowNumber) {
@@ -6986,7 +8336,14 @@ function displayProcessingResults(errors, successes, processedCount) {
     if (errors.length > 0) {
         document.getElementById('csvErrorSection').style.display = 'block';
         const errorList = document.getElementById('csvErrorList');
-        errorList.innerHTML = errors.map(error => `<div class="mb-1">• ${error}</div>`).join('');
+        errorList.innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>${errors.length} Hata Bulundu</h6>
+                <div class="mt-2">
+                    ${errors.map(error => `<div class="mb-1">• ${error}</div>`).join('')}
+                </div>
+            </div>
+        `;
     }
 
     // Başarı raporu
@@ -6994,14 +8351,13 @@ function displayProcessingResults(errors, successes, processedCount) {
         document.getElementById('csvSuccessSection').style.display = 'block';
         const successList = document.getElementById('csvSuccessList');
         successList.innerHTML = `
-            <div class="mb-2">
-                <strong>${processedCount} sipariş başarıyla oluşturuldu!</strong>
+            <div class="alert alert-success">
+                <h6><i class="fas fa-check-circle me-2"></i>${processedCount} Sipariş Başarıyla Oluşturuldu!</h6>
+                <div class="mt-2">
+                    ${successes.slice(0, 5).map(success => `<div class="mb-1">• ${success}</div>`).join('')}
+                    ${successes.length > 5 ? `<div class="mb-1 text-muted">... ve ${successes.length - 5} tane daha</div>` : ''}
+                </div>
             </div>
-            <div class="mb-1">
-                <strong>Başarılı işlemler:</strong>
-            </div>
-            ${successes.slice(0, 5).map(success => `<div class="mb-1">• ${success}</div>`).join('')}
-            ${successes.length > 5 ? `<div class="mb-1 text-muted">... ve ${successes.length - 5} tane daha</div>` : ''}
         `;
     }
 

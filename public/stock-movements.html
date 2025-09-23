@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThunderPRO - Stok Hareketleri</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .stock-movements-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .movement-card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .movement-card:hover {
+            transform: translateY(-2px);
+        }
+        .movement-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .movement-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .movement-item:last-child {
+            border-bottom: none;
+        }
+        .movement-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        .movement-description {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        .btn-save:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+            color: white;
+        }
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .stats-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .movement-type-entry {
+            color: #28a745;
+        }
+        .movement-type-exit {
+            color: #dc3545;
+        }
+        .movement-type-transfer {
+            color: #ffc107;
+        }
+        .movement-type-adjustment {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="stock-movements-container">
+        <!-- Header -->
+        <div class="movement-header text-center">
+            <h1><i class="fas fa-exchange-alt me-2"></i>Stok Hareketleri</h1>
+            <p class="mb-0">Stok giriş/çıkış hareketlerini takip edin ve yönetin</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalMovements">0</div>
+                    <div class="stats-label">Toplam Hareket</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalEntries">0</div>
+                    <div class="stats-label">Stok Girişi</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalExits">0</div>
+                    <div class="stats-label">Stok Çıkışı</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalValue">₺0</div>
+                    <div class="stats-label">Toplam Değer</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills justify-content-center mb-4" id="movementTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="movements-tab" data-bs-toggle="pill" data-bs-target="#movements" type="button" role="tab">
+                    <i class="fas fa-list me-2"></i>Hareket Listesi
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="entry-tab" data-bs-toggle="pill" data-bs-target="#entry" type="button" role="tab">
+                    <i class="fas fa-plus me-2"></i>Stok Girişi
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="exit-tab" data-bs-toggle="pill" data-bs-target="#exit" type="button" role="tab">
+                    <i class="fas fa-minus me-2"></i>Stok Çıkışı
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="transfer-tab" data-bs-toggle="pill" data-bs-target="#transfer" type="button" role="tab">
+                    <i class="fas fa-exchange-alt me-2"></i>Transfer
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="movementTabsContent">
+            <!-- Hareket Listesi -->
+            <div class="tab-pane fade show active" id="movements" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-list me-2"></i>Stok Hareketleri</h5>
+                                <div class="row mt-3">
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control" id="searchMovements" placeholder="Ürün ara...">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-select" id="filterType">
+                                            <option value="">Tüm Hareketler</option>
+                                            <option value="entry">Giriş</option>
+                                            <option value="exit">Çıkış</option>
+                                            <option value="transfer">Transfer</option>
+                                            <option value="adjustment">Düzeltme</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="date" class="form-control" id="filterDate">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-primary" onclick="filterMovements()">
+                                            <i class="fas fa-search me-1"></i>Filtrele
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        <button class="btn btn-success" onclick="exportMovements()">
+                                            <i class="fas fa-download me-1"></i>Excel Export
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Tarih</th>
+                                                <th>Hareket Tipi</th>
+                                                <th>Ürün</th>
+                                                <th>Miktar</th>
+                                                <th>Birim</th>
+                                                <th>Fiyat</th>
+                                                <th>Toplam</th>
+                                                <th>Operatör</th>
+                                                <th>Notlar</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="movementsTableBody">
+                                            <!-- Hareketler buraya yüklenecek -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stok Girişi -->
+            <div class="tab-pane fade" id="entry" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-plus me-2"></i>Stok Girişi</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="stockEntryForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-box me-2"></i>Ürün Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="entryProductType" class="form-label">Ürün Türü *</label>
+                                                    <select class="form-select" id="entryProductType" required onchange="loadEntryProducts()">
+                                                        <option value="">Seçiniz</option>
+                                                        <option value="hammadde">Hammadde</option>
+                                                        <option value="yarimamul">Yarı Mamul</option>
+                                                        <option value="nihai">Nihai Ürün</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="entryProduct" class="form-label">Ürün *</label>
+                                                    <select class="form-select" id="entryProduct" required disabled>
+                                                        <option value="">Önce ürün türü seçiniz</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="entryQuantity" class="form-label">Miktar *</label>
+                                                    <input type="number" class="form-control" id="entryQuantity" step="0.01" required placeholder="0.00">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="entryUnit" class="form-label">Birim *</label>
+                                                    <input type="text" class="form-control" id="entryUnit" required readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="entryPrice" class="form-label">Birim Fiyat (₺)</label>
+                                                    <input type="number" class="form-control" id="entryPrice" step="0.01" placeholder="0.00">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-info-circle me-2"></i>Hareket Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="entryDate" class="form-label">Tarih *</label>
+                                                    <input type="datetime-local" class="form-control" id="entryDate" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="entryOperator" class="form-label">Operatör *</label>
+                                                    <input type="text" class="form-control" id="entryOperator" required placeholder="Operatör adı">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="entryNotes" class="form-label">Notlar</label>
+                                            <textarea class="form-control" id="entryNotes" rows="3" placeholder="Hareket notları"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="submitStockEntry()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-calculator me-2"></i>Hesaplama</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Miktar</div>
+                                        <div class="movement-description">Giriş miktarı</div>
+                                    </div>
+                                    <span id="calcQuantity">0</span>
+                                </div>
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Birim Fiyat</div>
+                                        <div class="movement-description">₺/birim</div>
+                                    </div>
+                                    <span id="calcPrice">₺0.00</span>
+                                </div>
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Toplam Değer</div>
+                                        <div class="movement-description">Miktar × Fiyat</div>
+                                    </div>
+                                    <span id="calcTotal">₺0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stok Çıkışı -->
+            <div class="tab-pane fade" id="exit" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-minus me-2"></i>Stok Çıkışı</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="stockExitForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-box me-2"></i>Ürün Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="exitProductType" class="form-label">Ürün Türü *</label>
+                                                    <select class="form-select" id="exitProductType" required onchange="loadExitProducts()">
+                                                        <option value="">Seçiniz</option>
+                                                        <option value="hammadde">Hammadde</option>
+                                                        <option value="yarimamul">Yarı Mamul</option>
+                                                        <option value="nihai">Nihai Ürün</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="exitProduct" class="form-label">Ürün *</label>
+                                                    <select class="form-select" id="exitProduct" required disabled>
+                                                        <option value="">Önce ürün türü seçiniz</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="exitQuantity" class="form-label">Miktar *</label>
+                                                    <input type="number" class="form-control" id="exitQuantity" step="0.01" required placeholder="0.00">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="exitUnit" class="form-label">Birim *</label>
+                                                    <input type="text" class="form-control" id="exitUnit" required readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="exitPrice" class="form-label">Birim Fiyat (₺)</label>
+                                                    <input type="number" class="form-control" id="exitPrice" step="0.01" placeholder="0.00">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="exitReason" class="form-label">Çıkış Nedeni *</label>
+                                            <select class="form-select" id="exitReason" required>
+                                                <option value="">Seçiniz</option>
+                                                <option value="production">Üretim</option>
+                                                <option value="sale">Satış</option>
+                                                <option value="waste">Fire</option>
+                                                <option value="transfer">Transfer</option>
+                                                <option value="other">Diğer</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-info-circle me-2"></i>Hareket Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="exitDate" class="form-label">Tarih *</label>
+                                                    <input type="datetime-local" class="form-control" id="exitDate" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="exitOperator" class="form-label">Operatör *</label>
+                                                    <input type="text" class="form-control" id="exitOperator" required placeholder="Operatör adı">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="exitNotes" class="form-label">Notlar</label>
+                                            <textarea class="form-control" id="exitNotes" rows="3" placeholder="Hareket notları"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="submitStockExit()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-info-circle me-2"></i>Mevcut Stok</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Mevcut Miktar</div>
+                                        <div class="movement-description">Stokta bulunan</div>
+                                    </div>
+                                    <span id="currentStock">0</span>
+                                </div>
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Çıkış Miktarı</div>
+                                        <div class="movement-description">Çıkarılacak</div>
+                                    </div>
+                                    <span id="exitQuantityDisplay">0</span>
+                                </div>
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Kalan Miktar</div>
+                                        <div class="movement-description">Mevcut - Çıkış</div>
+                                    </div>
+                                    <span id="remainingStock">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transfer -->
+            <div class="tab-pane fade" id="transfer" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-exchange-alt me-2"></i>Stok Transferi</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="stockTransferForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-box me-2"></i>Ürün Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="transferProductType" class="form-label">Ürün Türü *</label>
+                                                    <select class="form-select" id="transferProductType" required onchange="loadTransferProducts()">
+                                                        <option value="">Seçiniz</option>
+                                                        <option value="hammadde">Hammadde</option>
+                                                        <option value="yarimamul">Yarı Mamul</option>
+                                                        <option value="nihai">Nihai Ürün</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="transferProduct" class="form-label">Ürün *</label>
+                                                    <select class="form-select" id="transferProduct" required disabled>
+                                                        <option value="">Önce ürün türü seçiniz</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="transferQuantity" class="form-label">Miktar *</label>
+                                                    <input type="number" class="form-control" id="transferQuantity" step="0.01" required placeholder="0.00">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="transferUnit" class="form-label">Birim *</label>
+                                                    <input type="text" class="form-control" id="transferUnit" required readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="transferPrice" class="form-label">Birim Fiyat (₺)</label>
+                                                    <input type="number" class="form-control" id="transferPrice" step="0.01" placeholder="0.00">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-warehouse me-2"></i>Transfer Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="transferFrom" class="form-label">Kaynak Depo *</label>
+                                                    <select class="form-select" id="transferFrom" required>
+                                                        <option value="">Seçiniz</option>
+                                                        <option value="main">Ana Depo</option>
+                                                        <option value="production">Üretim Depo</option>
+                                                        <option value="finished">Bitmiş Ürün Depo</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="transferTo" class="form-label">Hedef Depo *</label>
+                                                    <select class="form-select" id="transferTo" required>
+                                                        <option value="">Seçiniz</option>
+                                                        <option value="main">Ana Depo</option>
+                                                        <option value="production">Üretim Depo</option>
+                                                        <option value="finished">Bitmiş Ürün Depo</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="transferDate" class="form-label">Tarih *</label>
+                                                    <input type="datetime-local" class="form-control" id="transferDate" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="transferOperator" class="form-label">Operatör *</label>
+                                                    <input type="text" class="form-control" id="transferOperator" required placeholder="Operatör adı">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="transferNotes" class="form-label">Notlar</label>
+                                            <textarea class="form-control" id="transferNotes" rows="3" placeholder="Transfer notları"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="submitStockTransfer()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card movement-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-info-circle me-2"></i>Transfer Bilgileri</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Kaynak Depo</div>
+                                        <div class="movement-description">Transfer edilecek</div>
+                                    </div>
+                                    <span id="fromDepot">-</span>
+                                </div>
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Hedef Depo</div>
+                                        <div class="movement-description">Transfer edilecek</div>
+                                    </div>
+                                    <span id="toDepot">-</span>
+                                </div>
+                                <div class="movement-item">
+                                    <div>
+                                        <div class="movement-label">Transfer Miktarı</div>
+                                        <div class="movement-description">Taşınacak miktar</div>
+                                    </div>
+                                    <span id="transferQuantityDisplay">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMovements();
+            loadStatistics();
+            setCurrentDateTime();
+        });
+
+        // Mevcut tarih ve saati ayarla
+        function setCurrentDateTime() {
+            const now = new Date();
+            const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            
+            document.getElementById('entryDate').value = localDateTime;
+            document.getElementById('exitDate').value = localDateTime;
+            document.getElementById('transferDate').value = localDateTime;
+        }
+
+        // Hareketleri yükle
+        function loadMovements() {
+            const movements = JSON.parse(localStorage.getItem('stockMovements') || '[]');
+            const tbody = document.getElementById('movementsTableBody');
+            tbody.innerHTML = '';
+
+            if (movements.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">Henüz stok hareketi bulunmuyor</td></tr>';
+                return;
+            }
+
+            movements.forEach(movement => {
+                const row = `
+                    <tr>
+                        <td>${new Date(movement.date).toLocaleString('tr-TR')}</td>
+                        <td><span class="badge bg-${getMovementTypeColor(movement.type)}">${getMovementTypeText(movement.type)}</span></td>
+                        <td>${movement.productName}</td>
+                        <td>${movement.quantity}</td>
+                        <td>${movement.unit}</td>
+                        <td>₺${movement.price || 0}</td>
+                        <td>₺${(movement.quantity * (movement.price || 0)).toFixed(2)}</td>
+                        <td>${movement.operator}</td>
+                        <td>${movement.notes || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMovement(${movement.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // İstatistikleri yükle
+        function loadStatistics() {
+            const movements = JSON.parse(localStorage.getItem('stockMovements') || '[]');
+            
+            const totalMovements = movements.length;
+            const totalEntries = movements.filter(m => m.type === 'entry').length;
+            const totalExits = movements.filter(m => m.type === 'exit').length;
+            const totalValue = movements.reduce((sum, m) => sum + (m.quantity * (m.price || 0)), 0);
+
+            document.getElementById('totalMovements').textContent = totalMovements;
+            document.getElementById('totalEntries').textContent = totalEntries;
+            document.getElementById('totalExits').textContent = totalExits;
+            document.getElementById('totalValue').textContent = `₺${totalValue.toFixed(2)}`;
+        }
+
+        // Hareket tipi rengini al
+        function getMovementTypeColor(type) {
+            switch(type) {
+                case 'entry': return 'success';
+                case 'exit': return 'danger';
+                case 'transfer': return 'warning';
+                case 'adjustment': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        // Hareket tipi metnini al
+        function getMovementTypeText(type) {
+            switch(type) {
+                case 'entry': return 'Giriş';
+                case 'exit': return 'Çıkış';
+                case 'transfer': return 'Transfer';
+                case 'adjustment': return 'Düzeltme';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        // Giriş ürünlerini yükle
+        function loadEntryProducts() {
+            const productType = document.getElementById('entryProductType').value;
+            const productSelect = document.getElementById('entryProduct');
+            
+            if (!productType) {
+                productSelect.disabled = true;
+                productSelect.innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+                return;
+            }
+
+            loadProducts(productType, productSelect, 'entry');
+        }
+
+        // Çıkış ürünlerini yükle
+        function loadExitProducts() {
+            const productType = document.getElementById('exitProductType').value;
+            const productSelect = document.getElementById('exitProduct');
+            
+            if (!productType) {
+                productSelect.disabled = true;
+                productSelect.innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+                return;
+            }
+
+            loadProducts(productType, productSelect, 'exit');
+        }
+
+        // Transfer ürünlerini yükle
+        function loadTransferProducts() {
+            const productType = document.getElementById('transferProductType').value;
+            const productSelect = document.getElementById('transferProduct');
+            
+            if (!productType) {
+                productSelect.disabled = true;
+                productSelect.innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+                return;
+            }
+
+            loadProducts(productType, productSelect, 'transfer');
+        }
+
+        // Ürünleri yükle
+        async function loadProducts(productType, productSelect, formType) {
+            try {
+                let products = [];
+                if (productType === 'hammadde') {
+                    const response = await fetch('/api/hammaddeler');
+                    products = await response.json();
+                } else if (productType === 'yarimamul') {
+                    const response = await fetch('/api/yarimamuller');
+                    products = await response.json();
+                } else if (productType === 'nihai') {
+                    const response = await fetch('/api/nihai_urunler');
+                    products = await response.json();
+                }
+                
+                productSelect.innerHTML = '<option value="">Ürün seçiniz</option>';
+                products.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.ad} (${product.kod})`;
+                    option.dataset.unit = product.birim;
+                    option.dataset.currentStock = product.miktar || 0;
+                    option.dataset.price = product.satis_fiyati || 0;
+                    productSelect.appendChild(option);
+                });
+                productSelect.disabled = false;
+            } catch (error) {
+                console.error('Ürünler yüklenemedi:', error);
+                showAlert('Ürünler yüklenemedi', 'danger');
+            }
+        }
+
+        // Ürün seçimi değiştiğinde
+        function onProductChange(formType) {
+            const productSelect = document.getElementById(`${formType}Product`);
+            const selectedOption = productSelect.options[productSelect.selectedIndex];
+            
+            if (selectedOption.value) {
+                document.getElementById(`${formType}Unit`).value = selectedOption.dataset.unit || '';
+                document.getElementById(`${formType}Price`).value = selectedOption.dataset.price || '0';
+                
+                if (formType === 'exit') {
+                    document.getElementById('currentStock').textContent = selectedOption.dataset.currentStock || '0';
+                }
+            }
+        }
+
+        // Stok girişi kaydet
+        function submitStockEntry() {
+            const formData = {
+                type: 'entry',
+                productType: document.getElementById('entryProductType').value,
+                productId: document.getElementById('entryProduct').value,
+                productName: document.getElementById('entryProduct').selectedOptions[0]?.textContent || '',
+                quantity: parseFloat(document.getElementById('entryQuantity').value) || 0,
+                unit: document.getElementById('entryUnit').value,
+                price: parseFloat(document.getElementById('entryPrice').value) || 0,
+                date: document.getElementById('entryDate').value,
+                operator: document.getElementById('entryOperator').value,
+                notes: document.getElementById('entryNotes').value
+            };
+
+            if (!formData.productType || !formData.productId || !formData.quantity || !formData.unit || !formData.operator) {
+                showAlert('Lütfen tüm zorunlu alanları doldurun', 'warning');
+                return;
+            }
+
+            saveMovement(formData);
+        }
+
+        // Stok çıkışı kaydet
+        function submitStockExit() {
+            const formData = {
+                type: 'exit',
+                productType: document.getElementById('exitProductType').value,
+                productId: document.getElementById('exitProduct').value,
+                productName: document.getElementById('exitProduct').selectedOptions[0]?.textContent || '',
+                quantity: parseFloat(document.getElementById('exitQuantity').value) || 0,
+                unit: document.getElementById('exitUnit').value,
+                price: parseFloat(document.getElementById('exitPrice').value) || 0,
+                reason: document.getElementById('exitReason').value,
+                date: document.getElementById('exitDate').value,
+                operator: document.getElementById('exitOperator').value,
+                notes: document.getElementById('exitNotes').value
+            };
+
+            if (!formData.productType || !formData.productId || !formData.quantity || !formData.unit || !formData.operator || !formData.reason) {
+                showAlert('Lütfen tüm zorunlu alanları doldurun', 'warning');
+                return;
+            }
+
+            saveMovement(formData);
+        }
+
+        // Stok transferi kaydet
+        function submitStockTransfer() {
+            const formData = {
+                type: 'transfer',
+                productType: document.getElementById('transferProductType').value,
+                productId: document.getElementById('transferProduct').value,
+                productName: document.getElementById('transferProduct').selectedOptions[0]?.textContent || '',
+                quantity: parseFloat(document.getElementById('transferQuantity').value) || 0,
+                unit: document.getElementById('transferUnit').value,
+                price: parseFloat(document.getElementById('transferPrice').value) || 0,
+                fromDepot: document.getElementById('transferFrom').value,
+                toDepot: document.getElementById('transferTo').value,
+                date: document.getElementById('transferDate').value,
+                operator: document.getElementById('transferOperator').value,
+                notes: document.getElementById('transferNotes').value
+            };
+
+            if (!formData.productType || !formData.productId || !formData.quantity || !formData.unit || !formData.operator || !formData.fromDepot || !formData.toDepot) {
+                showAlert('Lütfen tüm zorunlu alanları doldurun', 'warning');
+                return;
+            }
+
+            if (formData.fromDepot === formData.toDepot) {
+                showAlert('Kaynak ve hedef depo aynı olamaz', 'warning');
+                return;
+            }
+
+            saveMovement(formData);
+        }
+
+        // Hareketi kaydet
+        function saveMovement(movementData) {
+            const movements = JSON.parse(localStorage.getItem('stockMovements') || '[]');
+            const newMovement = {
+                id: Date.now(),
+                ...movementData,
+                createdAt: new Date().toISOString()
+            };
+
+            movements.push(newMovement);
+            localStorage.setItem('stockMovements', JSON.stringify(movements));
+
+            showAlert('Stok hareketi başarıyla kaydedildi!', 'success');
+            loadMovements();
+            loadStatistics();
+            
+            // Formu temizle
+            document.getElementById(`${movementData.type}Form`).reset();
+            setCurrentDateTime();
+        }
+
+        // Hareketi sil
+        function deleteMovement(movementId) {
+            if (confirm('Bu hareketi silmek istediğinizden emin misiniz?')) {
+                const movements = JSON.parse(localStorage.getItem('stockMovements') || '[]');
+                const filteredMovements = movements.filter(m => m.id !== movementId);
+                localStorage.setItem('stockMovements', JSON.stringify(filteredMovements));
+                
+                showAlert('Hareket başarıyla silindi!', 'success');
+                loadMovements();
+                loadStatistics();
+            }
+        }
+
+        // Hareketleri filtrele
+        function filterMovements() {
+            const searchTerm = document.getElementById('searchMovements').value.toLowerCase();
+            const filterType = document.getElementById('filterType').value;
+            const filterDate = document.getElementById('filterDate').value;
+
+            const movements = JSON.parse(localStorage.getItem('stockMovements') || '[]');
+            let filteredMovements = movements;
+
+            if (searchTerm) {
+                filteredMovements = filteredMovements.filter(m => 
+                    m.productName.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (filterType) {
+                filteredMovements = filteredMovements.filter(m => m.type === filterType);
+            }
+
+            if (filterDate) {
+                filteredMovements = filteredMovements.filter(m => 
+                    m.date.startsWith(filterDate)
+                );
+            }
+
+            // Filtrelenmiş sonuçları göster
+            const tbody = document.getElementById('movementsTableBody');
+            tbody.innerHTML = '';
+
+            if (filteredMovements.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">Filtre kriterlerine uygun hareket bulunamadı</td></tr>';
+                return;
+            }
+
+            filteredMovements.forEach(movement => {
+                const row = `
+                    <tr>
+                        <td>${new Date(movement.date).toLocaleString('tr-TR')}</td>
+                        <td><span class="badge bg-${getMovementTypeColor(movement.type)}">${getMovementTypeText(movement.type)}</span></td>
+                        <td>${movement.productName}</td>
+                        <td>${movement.quantity}</td>
+                        <td>${movement.unit}</td>
+                        <td>₺${movement.price || 0}</td>
+                        <td>₺${(movement.quantity * (movement.price || 0)).toFixed(2)}</td>
+                        <td>${movement.operator}</td>
+                        <td>${movement.notes || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMovement(${movement.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // Hareketleri Excel'e aktar
+        function exportMovements() {
+            const movements = JSON.parse(localStorage.getItem('stockMovements') || '[]');
+            
+            if (movements.length === 0) {
+                showAlert('Aktarılacak hareket bulunamadı', 'warning');
+                return;
+            }
+
+            // Excel export işlemi burada yapılabilir
+            showAlert('Excel export özelliği yakında eklenecek', 'info');
+        }
+
+        // Alert göster
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHTML = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show alert-custom" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+            
+            // 5 saniye sonra otomatik kapat
+            setTimeout(() => {
+                const alertElement = document.getElementById(alertId);
+                if (alertElement) {
+                    const bsAlert = new bootstrap.Alert(alertElement);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        // Geri dön
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
+

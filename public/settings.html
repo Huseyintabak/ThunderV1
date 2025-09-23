@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThunderPRO - Sistem Ayarları</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .settings-card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .settings-card:hover {
+            transform: translateY(-2px);
+        }
+        .settings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+        .setting-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        .setting-description {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        .btn-save:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+            color: white;
+        }
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <!-- Header -->
+        <div class="settings-header text-center">
+            <h1><i class="fas fa-cog me-2"></i>Sistem Ayarları</h1>
+            <p class="mb-0">ThunderPRO sistem konfigürasyonu ve kullanıcı ayarları</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills justify-content-center mb-4" id="settingsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="general-tab" data-bs-toggle="pill" data-bs-target="#general" type="button" role="tab">
+                    <i class="fas fa-cog me-2"></i>Genel Ayarlar
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="user-tab" data-bs-toggle="pill" data-bs-target="#user" type="button" role="tab">
+                    <i class="fas fa-user-cog me-2"></i>Kullanıcı Ayarları
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="system-tab" data-bs-toggle="pill" data-bs-target="#system" type="button" role="tab">
+                    <i class="fas fa-server me-2"></i>Sistem Konfigürasyonu
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="notifications-tab" data-bs-toggle="pill" data-bs-target="#notifications" type="button" role="tab">
+                    <i class="fas fa-bell me-2"></i>Bildirimler
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="settingsTabsContent">
+            <!-- Genel Ayarlar -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-cog me-2"></i>Genel Sistem Ayarları</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="generalSettingsForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-info-circle me-2"></i>Şirket Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="companyName" class="form-label">Şirket Adı</label>
+                                                    <input type="text" class="form-control" id="companyName" value="ThunderPRO">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="companyCode" class="form-label">Şirket Kodu</label>
+                                                    <input type="text" class="form-control" id="companyCode" value="THP">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="companyAddress" class="form-label">Adres</label>
+                                            <textarea class="form-control" id="companyAddress" rows="3">İstanbul, Türkiye</textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-clock me-2"></i>Zaman Ayarları</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="timezone" class="form-label">Saat Dilimi</label>
+                                                    <select class="form-select" id="timezone">
+                                                        <option value="Europe/Istanbul" selected>Europe/Istanbul (GMT+3)</option>
+                                                        <option value="UTC">UTC (GMT+0)</option>
+                                                        <option value="America/New_York">America/New_York (GMT-5)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="dateFormat" class="form-label">Tarih Formatı</label>
+                                                    <select class="form-select" id="dateFormat">
+                                                        <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
+                                                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-language me-2"></i>Dil Ayarları</h6>
+                                        <div class="mb-3">
+                                            <label for="language" class="form-label">Sistem Dili</label>
+                                            <select class="form-select" id="language">
+                                                <option value="tr" selected>Türkçe</option>
+                                                <option value="en">English</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="saveGeneralSettings()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-info-circle me-2"></i>Sistem Durumu</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Sistem Versiyonu</div>
+                                        <div class="setting-description">v1.6.2</div>
+                                    </div>
+                                    <span class="badge bg-success">Güncel</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Veritabanı Durumu</div>
+                                        <div class="setting-description">Supabase</div>
+                                    </div>
+                                    <span class="badge bg-success">Aktif</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">WebSocket</div>
+                                        <div class="setting-description">Real-time</div>
+                                    </div>
+                                    <span class="badge bg-success">Bağlı</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Son Güncelleme</div>
+                                        <div class="setting-description" id="lastUpdate">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kullanıcı Ayarları -->
+            <div class="tab-pane fade" id="user" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-user-cog me-2"></i>Kullanıcı Ayarları</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="userSettingsForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-user me-2"></i>Profil Bilgileri</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="userName" class="form-label">Ad Soyad</label>
+                                                    <input type="text" class="form-control" id="userName" value="Sistem Yöneticisi">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="userEmail" class="form-label">E-posta</label>
+                                                    <input type="email" class="form-control" id="userEmail" value="admin@thunderpro.com">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="userRole" class="form-label">Rol</label>
+                                            <select class="form-select" id="userRole">
+                                                <option value="admin" selected>Yönetici</option>
+                                                <option value="manager">Müdür</option>
+                                                <option value="operator">Operatör</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-lock me-2"></i>Güvenlik</h6>
+                                        <div class="mb-3">
+                                            <label for="currentPassword" class="form-label">Mevcut Şifre</label>
+                                            <input type="password" class="form-control" id="currentPassword">
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="newPassword" class="form-label">Yeni Şifre</label>
+                                                    <input type="password" class="form-control" id="newPassword">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="confirmPassword" class="form-label">Şifre Tekrar</label>
+                                                    <input type="password" class="form-control" id="confirmPassword">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="saveUserSettings()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-shield-alt me-2"></i>Güvenlik Durumu</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Son Giriş</div>
+                                        <div class="setting-description" id="lastLogin">-</div>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Şifre Gücü</div>
+                                        <div class="setting-description">Güçlü</div>
+                                    </div>
+                                    <span class="badge bg-success">İyi</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">2FA Durumu</div>
+                                        <div class="setting-description">İki faktörlü kimlik doğrulama</div>
+                                    </div>
+                                    <span class="badge bg-warning">Pasif</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sistem Konfigürasyonu -->
+            <div class="tab-pane fade" id="system" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-server me-2"></i>Sistem Konfigürasyonu</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="systemSettingsForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-database me-2"></i>Veritabanı Ayarları</h6>
+                                        <div class="mb-3">
+                                            <label for="dbHost" class="form-label">Veritabanı Host</label>
+                                            <input type="text" class="form-control" id="dbHost" value="supabase.co" readonly>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="dbPort" class="form-label">Port</label>
+                                                    <input type="number" class="form-control" id="dbPort" value="5432" readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="dbName" class="form-label">Veritabanı Adı</label>
+                                                    <input type="text" class="form-control" id="dbName" value="thunderpro" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-cogs me-2"></i>Performans Ayarları</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="maxConnections" class="form-label">Maksimum Bağlantı</label>
+                                                    <input type="number" class="form-control" id="maxConnections" value="100">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="cacheSize" class="form-label">Önbellek Boyutu (MB)</label>
+                                                    <input type="number" class="form-control" id="cacheSize" value="256">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="logLevel" class="form-label">Log Seviyesi</label>
+                                            <select class="form-select" id="logLevel">
+                                                <option value="error">Error</option>
+                                                <option value="warn">Warning</option>
+                                                <option value="info" selected>Info</option>
+                                                <option value="debug">Debug</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-backup me-2"></i>Yedekleme Ayarları</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="backupFrequency" class="form-label">Yedekleme Sıklığı</label>
+                                                    <select class="form-select" id="backupFrequency">
+                                                        <option value="daily" selected>Günlük</option>
+                                                        <option value="weekly">Haftalık</option>
+                                                        <option value="monthly">Aylık</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="backupRetention" class="form-label">Saklama Süresi (Gün)</label>
+                                                    <input type="number" class="form-control" id="backupRetention" value="30">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="saveSystemSettings()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-line me-2"></i>Sistem Performansı</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">CPU Kullanımı</div>
+                                        <div class="setting-description">İşlemci yükü</div>
+                                    </div>
+                                    <span class="badge bg-success">%15</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Bellek Kullanımı</div>
+                                        <div class="setting-description">RAM kullanımı</div>
+                                    </div>
+                                    <span class="badge bg-warning">%68</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Disk Kullanımı</div>
+                                        <div class="setting-description">Depolama alanı</div>
+                                    </div>
+                                    <span class="badge bg-success">%32</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Aktif Bağlantılar</div>
+                                        <div class="setting-description">Eş zamanlı kullanıcı</div>
+                                    </div>
+                                    <span class="badge bg-info">3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bildirimler -->
+            <div class="tab-pane fade" id="notifications" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-bell me-2"></i>Bildirim Ayarları</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="notificationSettingsForm">
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-envelope me-2"></i>E-posta Bildirimleri</h6>
+                                        <div class="setting-item">
+                                            <div>
+                                                <div class="setting-label">Sipariş Bildirimleri</div>
+                                                <div class="setting-description">Yeni sipariş ve güncellemeler</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="emailOrders" checked>
+                                            </div>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div>
+                                                <div class="setting-label">Üretim Bildirimleri</div>
+                                                <div class="setting-description">Üretim durumu değişiklikleri</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="emailProduction" checked>
+                                            </div>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div>
+                                                <div class="setting-label">Hata Bildirimleri</div>
+                                                <div class="setting-description">Sistem hataları ve uyarılar</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="emailErrors" checked>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-mobile-alt me-2"></i>Push Bildirimleri</h6>
+                                        <div class="setting-item">
+                                            <div>
+                                                <div class="setting-label">Mobil Bildirimler</div>
+                                                <div class="setting-description">Telefon ve tablet bildirimleri</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="pushMobile" checked>
+                                            </div>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div>
+                                                <div class="setting-label">Masaüstü Bildirimleri</div>
+                                                <div class="setting-description">Tarayıcı bildirimleri</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="pushDesktop" checked>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h6><i class="fas fa-clock me-2"></i>Bildirim Zamanlaması</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="notificationStart" class="form-label">Başlangıç Saati</label>
+                                                    <input type="time" class="form-control" id="notificationStart" value="08:00">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="notificationEnd" class="form-label">Bitiş Saati</label>
+                                                    <input type="time" class="form-control" id="notificationEnd" value="18:00">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="weekendNotifications">
+                                                <label class="form-check-label" for="weekendNotifications">
+                                                    Hafta sonu bildirimleri
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-save" onclick="saveNotificationSettings()">
+                                            <i class="fas fa-save me-1"></i>Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-history me-2"></i>Bildirim Geçmişi</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Bugün Gönderilen</div>
+                                        <div class="setting-description">E-posta bildirimleri</div>
+                                    </div>
+                                    <span class="badge bg-info">12</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Bu Hafta</div>
+                                        <div class="setting-description">Toplam bildirim</div>
+                                    </div>
+                                    <span class="badge bg-primary">89</span>
+                                </div>
+                                <div class="setting-item">
+                                    <div>
+                                        <div class="setting-label">Başarı Oranı</div>
+                                        <div class="setting-description">Teslim edilen bildirimler</div>
+                                    </div>
+                                    <span class="badge bg-success">%98.5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            updateSystemStatus();
+        });
+
+        // Ayarları yükle
+        function loadSettings() {
+            // Genel ayarlar
+            const generalSettings = JSON.parse(localStorage.getItem('generalSettings') || '{}');
+            if (generalSettings.companyName) document.getElementById('companyName').value = generalSettings.companyName;
+            if (generalSettings.companyCode) document.getElementById('companyCode').value = generalSettings.companyCode;
+            if (generalSettings.companyAddress) document.getElementById('companyAddress').value = generalSettings.companyAddress;
+            if (generalSettings.timezone) document.getElementById('timezone').value = generalSettings.timezone;
+            if (generalSettings.dateFormat) document.getElementById('dateFormat').value = generalSettings.dateFormat;
+            if (generalSettings.language) document.getElementById('language').value = generalSettings.language;
+
+            // Kullanıcı ayarları
+            const userSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+            if (userSettings.userName) document.getElementById('userName').value = userSettings.userName;
+            if (userSettings.userEmail) document.getElementById('userEmail').value = userSettings.userEmail;
+            if (userSettings.userRole) document.getElementById('userRole').value = userSettings.userRole;
+
+            // Sistem ayarları
+            const systemSettings = JSON.parse(localStorage.getItem('systemSettings') || '{}');
+            if (systemSettings.maxConnections) document.getElementById('maxConnections').value = systemSettings.maxConnections;
+            if (systemSettings.cacheSize) document.getElementById('cacheSize').value = systemSettings.cacheSize;
+            if (systemSettings.logLevel) document.getElementById('logLevel').value = systemSettings.logLevel;
+            if (systemSettings.backupFrequency) document.getElementById('backupFrequency').value = systemSettings.backupFrequency;
+            if (systemSettings.backupRetention) document.getElementById('backupRetention').value = systemSettings.backupRetention;
+
+            // Bildirim ayarları
+            const notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
+            if (notificationSettings.emailOrders !== undefined) document.getElementById('emailOrders').checked = notificationSettings.emailOrders;
+            if (notificationSettings.emailProduction !== undefined) document.getElementById('emailProduction').checked = notificationSettings.emailProduction;
+            if (notificationSettings.emailErrors !== undefined) document.getElementById('emailErrors').checked = notificationSettings.emailErrors;
+            if (notificationSettings.pushMobile !== undefined) document.getElementById('pushMobile').checked = notificationSettings.pushMobile;
+            if (notificationSettings.pushDesktop !== undefined) document.getElementById('pushDesktop').checked = notificationSettings.pushDesktop;
+            if (notificationSettings.notificationStart) document.getElementById('notificationStart').value = notificationSettings.notificationStart;
+            if (notificationSettings.notificationEnd) document.getElementById('notificationEnd').value = notificationSettings.notificationEnd;
+            if (notificationSettings.weekendNotifications !== undefined) document.getElementById('weekendNotifications').checked = notificationSettings.weekendNotifications;
+        }
+
+        // Genel ayarları kaydet
+        function saveGeneralSettings() {
+            const settings = {
+                companyName: document.getElementById('companyName').value,
+                companyCode: document.getElementById('companyCode').value,
+                companyAddress: document.getElementById('companyAddress').value,
+                timezone: document.getElementById('timezone').value,
+                dateFormat: document.getElementById('dateFormat').value,
+                language: document.getElementById('language').value
+            };
+            
+            localStorage.setItem('generalSettings', JSON.stringify(settings));
+            showAlert('Genel ayarlar başarıyla kaydedildi!', 'success');
+            updateLastUpdate();
+        }
+
+        // Kullanıcı ayarlarını kaydet
+        function saveUserSettings() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword && newPassword !== confirmPassword) {
+                showAlert('Yeni şifreler eşleşmiyor!', 'danger');
+                return;
+            }
+
+            const settings = {
+                userName: document.getElementById('userName').value,
+                userEmail: document.getElementById('userEmail').value,
+                userRole: document.getElementById('userRole').value
+            };
+
+            if (newPassword) {
+                settings.password = newPassword;
+            }
+
+            localStorage.setItem('userSettings', JSON.stringify(settings));
+            showAlert('Kullanıcı ayarları başarıyla kaydedildi!', 'success');
+            updateLastUpdate();
+        }
+
+        // Sistem ayarlarını kaydet
+        function saveSystemSettings() {
+            const settings = {
+                maxConnections: parseInt(document.getElementById('maxConnections').value),
+                cacheSize: parseInt(document.getElementById('cacheSize').value),
+                logLevel: document.getElementById('logLevel').value,
+                backupFrequency: document.getElementById('backupFrequency').value,
+                backupRetention: parseInt(document.getElementById('backupRetention').value)
+            };
+
+            localStorage.setItem('systemSettings', JSON.stringify(settings));
+            showAlert('Sistem ayarları başarıyla kaydedildi!', 'success');
+            updateLastUpdate();
+        }
+
+        // Bildirim ayarlarını kaydet
+        function saveNotificationSettings() {
+            const settings = {
+                emailOrders: document.getElementById('emailOrders').checked,
+                emailProduction: document.getElementById('emailProduction').checked,
+                emailErrors: document.getElementById('emailErrors').checked,
+                pushMobile: document.getElementById('pushMobile').checked,
+                pushDesktop: document.getElementById('pushDesktop').checked,
+                notificationStart: document.getElementById('notificationStart').value,
+                notificationEnd: document.getElementById('notificationEnd').value,
+                weekendNotifications: document.getElementById('weekendNotifications').checked
+            };
+
+            localStorage.setItem('notificationSettings', JSON.stringify(settings));
+            showAlert('Bildirim ayarları başarıyla kaydedildi!', 'success');
+            updateLastUpdate();
+        }
+
+        // Sistem durumunu güncelle
+        function updateSystemStatus() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleString('tr-TR');
+            document.getElementById('lastLogin').textContent = now.toLocaleString('tr-TR');
+        }
+
+        // Son güncelleme zamanını güncelle
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleString('tr-TR');
+        }
+
+        // Alert göster
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHTML = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show alert-custom" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+            
+            // 5 saniye sonra otomatik kapat
+            setTimeout(() => {
+                const alertElement = document.getElementById(alertId);
+                if (alertElement) {
+                    const bsAlert = new bootstrap.Alert(alertElement);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        // Geri dön
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
+

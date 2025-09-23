@@ -527,6 +527,52 @@ body {
     z-index: 1050;
 }
 
+/* Alert modal - En üstte göster */
+#alertModal {
+    z-index: 10002 !important;
+}
+
+#alertModal .modal-dialog {
+    z-index: 10003 !important;
+}
+
+#alertModal .modal-content {
+    z-index: 10004 !important;
+}
+
+/* Diğer modal'lar için z-index artırma */
+.modal:not(#alertModal) {
+    z-index: 1060 !important;
+}
+
+.modal:not(#alertModal) .modal-dialog {
+    z-index: 1061 !important;
+}
+
+.modal:not(#alertModal) .modal-content {
+    z-index: 1062 !important;
+}
+
+/* Modal backdrop z-index artırma */
+.modal-backdrop {
+    z-index: 1055 !important;
+}
+
+/* Modal backdrop temizleme için */
+.modal-backdrop.fade {
+    opacity: 0;
+}
+
+.modal-backdrop.show {
+    opacity: 0.5;
+}
+
+/* Modal kapandıktan sonra body'yi temizle */
+body.modal-open {
+    overflow: hidden;
+    padding-right: 0 !important;
+}
+
 /* Body modal state fix */
 body.modal-open {
     overflow: hidden;

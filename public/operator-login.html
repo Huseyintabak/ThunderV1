@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operatör Girişi - Thunder Production</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .login-header h2 {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .login-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .login-body {
+            padding: 2rem;
+        }
+        
+        .form-floating {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-back {
+            background: #6c757d;
+            border: none;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-back:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .operator-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 16px 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="login-container">
+                    <div class="login-header">
+                        <i class="fas fa-user-cog fa-3x mb-3"></i>
+                        <h2>Operatör Girişi</h2>
+                        <p>Üretim paneline erişim için giriş yapın</p>
+                    </div>
+                    
+                    <div class="login-body">
+                        <form id="operatorLoginForm">
+                            <div class="form-floating">
+                                <select class="form-select operator-select" id="operatorSelect" required>
+                                    <option value="">Operatör seçiniz...</option>
+                                    <option value="thunder-serisi">Thunder Serisi Operatör</option>
+                                    <option value="thunderpro-serisi">ThunderPRO Serisi Operatör</option>
+                                    <option value="thunderx-serisi">ThunderX Serisi Operatör</option>
+                                </select>
+                                <label for="operatorSelect">
+                                    <i class="fas fa-user me-2"></i>Operatör
+                                </label>
+                            </div>
+                            
+                            <div class="form-floating">
+                                <input type="password" class="form-control" id="operatorPassword" placeholder="Şifre" required>
+                                <label for="operatorPassword">
+                                    <i class="fas fa-lock me-2"></i>Şifre
+                                </label>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-login">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Giriş Yap
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center mt-3">
+                            <a href="index.html" class="btn-back">
+                                <i class="fas fa-arrow-left me-1"></i>Ana Sayfaya Dön
+                            </a>
+                        </div>
+                        
+                        <div id="alertContainer" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Operatör girişi
+        document.getElementById('operatorLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const operatorSelect = document.getElementById('operatorSelect');
+            const password = document.getElementById('operatorPassword');
+            const alertContainer = document.getElementById('alertContainer');
+            
+            // Alert container'ı temizle
+            alertContainer.innerHTML = '';
+            
+            // Validasyon
+            if (!operatorSelect.value) {
+                showAlert('Lütfen bir operatör seçiniz!', 'warning');
+                return;
+            }
+            
+            if (!password.value) {
+                showAlert('Lütfen şifrenizi giriniz!', 'warning');
+                return;
+            }
+            
+            try {
+                // Operatör bilgilerini veritabanından al
+                const response = await fetch('/api/operators');
+                if (!response.ok) {
+                    throw new Error('Operatör bilgileri alınamadı');
+                }
+                
+                const operators = await response.json();
+                const selectedOperator = operators.find(op => op.id == operatorSelect.value);
+                
+                if (!selectedOperator) {
+                    showAlert('Seçilen operatör bulunamadı!', 'danger');
+                    return;
+                }
+                
+                // Basit şifre kontrolü (gerçek uygulamada operatör tablosunda şifre alanı olmalı)
+                if (password.value !== '123456') {
+                    showAlert('Hatalı şifre! Varsayılan şifre: 123456', 'danger');
+                    return;
+                }
+                
+                // Operatör bilgilerini localStorage'a kaydet
+                const operatorInfo = {
+                    id: selectedOperator.id,
+                    name: selectedOperator.name,
+                    email: selectedOperator.email,
+                    role: selectedOperator.role,
+                    loginTime: new Date().toISOString()
+                };
+                
+                localStorage.setItem('currentOperator', JSON.stringify(operatorInfo));
+                
+                // Başarı mesajı
+                showAlert('Giriş başarılı! Yönlendiriliyorsunuz...', 'success');
+                
+                // 2 saniye sonra operatör üretim paneline yönlendir
+                setTimeout(() => {
+                    window.location.href = 'operator-production.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Operatör girişi hatası:', error);
+                showAlert('Operatör bilgileri alınamadı: ' + error.message, 'danger');
+            }
+        });
+        
+        // Alert gösterme fonksiyonu
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertClass = type === 'success' ? 'alert-success' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-danger';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+        
+        // Sayfa yüklendiğinde operatör girişi kontrolü ve operatörleri yükle
+        window.addEventListener('load', async function() {
+            const currentOperator = localStorage.getItem('currentOperator');
+            if (currentOperator) {
+                // Eğer zaten giriş yapılmışsa operatör paneline yönlendir
+                window.location.href = 'operator-production.html';
+                return;
+            }
+            
+            // Operatörleri veritabanından yükle
+            await loadOperators();
+        });
+        
+        // Operatörleri yükle
+        async function loadOperators() {
+            try {
+                const response = await fetch('/api/operators');
+                if (!response.ok) {
+                    throw new Error('Operatörler yüklenemedi');
+                }
+                
+                const operators = await response.json();
+                const operatorSelect = document.getElementById('operatorSelect');
+                
+                // Mevcut seçenekleri temizle (ilk seçenek hariç)
+                operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+                
+                // Operatörleri dropdown'a ekle
+                operators.forEach(operator => {
+                    const option = document.createElement('option');
+                    option.value = operator.id;
+                    option.textContent = operator.name;
+                    operatorSelect.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Operatörler yükleme hatası:', error);
+                showAlert('Operatörler yüklenemedi: ' + error.message, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>

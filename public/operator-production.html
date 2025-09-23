@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operatör Üretim Paneli - Thunder Production</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.5rem;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            padding: 1.5rem;
+        }
+        
+        .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .stats-card .card-body {
+            padding: 1.5rem;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        .product-card {
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        
+        .product-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
+        }
+        
+        .product-card .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 13px 13px 0 0;
+            padding: 1rem;
+        }
+        
+        .product-card .card-body {
+            padding: 1.5rem;
+        }
+        
+        .product-card .card-footer {
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            border-radius: 0 0 13px 13px;
+            padding: 1rem;
+        }
+        
+        .btn-start-production {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn-start-production:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+        
+        .btn-logout {
+            background: #dc3545;
+            border: none;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-logout:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+            color: white;
+        }
+        
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            border: none;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .table tbody td {
+            border: none;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: middle;
+        }
+        
+        .badge {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 20px;
+        }
+        
+        .loading-spinner {
+            display: none;
+        }
+        
+        .section-title {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-industry me-2"></i>Operatör Üretim Paneli
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="operatorDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-1"></i><span id="operatorName">Operatör</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="logout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <!-- İstatistikler -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="stats-number" id="plannedOrdersCount">0</h3>
+                        <p class="stats-label">Planlanan Siparişler</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="stats-number" id="activeProductionsCount">0</h3>
+                        <p class="stats-label">Aktif Üretimler</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="stats-number" id="totalProductsCount">0</h3>
+                        <p class="stats-label">Toplam Ürün</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="stats-number" id="completedTodayCount">0</h3>
+                        <p class="stats-label">Bugün Tamamlanan</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Planlanan Siparişler ve Aktif Üretimler -->
+        <div class="row mb-4">
+            <!-- Planlanan Siparişler -->
+            <div class="col-lg-6 col-md-12 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clipboard-list me-2"></i>Planlanan Siparişler</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner text-center py-4" id="plannedOrdersLoading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="plannedOrdersTable" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">Sipariş No</th>
+                                        <th style="width: 15%;">Müşteri</th>
+                                        <th style="width: 10%;">Miktar</th>
+                                        <th style="width: 15%;">Teslim Tarihi</th>
+                                        <th style="width: 10%;">Öncelik</th>
+                                        <th style="width: 10%;">Durum</th>
+                                        <th style="width: 20%;">Üretim</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="plannedOrdersBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="plannedOrdersEmpty" style="display: none;">
+                            <i class="fas fa-clipboard-list"></i>
+                            <h5>Planlanan sipariş bulunmuyor</h5>
+                            <p>Henüz size atanmış planlanan sipariş bulunmuyor.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aktif Üretimler -->
+            <div class="col-lg-6 col-md-12 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-cogs me-2"></i>Aktif Üretimler</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner text-center py-4" id="activeProductionsLoading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                    <div class="table-responsive" id="activeProductionsTable" style="display: none;">
+                        <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                    <th>ID</th>
+                                    <th>Ürün</th>
+                                    <th>Planlanan</th>
+                                    <th>Üretilen</th>
+                                        <th>İlerleme</th>
+                                        <th>Başlangıç</th>
+                                    <th>Aşama</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activeProductionsBody">
+                                <!-- Aktif üretimler buraya yüklenecek -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="activeProductionsEmpty" style="display: none;">
+                            <i class="fas fa-cogs"></i>
+                            <h5>Aktif üretim bulunmuyor</h5>
+                            <p>Şu anda devam eden üretim bulunmuyor.</p>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yarıda Kalan Üretimler -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-pause-circle me-2"></i>Yarıda Kalan Üretimler</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner text-center py-4" id="pausedProductionsLoading">
+                            <div class="spinner-border text-warning" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="pausedProductionsTable" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">Üretim ID</th>
+                                        <th style="width: 20%;">Ürün Adı</th>
+                                        <th style="width: 10%;">Hedef</th>
+                                        <th style="width: 10%;">Üretilen</th>
+                                        <th style="width: 15%;">İlerleme</th>
+                                        <th style="width: 15%;">Duraklatma</th>
+                                        <th style="width: 15%;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pausedProductionsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="pausedProductionsEmpty" style="display: none;">
+                            <i class="fas fa-pause-circle"></i>
+                            <h5>Yarıda kalan üretim bulunmuyor</h5>
+                            <p>Şu anda duraklatılmış üretim bulunmuyor.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Üreteceği Ürünler -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-boxes me-2"></i>Üreteceği Ürünler</h5>
+                        <small class="text-muted">Aktif Üretimler tabından bir üretim seçin</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner text-center py-4" id="productsLoading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                        <div class="row" id="productsContainer" style="display: none;">
+                            <!-- Ürün kartları buraya yüklenecek -->
+                        </div>
+                        <div class="empty-state" id="productsEmpty" style="display: none;">
+                            <i class="fas fa-boxes"></i>
+                            <h5>Üretilecek ürün bulunmuyor</h5>
+                            <p>Henüz size atanmış üretilecek ürün bulunmuyor.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bugün Tamamlanan Üretimler -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-check-circle me-2"></i>Bugün Tamamlanan Üretimler</h5>
+                        <small class="text-light">Sadece bugün tamamladığınız üretimler gösterilmektedir</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner text-center py-4" id="completedProductionsLoading">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="completedProductionsTable" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">Üretim ID</th>
+                                        <th style="width: 20%;">Ürün Adı</th>
+                                        <th style="width: 10%;">Hedef</th>
+                                        <th style="width: 10%;">Üretilen</th>
+                                        <th style="width: 15%;">İlerleme</th>
+                                        <th style="width: 15%;">Bugün Tamamlanma</th>
+                                        <th style="width: 15%;">Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="completedProductionsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="completedProductionsEmpty" style="display: none;">
+                            <i class="fas fa-check-circle"></i>
+                            <h5>Bugün tamamlanan üretim bulunmuyor</h5>
+                            <p>Bugün henüz tamamladığınız üretim bulunmuyor. Üretimlerinizi tamamladığınızda burada görünecektir.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Üretim Modal -->
+    <div class="modal fade" id="productionModal" tabindex="-1" aria-labelledby="productionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="productionModalLabel">
+                        <i class="fas fa-cogs me-2"></i>Üretim Süreci
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted">Ürün Bilgileri</h6>
+                                <div class="card product-card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-box me-2"></i><span id="modalProductName">-</span>
+                                        </h6>
+                                            </div>
+                                    <div class="card-body">
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Ürün Kodu:</strong>
+                                                <div class="text-primary fw-bold" id="modalProductCode">-</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Miktar:</strong>
+                                                <div class="text-success fw-bold" id="modalTargetQuantity">-</div>
+                                            </div>
+                                            </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Sipariş No:</strong>
+                                                <div class="text-muted small" id="modalOrderNumber">-</div>
+                                        </div>
+                                            <div class="col-6">
+                                                <strong>Müşteri:</strong>
+                                                <div class="text-muted small" id="modalCustomerName">-</div>
+                                            </div>
+                                            </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Plan ID:</strong>
+                                                <div class="text-info small" id="modalPlanId">-</div>
+                                        </div>
+                                            <div class="col-6">
+                                                <strong>Öncelik:</strong>
+                                                <span class="badge" id="modalPriority">-</span>
+                                                </div>
+                                                </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Teslim Tarihi:</strong>
+                                                <div class="text-muted small" id="modalDeliveryDate">-</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Üretilen:</strong>
+                                                <div class="text-info fw-bold" id="modalProducedQuantity">-</div>
+                                        </div>
+                                    </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>İlerleme:</strong>
+                                                <div class="progress" style="height: 8px;">
+                                                    <div class="progress-bar" id="modalProgressBar" style="width: 0%"></div>
+                                </div>
+                                                <small class="text-muted" id="modalProgressText">0%</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Operatör:</strong>
+                                                <div class="text-muted small" id="modalOperator">-</div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong>Ürün Detayı:</strong>
+                                            <div class="text-muted small" id="modalProductDetail">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">Barkod Okutma</h6>
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-barcode fa-3x text-primary mb-3"></i>
+                                        <h5>Ürün Barkodunu Okutun</h5>
+                                        <p class="text-muted">Barkod okuyucuyu kullanarak ürün barkodunu okutun</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="barcodeInput" class="form-label">Barkod</label>
+                                        <input type="text" class="form-control form-control-lg text-center" id="barcodeInput" 
+                                               placeholder="Barkod okuyucu ile okutun veya manuel girin" autofocus>
+                                        <div class="form-text">Barkod okuyucu otomatik olarak algılayacaktır</div>
+                                    </div>
+                                    
+                                    <!-- Üretim Adedi Girme Alanı -->
+                                    <div class="mb-3" id="quantityInputSection" style="display: none;">
+                                        <label for="quantityInput" class="form-label">Üretim Adedi</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control form-control-lg text-center" id="quantityInput" 
+                                                   placeholder="Üretilen adet sayısını girin" min="1" value="1">
+                                            <button class="btn btn-success" type="button" onclick="addProductionQuantity()">
+                                                <i class="fas fa-plus me-2"></i>Ekle
+                                            </button>
+                                        </div>
+                                        <div class="form-text">Barkod doğrulandıktan sonra üretim adedini girin</div>
+                                    </div>
+
+                                    <div class="alert alert-info" id="barcodeStatus" style="display: none;">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <span id="barcodeMessage">Barkod okutuldu, işleniyor...</span>
+                                    </div>
+
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                        <button class="btn btn-outline-secondary" onclick="clearBarcode()">
+                                            <i class="fas fa-times me-2"></i>Temizle
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Kapat
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="pauseProduction()" id="pauseBtn">
+                        <i class="fas fa-pause me-2"></i>Duraklat
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="resumeProduction()" id="resumeBtn" style="display: none;">
+                        <i class="fas fa-play me-2"></i>Devam Et
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="completeProduction()" id="completeBtn" disabled>
+                        <i class="fas fa-check-circle me-2"></i>Üretimi Tamamla
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="realtime-client.js"></script>
+    <script>
+        let currentOperator = null;
+        let realtimeClient = null;
+
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkOperatorLogin();
+            initializeRealtimeClient();
+            loadData();
+        });
+
+        // Operatör girişi kontrolü
+        async function checkOperatorLogin() {
+            const operatorData = localStorage.getItem('currentOperator');
+            if (!operatorData) {
+                window.location.href = 'operator-login.html';
+                return;
+            }
+
+            try {
+                currentOperator = JSON.parse(operatorData);
+                
+                // Operatör bilgilerini veritabanından doğrula
+                const response = await fetch('/api/operators');
+                if (!response.ok) {
+                    throw new Error('Operatör bilgileri alınamadı');
+                }
+                
+                const operators = await response.json();
+                const operator = operators.find(op => op.id == currentOperator.id);
+                
+                if (!operator) {
+                    // Operatör bulunamazsa giriş sayfasına yönlendir
+                    localStorage.removeItem('currentOperator');
+                    window.location.href = 'operator-login.html';
+                    return;
+                }
+                
+                // Güncel operatör bilgilerini göster
+                document.getElementById('operatorName').textContent = operator.name;
+                
+                // currentOperator'ı güncelle
+                currentOperator = {
+                    ...currentOperator,
+                    name: operator.name,
+                    email: operator.email,
+                    role: operator.role
+                };
+                
+            } catch (error) {
+                console.error('Operatör doğrulama hatası:', error);
+                localStorage.removeItem('currentOperator');
+                window.location.href = 'operator-login.html';
+            }
+        }
+
+        // Real-time client başlatma
+        function initializeRealtimeClient() {
+            if (typeof RealtimeClient !== 'undefined') {
+                realtimeClient = new RealtimeClient();
+                realtimeClient.connect();
+                
+                // Operatörü kaydet (eğer fonksiyon varsa)
+                if (currentOperator && typeof realtimeClient.registerOperator === 'function') {
+                    realtimeClient.registerOperator(currentOperator.id, currentOperator.name);
+                } else if (currentOperator) {
+                    console.log('RealtimeClient.registerOperator fonksiyonu bulunamadı, operatör bilgisi:', currentOperator);
+                }
+            } else {
+                console.log('RealtimeClient bulunamadı');
+            }
+        }
+
+        // Verileri yükle
+        async function loadData() {
+            await Promise.all([
+                loadPlannedOrders(),
+                loadActiveProductions(),
+                loadPausedProductions(),
+                loadCompletedProductions(),
+                loadProducts()
+            ]);
+        }
+
+        // Planlanan siparişleri yükle (Üretim Planlarından)
+        async function loadPlannedOrders() {
+            try {
+                showLoading('plannedOrdersLoading', true);
+                
+                // Üretim planlarını yükle
+                const response = await fetch('/api/production-plans');
+                if (!response.ok) throw new Error('Üretim planları yüklenemedi');
+                
+                const plans = await response.json();
+                console.log('Tüm planlar:', plans);
+                console.log('Mevcut operatör:', currentOperator.name);
+                
+                // Tüm planları göster (operatör filtresi kaldırıldı)
+                const plannedOrders = plans.filter(plan => 
+                    plan.status === 'draft' || plan.status === 'approved'
+                );
+                
+                console.log('Filtrelenmiş planlar:', plannedOrders);
+                
+                updateStats('plannedOrdersCount', plannedOrders.length);
+                await displayPlannedOrders(plannedOrders);
+                
+            } catch (error) {
+                console.error('Planlanan siparişler yükleme hatası:', error);
+                showEmpty('plannedOrdersEmpty', true);
+            } finally {
+                showLoading('plannedOrdersLoading', false);
+            }
+        }
+
+        // Aktif üretimleri yükle
+        async function loadActiveProductions() {
+            try {
+                showLoading('activeProductionsLoading', true);
+                
+                const response = await fetch('/api/active-productions');
+                if (!response.ok) throw new Error('Aktif üretimler yüklenemedi');
+                
+                const productions = await response.json();
+                console.log('Tüm aktif üretimler:', productions);
+                console.log('Mevcut operatör:', currentOperator.name);
+                
+                const activeProductions = productions.filter(production => 
+                    production.assigned_operator === currentOperator.name &&
+                    production.status !== 'completed'
+                );
+                
+                console.log('Filtrelenmiş aktif üretimler:', activeProductions);
+                
+                updateStats('activeProductionsCount', activeProductions.length);
+                displayActiveProductions(activeProductions);
+                
+            } catch (error) {
+                console.error('Aktif üretimler yükleme hatası:', error);
+                showEmpty('activeProductionsEmpty', true);
+            } finally {
+                showLoading('activeProductionsLoading', false);
+            }
+        }
+
+        // Ürünleri yükle (Başlangıçta boş)
+        async function loadProducts() {
+            try {
+                showLoading('productsLoading', true);
+                
+                // Aktif üretimleri al
+                const response = await fetch('/api/active-productions');
+                if (!response.ok) throw new Error('Aktif üretimler yüklenemedi');
+                
+                const productions = await response.json();
+                console.log('Tüm aktif üretimler (loadProducts):', productions);
+                
+                // Sadece mevcut operatöre ait aktif üretimleri filtrele
+                const activeProductions = productions.filter(production => 
+                    production.assigned_operator === currentOperator.name &&
+                    production.status !== 'completed'
+                );
+                
+                if (activeProductions.length === 0) {
+                    console.log('Üreteceği Ürünler bölümü - aktif üretim yok');
+                    updateStats('totalProductsCount', 0);
+                    showEmpty('productsEmpty', true);
+                    return;
+                }
+                
+                // İlk aktif üretimi seç ve göster
+                const firstProduction = activeProductions[0];
+                console.log('İlk aktif üretim seçildi:', firstProduction);
+                await loadProductsForProduction(firstProduction);
+                
+            } catch (error) {
+                console.error('Ürünler yükleme hatası:', error);
+                showEmpty('productsEmpty', true);
+            } finally {
+                showLoading('productsLoading', false);
+            }
+        }
+
+        // Yarıda kalan üretimleri yükle
+        async function loadPausedProductions() {
+            try {
+                showLoading('pausedProductionsLoading', true);
+                
+                const response = await fetch('/api/active-productions');
+                if (!response.ok) throw new Error('Yarıda kalan üretimler yüklenemedi');
+                
+                const productions = await response.json();
+                const pausedProductions = productions.filter(production => 
+                    production.assigned_operator === currentOperator.name &&
+                    production.status === 'paused'
+                );
+                
+                displayPausedProductions(pausedProductions);
+                
+            } catch (error) {
+                console.error('Yarıda kalan üretimler yükleme hatası:', error);
+                showEmpty('pausedProductionsEmpty', true);
+            } finally {
+                showLoading('pausedProductionsLoading', false);
+            }
+        }
+
+        // Tamamlanan üretimleri yükle (sadece bugün)
+        async function loadCompletedProductions() {
+            try {
+                showLoading('completedProductionsLoading', true);
+                
+                const response = await fetch('/api/active-productions');
+                if (!response.ok) throw new Error('Tamamlanan üretimler yüklenemedi');
+                
+                const productions = await response.json();
+                
+                // Bugünün tarihini al
+                const today = new Date();
+                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+                
+                console.log('Bugün aralığı:', {
+                    start: todayStart.toISOString(),
+                    end: todayEnd.toISOString()
+                });
+                
+                const completedProductions = productions.filter(production => {
+                    // Operatör ve durum kontrolü
+                    if (production.assigned_operator !== currentOperator.name || production.status !== 'completed') {
+                        return false;
+                    }
+                    
+                    // Tamamlanma tarihi kontrolü
+                    if (production.completed_time) {
+                        const completedDate = new Date(production.completed_time);
+                        return completedDate >= todayStart && completedDate < todayEnd;
+                    }
+                    
+                    // Eğer completed_time yoksa updated_at kullan
+                    if (production.updated_at) {
+                        const updatedDate = new Date(production.updated_at);
+                        return updatedDate >= todayStart && updatedDate < todayEnd;
+                    }
+                    
+                    return false;
+                });
+                
+                console.log('Bugün tamamlanan üretimler:', completedProductions);
+                
+                // İstatistikleri güncelle
+                updateStats('completedTodayCount', completedProductions.length);
+                
+                displayCompletedProductions(completedProductions);
+                
+            } catch (error) {
+                console.error('Tamamlanan üretimler yükleme hatası:', error);
+                showEmpty('completedProductionsEmpty', true);
+            } finally {
+                showLoading('completedProductionsLoading', false);
+            }
+        }
+
+        // Planlanan siparişleri göster (Üretim Planlarından)
+        async function displayPlannedOrders(plans) {
+            const tbody = document.getElementById('plannedOrdersBody');
+            const table = document.getElementById('plannedOrdersTable');
+            const empty = document.getElementById('plannedOrdersEmpty');
+            
+            if (plans.length === 0) {
+                showEmpty('plannedOrdersEmpty', true);
+                return;
+            }
+            
+            // Her plan için sipariş detaylarını al
+            const plansWithOrderDetails = await Promise.all(plans.map(async (plan) => {
+                try {
+                    if (plan.order_id) {
+                        const response = await fetch(`/api/orders/${plan.order_id}`);
+                        if (response.ok) {
+                            const order = await response.json();
+                            
+                            // Sipariş detaylarından toplam miktarı hesapla
+                            let totalQuantity = 0;
+                            if (order.product_details && Array.isArray(order.product_details)) {
+                                totalQuantity = order.product_details.reduce((sum, product) => {
+                                    return sum + (parseInt(product.quantity) || 0);
+                                }, 0);
+                            }
+                            
+                            return {
+                                ...plan,
+                                customer_name: order.customer_name,
+                                priority: order.priority || 2, // Varsayılan olarak 2 (Orta)
+                                order_status: order.status, // Siparişin durumunu da ekle
+                                display_status: order.status, // Gösterim için sipariş durumunu kullan
+                                total_quantity: totalQuantity // Hesaplanan toplam miktar
+                            };
+                        }
+                    }
+                    return {
+                        ...plan,
+                        display_status: plan.status, // Plan durumunu fallback olarak kullan
+                        total_quantity: plan.total_quantity || 0
+                    };
+                } catch (error) {
+                    console.error('Sipariş detayları alınamadı:', error);
+                    return {
+                        ...plan,
+                        display_status: plan.status, // Plan durumunu fallback olarak kullan
+                        total_quantity: plan.total_quantity || 0
+                    };
+                }
+            }));
+            
+            tbody.innerHTML = plansWithOrderDetails.map(plan => `
+                <tr>
+                    <td><strong>${plan.plan_name || 'PLAN-' + plan.id}</strong></td>
+                    <td>${plan.customer_name || 'N/A'}</td>
+                    <td><span class="badge bg-info">${plan.total_quantity || 0} adet</span></td>
+                    <td>${formatDate(plan.end_date)}</td>
+                    <td><span class="badge ${getPriorityBadgeClass(plan.priority)}">${getPriorityText(plan.priority)}</span></td>
+                    <td><span class="badge ${getOrderStatusBadgeClass(plan.display_status)}">${getOrderStatusText(plan.display_status)}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-success btn-sm w-100" onclick="startProductionFromPlan(${plan.id}, '${plan.plan_name || 'PLAN-' + plan.id}', ${plan.total_quantity || 0})" title="Planı Kabul Et ve Üretime Başla">
+                            <i class="fas fa-check me-1"></i>Kabul Et
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            table.style.display = 'table';
+            empty.style.display = 'none';
+        }
+
+        // Aktif üretimleri göster
+        function displayActiveProductions(productions) {
+            console.log('displayActiveProductions çağrıldı:', productions);
+            const tbody = document.getElementById('activeProductionsBody');
+            const table = document.getElementById('activeProductionsTable');
+            const empty = document.getElementById('activeProductionsEmpty');
+            
+            if (productions.length === 0) {
+                console.log('Aktif üretim bulunamadı, empty state gösteriliyor');
+                showEmpty('activeProductionsEmpty', true);
+                return;
+            }
+            
+            console.log('Aktif üretimler gösteriliyor:', productions.length, 'adet');
+            
+            tbody.innerHTML = productions.map(production => {
+                const progress = production.planned_quantity > 0 ? 
+                    ((production.produced_quantity || 0) / production.planned_quantity) * 100 : 0;
+                
+                return `
+                    <tr>
+                        <td><strong>#${production.id}</strong></td>
+                        <td>${production.product_name || 'N/A'}</td>
+                        <td><span class="badge bg-primary">${production.planned_quantity || 0} adet</span></td>
+                        <td><span class="badge bg-success">${production.produced_quantity || 0} adet</span></td>
+                        <td>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" style="width: ${progress}%"></div>
+                            </div>
+                            <small class="text-muted">${progress.toFixed(1)}%</small>
+                        </td>
+                        <td>${formatDate(production.start_time)}</td>
+                        <td><span class="badge bg-warning">${production.current_stage || 'Aktif'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewProduction(${production.id})">
+                                <i class="fas fa-eye me-1"></i>Görüntüle
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            table.style.display = 'table';
+            empty.style.display = 'none';
+        }
+
+        // Yarıda kalan üretimleri göster
+        function displayPausedProductions(productions) {
+            console.log('displayPausedProductions çağrıldı:', productions);
+            const tbody = document.getElementById('pausedProductionsBody');
+            const table = document.getElementById('pausedProductionsTable');
+            const empty = document.getElementById('pausedProductionsEmpty');
+            
+            if (productions.length === 0) {
+                console.log('Yarıda kalan üretim bulunamadı, empty state gösteriliyor');
+                showEmpty('pausedProductionsEmpty', true);
+                return;
+            }
+            
+            console.log('Yarıda kalan üretimler gösteriliyor:', productions.length, 'adet');
+            
+            tbody.innerHTML = productions.map(production => {
+                const progress = production.planned_quantity > 0 ? 
+                    ((production.produced_quantity || 0) / production.planned_quantity) * 100 : 0;
+                
+                return `
+                    <tr>
+                        <td><strong>#${production.id}</strong></td>
+                        <td>${production.product_name || 'N/A'}</td>
+                        <td><span class="badge bg-primary">${production.planned_quantity || 0} adet</span></td>
+                        <td><span class="badge bg-success">${production.produced_quantity || 0} adet</span></td>
+                        <td>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-warning" style="width: ${progress}%"></div>
+                            </div>
+                            <small class="text-muted">${progress.toFixed(1)}%</small>
+                        </td>
+                        <td>
+                            <small class="text-muted">${formatDate(production.pause_time || production.updated_at)}</small>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="resumeProductionFromList(${production.id})" title="Devam Et">
+                                <i class="fas fa-play me-1"></i>Devam Et
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            table.style.display = 'table';
+            empty.style.display = 'none';
+        }
+
+        // Tamamlanan üretimleri göster (bugün)
+        function displayCompletedProductions(productions) {
+            console.log('displayCompletedProductions çağrıldı (bugün):', productions);
+            const tbody = document.getElementById('completedProductionsBody');
+            const table = document.getElementById('completedProductionsTable');
+            const empty = document.getElementById('completedProductionsEmpty');
+            
+            if (productions.length === 0) {
+                console.log('Bugün tamamlanan üretim bulunamadı, empty state gösteriliyor');
+                showEmpty('completedProductionsEmpty', true);
+                return;
+            }
+            
+            console.log('Bugün tamamlanan üretimler gösteriliyor:', productions.length, 'adet');
+            
+            tbody.innerHTML = productions.map(production => {
+                const progress = production.planned_quantity > 0 ? 
+                    ((production.produced_quantity || 0) / production.planned_quantity) * 100 : 0;
+                
+                return `
+                    <tr>
+                        <td><strong>#${production.id}</strong></td>
+                        <td>${production.product_name || 'N/A'}</td>
+                        <td><span class="badge bg-primary">${production.planned_quantity || 0} adet</span></td>
+                        <td><span class="badge bg-success">${production.produced_quantity || 0} adet</span></td>
+                        <td>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: 100%"></div>
+                            </div>
+                            <small class="text-muted">100%</small>
+                        </td>
+                        <td>
+                            <small class="text-muted">${formatDate(production.completed_time || production.updated_at)}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-success">Tamamlandı</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            table.style.display = 'table';
+            empty.style.display = 'none';
+        }
+
+        // Ürünleri göster
+        function displayProducts(products) {
+            const container = document.getElementById('productsContainer');
+            const empty = document.getElementById('productsEmpty');
+            
+            if (products.length === 0) {
+                showEmpty('productsEmpty', true);
+                return;
+            }
+            
+            let html = '';
+            products.forEach(product => {
+                        html += `
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="card product-card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-box me-2"></i>${product.name || 'Bilinmeyen Ürün'}
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Ürün Kodu:</strong>
+                                        <div class="text-primary fw-bold">${product.code || 'N/A'}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Miktar:</strong>
+                                        <div class="text-success fw-bold">${product.quantity || 0} adet</div>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Sipariş No:</strong>
+                                        <div class="text-muted small">${product.order_number || 'N/A'}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Müşteri:</strong>
+                                        <div class="text-muted small">${product.customer_name || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <strong>Plan ID:</strong>
+                                        <div class="text-info small">${product.plan_id || 'N/A'}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Öncelik:</strong>
+                                        <span class="badge ${getPriorityBadgeClass(product.priority)}">${getPriorityText(product.priority)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong>Teslim Tarihi:</strong>
+                                    <div class="text-muted small">${formatDate(product.delivery_date)}</div>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Ürün Detayı:</strong>
+                                    <div class="text-muted small">${product.name || 'N/A'}</div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                <button class="btn btn-start-production" onclick="startProductionProcess(${product.production_id})">
+                                            <i class="fas fa-play me-2"></i>Üretimi Başlat
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+            });
+            
+            container.innerHTML = html;
+            container.style.display = 'flex';
+            empty.style.display = 'none';
+        }
+
+        // Üretim başlat
+        function startProduction(orderId, productCode, quantity) {
+            if (confirm(`${productCode} ürünü için üretimi başlatmak istediğinizden emin misiniz?`)) {
+                // Burada üretim başlatma API'si çağrılacak
+                console.log('Üretim başlatılıyor:', { orderId, productCode, quantity });
+                alert('Üretim başlatıldı!');
+                loadData(); // Verileri yenile
+            }
+        }
+
+        
+        let currentProductionId = null;
+
+        // Üretim görüntüle ve Üreteceği Ürünler bölümünü güncelle
+        async function viewProduction(productionId) {
+            console.log('Üretim görüntüleniyor:', productionId);
+            
+            // Geçersiz ID kontrolü
+            if (!productionId || productionId === 'undefined' || productionId === 'null') {
+                console.error('Geçersiz üretim ID:', productionId);
+                alert('Geçersiz üretim ID!');
+                return;
+            }
+            
+            try {
+                // Aktif üretim detaylarını al
+                const response = await fetch(`/api/active-productions/${productionId}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API yanıt hatası:', response.status, errorText);
+                    throw new Error(`Üretim detayları alınamadı (${response.status}): ${errorText}`);
+                }
+                
+                const production = await response.json();
+                console.log('Üretim detayları:', production);
+                console.log('Plan ID:', production.plan_id);
+                
+                // Üreteceği Ürünler bölümünü bu üretimle güncelle
+                await loadProductsForProduction(production);
+                
+            } catch (error) {
+                console.error('Üretim detayları yükleme hatası:', error);
+                alert('Üretim detayları yüklenemedi: ' + error.message);
+            }
+        }
+        
+        // Belirli bir üretim için ürünleri yükle
+        async function loadProductsForProduction(production) {
+            try {
+                showLoading('productsLoading', true);
+                
+                // Sipariş detaylarını al
+                let productsWithDetails = [];
+                console.log('loadProductsForProduction çağrıldı, plan_id:', production.plan_id);
+                
+                // Plan ID varsa önce plan detaylarını al, sonra order_id'yi bul
+                if (production.plan_id) {
+                    try {
+                        console.log('Plan detayları alınıyor, plan_id:', production.plan_id);
+                        const planResponse = await fetch(`/api/production-plans/${production.plan_id}`);
+                        console.log('Plan response status:', planResponse.status);
+                        
+                        if (planResponse.ok) {
+                            const plan = await planResponse.json();
+                            console.log('Plan detayları:', plan);
+                            
+                            const orderId = plan.order_id;
+                            console.log('Plan\'dan alınan order_id:', orderId);
+                            
+                            if (orderId) {
+                                console.log('Sipariş detayları alınıyor, order_id:', orderId);
+                                const orderResponse = await fetch(`/api/orders/${orderId}`);
+                                console.log('Order response status:', orderResponse.status);
+                        
+                                if (orderResponse.ok) {
+                                    const order = await orderResponse.json();
+                                    console.log('Üretim için sipariş detayı:', order);
+                                    
+                                    if (order.product_details) {
+                                        let productDetails;
+                                        try {
+                                            productDetails = typeof order.product_details === 'string' 
+                                                ? JSON.parse(order.product_details) 
+                                                : order.product_details;
+                                        } catch (parseError) {
+                                            console.error('Product details parse hatası:', parseError);
+                                            productDetails = [];
+                                        }
+                                        
+                                        if (productDetails && productDetails.length > 0) {
+                                            productDetails.forEach(product => {
+                                                productsWithDetails.push({
+                                                    ...product,
+                                                    order_number: order.order_number,
+                                                    customer_name: order.customer_name,
+                                                    delivery_date: order.delivery_date,
+                                                    priority: order.priority,
+                                                    plan_id: production.plan_id,
+                                                    plan_name: production.product_name,
+                                                    production_id: production.id,
+                                                    planned_quantity: production.planned_quantity,
+                                                    produced_quantity: production.produced_quantity
+                                                });
+                                            });
+                                        }
+                                    }
+                                } else {
+                                    console.error('Sipariş detayları alınamadı:', orderResponse.status);
+                                }
+                            } else {
+                                console.error('Plan\'da order_id bulunamadı');
+                            }
+                        } else {
+                            console.error('Plan detayları alınamadı:', planResponse.status);
+                        }
+                    } catch (error) {
+                        console.error('Plan detayı alınamadı:', error);
+                    }
+                } else {
+                    console.error('Production\'da plan_id bulunamadı');
+                }
+                
+                console.log('Seçilen üretim ürün detayları:', productsWithDetails);
+                updateStats('totalProductsCount', productsWithDetails.length);
+                displayProducts(productsWithDetails);
+                
+            } catch (error) {
+                console.error('Ürünler yükleme hatası:', error);
+                showEmpty('productsEmpty', true);
+            } finally {
+                showLoading('productsLoading', false);
+            }
+        }
+
+        function startProductionProcess(productionId) {
+            currentProductionId = productionId;
+            console.log('Üretim süreci başlatılıyor:', productionId);
+            
+            // Modal'ı aç ve üretim bilgilerini yükle
+            loadProductionForModal(productionId);
+            const modal = new bootstrap.Modal(document.getElementById('productionModal'));
+            modal.show();
+        }
+
+        // Planı kabul et ve aktif üretim oluştur
+        async function startProductionFromPlan(planId, planName, quantity) {
+            try {
+                console.log('Plan kabul ediliyor:', planId, planName, quantity);
+                
+                // Plan durumunu 'approved' olarak güncelle
+                const updateResponse = await fetch(`/api/production-plans/${planId}/update-status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'approved' })
+                });
+
+                if (!updateResponse.ok) {
+                    throw new Error('Plan durumu güncellenemedi');
+                }
+
+                // Plan için aşamaları oluştur
+                const stagesResponse = await fetch(`/api/production-plans/${planId}/create-stages`, {
+                    method: 'POST'
+                });
+
+                if (!stagesResponse.ok) {
+                    console.warn('Aşamalar oluşturulamadı, devam ediliyor...');
+                }
+
+                // Aktif üretim oluştur
+                const productionResponse = await fetch('/api/active-productions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plan_id: planId,
+                        product_id: planId, // Zorunlu alan - plan_id'yi kullan
+                        product_name: planName,
+                        product_type: 'nihai', // Zorunlu alan
+                        planned_quantity: quantity,
+                        produced_quantity: 0,
+                        status: 'active',
+                        assigned_operator: 'Thunder Serisi Operatör',
+                        start_time: new Date().toISOString()
+                    })
+                });
+
+                if (!productionResponse.ok) {
+                    throw new Error('Aktif üretim oluşturulamadı');
+                }
+
+                const newProduction = await productionResponse.json();
+                console.log('Aktif üretim oluşturuldu:', newProduction);
+
+                // Sayfayı yenile
+                location.reload();
+
+            } catch (error) {
+                console.error('Plan kabul etme hatası:', error);
+                alert('Plan kabul edilemedi: ' + error.message);
+            }
+        }
+
+        // Modal için üretim bilgilerini yükle
+        async function loadProductionForModal(productionId) {
+            console.log('loadProductionForModal çağrıldı, productionId:', productionId);
+            
+            // Geçersiz ID kontrolü
+            if (!productionId || productionId === 'undefined' || productionId === 'null') {
+                console.error('Geçersiz üretim ID (modal):', productionId);
+                alert('Geçersiz üretim ID!');
+                return;
+            }
+            
+            try {
+                console.log('Aktif üretim detayları alınıyor, ID:', productionId);
+                const response = await fetch(`/api/active-productions/${productionId}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API yanıt hatası (modal):', response.status, errorText);
+                    throw new Error(`Üretim detayları alınamadı (${response.status}): ${errorText}`);
+                }
+                
+                const production = await response.json();
+                console.log('Modal için üretim detayları:', production);
+                
+                // Sipariş detaylarını al (plan_id üzerinden)
+                let productCode = production.product_name || 'N/A';
+                let orderNumber = '#' + production.id;
+                let planName = production.product_name || 'N/A'; // Plan adı için
+                let customerName = 'N/A';
+                let deliveryDate = 'N/A';
+                let priority = 'Belirtilmemiş';
+                let productDetail = production.product_name || 'N/A';
+                let orderPriority = 0; // order değişkenini scope dışında tanımla
+                
+                if (production.plan_id) {
+                    try {
+                        console.log('Plan detayları alınıyor (modal), plan_id:', production.plan_id);
+                        const planResponse = await fetch(`/api/production-plans/${production.plan_id}`);
+                        console.log('Plan response status (modal):', planResponse.status);
+                        if (planResponse.ok) {
+                            const plan = await planResponse.json();
+                            console.log('Plan detayları (modal):', plan);
+
+                            const orderId = plan.order_id;
+                            console.log('Plan\'dan alınan order_id (modal):', orderId);
+                            if (orderId) {
+                                console.log('Sipariş detayları alınıyor (modal), order_id:', orderId);
+                                const orderResponse = await fetch(`/api/orders/${orderId}`);
+                                console.log('Order response status (modal):', orderResponse.status);
+                                if (orderResponse.ok) {
+                                    const order = await orderResponse.json();
+                                    console.log('Sipariş detayları (modal):', order);
+                            
+                            // Ürün kodunu product_details'den al
+                            if (order.product_details) {
+                                let productDetails;
+                                try {
+                                    // product_details string ise parse et
+                                    productDetails = typeof order.product_details === 'string' 
+                                        ? JSON.parse(order.product_details) 
+                                        : order.product_details;
+                                } catch (parseError) {
+                                    console.error('Product details parse hatası:', parseError);
+                                    productDetails = [];
+                                }
+                                
+                                if (productDetails && productDetails.length > 0) {
+                                    productCode = productDetails[0].code || production.product_name || 'N/A';
+                                    productDetail = productDetails[0].name || production.product_name || 'N/A';
+                                }
+                            }
+                                    orderNumber = order.order_number || '#' + production.id;
+                                    customerName = order.customer_name || 'N/A';
+                                    deliveryDate = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('tr-TR') : 'N/A';
+                                    orderPriority = order.priority || 0;
+                                    priority = getPriorityText(orderPriority);
+                                    // Plan adını oluştur: Plan-{plan_id}-{customer_name}
+                                    planName = `Plan-${production.plan_id}-${order.customer_name || 'UNKNOWN'}`;
+                                } else {
+                                    console.error('Sipariş detayları alınamadı (modal), status:', orderResponse.status);
+                                }
+                            } else {
+                                console.error('Plan\'da order_id bulunamadı (modal)');
+                            }
+                        } else {
+                            console.error('Plan detayları alınamadı (modal), status:', planResponse.status);
+                        }
+                    } catch (error) {
+                        console.error('Sipariş detayları alınamadı (modal):', error);
+                    }
+                }
+                
+                // Modal alanlarını doldur (detaylı kart tasarımına uygun)
+                document.getElementById('modalProductName').textContent = productDetail; // Ürün adı (header'da)
+                document.getElementById('modalProductCode').textContent = productCode; // Ürün kodu
+                document.getElementById('modalOrderNumber').textContent = orderNumber; // Sipariş no
+                document.getElementById('modalCustomerName').textContent = customerName; // Müşteri
+                document.getElementById('modalPlanId').textContent = production.plan_id || 'N/A'; // Plan ID
+                document.getElementById('modalPriority').textContent = priority; // Öncelik
+                document.getElementById('modalPriority').className = `badge ${getPriorityBadgeClass(orderPriority)}`; // Öncelik badge sınıfı
+                document.getElementById('modalDeliveryDate').textContent = deliveryDate; // Teslim tarihi
+                document.getElementById('modalTargetQuantity').textContent = (production.planned_quantity || 0) + ' adet'; // Miktar
+                document.getElementById('modalProducedQuantity').textContent = (production.produced_quantity || 0) + ' adet'; // Üretilen
+                document.getElementById('modalOperator').textContent = production.assigned_operator || 'N/A'; // Operatör
+                document.getElementById('modalProductDetail').textContent = productDetail; // Ürün detayı
+                
+                // İlerleme çubuğunu güncelle
+                const progress = production.planned_quantity > 0 ? 
+                    ((production.produced_quantity || 0) / production.planned_quantity) * 100 : 0;
+                
+                document.getElementById('modalProgressBar').style.width = progress + '%';
+                document.getElementById('modalProgressText').textContent = progress.toFixed(1) + '%';
+                
+                // Üretimi Tamamla butonunu kontrol et
+                const completeBtn = document.getElementById('completeBtn');
+                const plannedQuantity = production.planned_quantity || 0;
+                const producedQuantity = production.produced_quantity || 0;
+                
+                if (producedQuantity >= plannedQuantity && plannedQuantity > 0) {
+                    completeBtn.disabled = false;
+                    completeBtn.className = 'btn btn-primary';
+                    completeBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Üretimi Tamamla';
+                } else {
+                    completeBtn.disabled = true;
+                    completeBtn.className = 'btn btn-secondary';
+                    const remaining = plannedQuantity - producedQuantity;
+                    completeBtn.innerHTML = `<i class="fas fa-lock me-2"></i>Üretimi Tamamla (${remaining} adet eksik)`;
+                }
+                
+            } catch (error) {
+                console.error('Modal üretim bilgileri yükleme hatası:', error);
+                alert('Üretim bilgileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        // Barkod işleme
+        async function processBarcode() {
+            const barcodeInput = document.getElementById('barcodeInput');
+            const barcode = barcodeInput.value.trim();
+            
+            if (!barcode) {
+                showBarcodeStatus('Lütfen bir barkod giriniz!', 'warning');
+                return;
+            }
+            
+            showBarcodeStatus('Barkod doğrulanıyor...', 'info');
+            
+            try {
+                // Barkod veritabanından doğrula
+                const isValidBarcode = await validateBarcode(barcode);
+                
+                if (isValidBarcode) {
+                    showBarcodeStatus('Barkod geçerli! Üretim adedini girin.', 'success');
+                    
+                    // Üretim adedi girme alanını göster ve temizle
+                    showQuantityInput();
+                    const quantityInput = document.getElementById('quantityInput');
+                    quantityInput.value = '1';
+                    quantityInput.focus();
+                    
+                    // Barkod alanını temizle
+                    barcodeInput.value = '';
+                    
+                    // Üretimi Tamamla butonunu güncelle
+                    updateCompleteButton();
+                } else {
+                    showBarcodeStatus('Barkod geçersiz! Lütfen geçerli bir barkod okutun.', 'danger');
+                    barcodeInput.value = '';
+                    barcodeInput.focus();
+                }
+            } catch (error) {
+                console.error('Barkod doğrulama hatası:', error);
+                showBarcodeStatus('Barkod doğrulama hatası!', 'danger');
+            }
+        }
+        
+        // Üretim adedi girme alanını göster
+        function showQuantityInput() {
+            const quantitySection = document.getElementById('quantityInputSection');
+            const quantityInput = document.getElementById('quantityInput');
+            
+            if (quantitySection) {
+                quantitySection.style.display = 'block';
+                quantityInput.focus();
+                quantityInput.select();
+            }
+        }
+
+        // Üretimi Tamamla butonunu güncelle
+        function updateCompleteButton() {
+            if (!currentProductionId) return;
+            
+            // Mevcut üretim bilgilerini al
+            fetch(`/api/active-productions/${currentProductionId}`)
+                .then(response => response.json())
+                .then(production => {
+                    const completeBtn = document.getElementById('completeBtn');
+                    const plannedQuantity = production.planned_quantity || 0;
+                    const producedQuantity = production.produced_quantity || 0;
+                    
+                    if (producedQuantity >= plannedQuantity && plannedQuantity > 0) {
+                        completeBtn.disabled = false;
+                        completeBtn.className = 'btn btn-primary';
+                        completeBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Üretimi Tamamla';
+                    } else {
+                        completeBtn.disabled = true;
+                        completeBtn.className = 'btn btn-secondary';
+                        const remaining = plannedQuantity - producedQuantity;
+                        completeBtn.innerHTML = `<i class="fas fa-lock me-2"></i>Üretimi Tamamla (${remaining} adet eksik)`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Buton güncelleme hatası:', error);
+                });
+        }
+        
+        // Üretim adedi ekleme
+        async function addProductionQuantity() {
+            const quantityInput = document.getElementById('quantityInput');
+            const quantity = parseInt(quantityInput.value) || 1;
+            
+            if (quantity < 1) {
+                showBarcodeStatus('Lütfen geçerli bir adet girin!', 'warning');
+                return;
+            }
+            
+            // Mevcut üretim bilgilerini al ve miktar kontrolü yap
+            try {
+                const productionResponse = await fetch(`/api/active-productions/${currentProductionId}`);
+                if (!productionResponse.ok) {
+                    throw new Error('Üretim detayları alınamadı');
+                }
+                const production = await productionResponse.json();
+                
+                const plannedQuantity = production.planned_quantity || 0;
+                const currentProduced = production.produced_quantity || 0;
+                const newTotal = currentProduced + quantity;
+                
+                if (newTotal > plannedQuantity) {
+                    const remaining = plannedQuantity - currentProduced;
+                    showBarcodeStatus(`Hata! Planlanan miktar: ${plannedQuantity} adet, Mevcut üretim: ${currentProduced} adet. En fazla ${remaining} adet daha üretebilirsiniz!`, 'danger');
+                    return;
+                }
+                
+                showBarcodeStatus(`${quantity} adet üretim ekleniyor...`, 'info');
+                
+                // Üretim miktarını artır
+                await updateProducedQuantity(quantity);
+                
+                showBarcodeStatus(`${quantity} adet üretim başarıyla eklendi! Tekrar barkod okutun.`, 'success');
+                
+                // Alanları temizle ve gizle
+                quantityInput.value = '1';
+                hideQuantityInput();
+                
+                // Barkod alanına odaklan
+                const barcodeInput = document.getElementById('barcodeInput');
+                barcodeInput.focus();
+                
+                // Üretimi Tamamla butonunu güncelle
+                updateCompleteButton();
+                
+            } catch (error) {
+                console.error('Üretim adedi ekleme hatası:', error);
+                showBarcodeStatus('Üretim adedi eklenemedi!', 'danger');
+            }
+        }
+        
+        // Üretim adedi girme alanını gizle
+        function hideQuantityInput() {
+            const quantitySection = document.getElementById('quantityInputSection');
+            if (quantitySection) {
+                quantitySection.style.display = 'none';
+            }
+        }
+        
+        // Barkod doğrulama - Gerçek zamanlı veritabanı kontrolü
+        async function validateBarcode(barcode) {
+            try {
+                console.log('Barkod doğrulanıyor:', barcode);
+                
+                // Gerçek zamanlı barkod kontrolü - veritabanından direkt kontrol
+                const response = await fetch(`/api/debug/product-barcodes?barcode=${barcode}`);
+                if (!response.ok) {
+                    console.error('Barkod kontrol API hatası:', response.status);
+                    return false;
+                }
+                
+                const data = await response.json();
+                console.log('Barkod kontrol sonucu:', data);
+                
+                // Nihai ürünlerde barkod var mı?
+                if (data.nihai_urunler && data.nihai_urunler.length > 0) {
+                    console.log('Nihai ürün barkod eşleşmesi bulundu:', data.nihai_urunler[0]);
+                    return true;
+                }
+                
+                // Yarımamul ürünlerde barkod var mı?
+                if (data.yarimamuller && data.yarimamuller.length > 0) {
+                    console.log('Yarımamul barkod eşleşmesi bulundu:', data.yarimamuller[0]);
+                    return true;
+                }
+                
+                console.log('Barkod eşleşmedi - veritabanında bulunamadı');
+                return false;
+            } catch (error) {
+                console.error('Barkod doğrulama hatası:', error);
+                return false;
+            }
+        }
+        
+        // Barkod durumu gösterme
+        function showBarcodeStatus(message, type) {
+            const statusDiv = document.getElementById('barcodeStatus');
+            const messageSpan = document.getElementById('barcodeMessage');
+            
+            if (statusDiv && messageSpan) {
+                statusDiv.className = `alert alert-${type}`;
+                messageSpan.textContent = message;
+                statusDiv.style.display = 'block';
+                
+                // 3 saniye sonra gizle
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Üretilen miktarı güncelle
+        async function updateProducedQuantity(additionalQuantity = 1) {
+            if (!currentProductionId) return;
+            
+            try {
+                // Mevcut üretim bilgilerini al
+                const response = await fetch(`/api/active-productions/${currentProductionId}`);
+                if (!response.ok) return;
+                
+                const production = await response.json();
+                const newProducedQuantity = (production.produced_quantity || 0) + additionalQuantity;
+                
+                // Veritabanında üretilen miktarı güncelle
+                const updateResponse = await fetch(`/api/active-productions/${currentProductionId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        produced_quantity: newProducedQuantity,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+                
+                if (!updateResponse.ok) {
+                    throw new Error('Üretim miktarı güncellenemedi');
+                }
+                
+                // UI'yi güncelle
+                document.getElementById('modalProducedQuantity').textContent = newProducedQuantity + ' adet';
+                
+                // İlerleme çubuğunu güncelle
+                const progress = production.planned_quantity > 0 ? 
+                    (newProducedQuantity / production.planned_quantity) * 100 : 0;
+                
+                document.getElementById('modalProgressBar').style.width = progress + '%';
+                document.getElementById('modalProgressText').textContent = progress.toFixed(1) + '%';
+                
+                // Hedef miktara ulaşıldı mı kontrol et
+                if (newProducedQuantity >= production.planned_quantity) {
+                    document.getElementById('barcodeMessage').textContent = '🎉 Hedef miktara ulaşıldı! Üretim tamamlanabilir.';
+                    document.getElementById('barcodeStatus').className = 'alert alert-success';
+                    
+                    // Barkod okutma alanını gizle
+                    document.getElementById('barcodeInput').style.display = 'none';
+                    document.getElementById('quantityInputSection').style.display = 'none';
+                    document.getElementById('barcodeStatus').style.display = 'block';
+                }
+                
+            } catch (error) {
+                console.error('Üretilen miktar güncelleme hatası:', error);
+                throw error; // Hata yukarıya fırlatılsın
+            }
+        }
+
+        // Barkod alanını temizle
+        function clearBarcode() {
+            document.getElementById('barcodeInput').value = '';
+            document.getElementById('barcodeStatus').style.display = 'none';
+            document.getElementById('barcodeInput').focus();
+        }
+
+        // Üretimi tamamla
+        async function completeProduction() {
+            if (!currentProductionId) return;
+            
+            try {
+                console.log('Üretim tamamlanıyor:', currentProductionId);
+                
+                // Önce üretim detaylarını al
+                const productionResponse = await fetch(`/api/active-productions/${currentProductionId}`);
+                if (!productionResponse.ok) {
+                    throw new Error('Üretim detayları alınamadı');
+                }
+                const production = await productionResponse.json();
+                
+                // Miktar kontrolü yap
+                const plannedQuantity = production.planned_quantity || 0;
+                const producedQuantity = production.produced_quantity || 0;
+                
+                console.log('Miktar kontrolü:', {
+                    planned: plannedQuantity,
+                    produced: producedQuantity
+                });
+                
+                if (producedQuantity < plannedQuantity) {
+                    const remaining = plannedQuantity - producedQuantity;
+                    alert(`Üretim tamamlanamaz!\n\nPlanlanan miktar: ${plannedQuantity} adet\nÜretilen miktar: ${producedQuantity} adet\nEksik miktar: ${remaining} adet\n\nLütfen eksik miktarı üretin.`);
+                    return;
+                }
+                
+                if (confirm(`Üretimi tamamlamak istediğinizden emin misiniz?\n\nPlanlanan: ${plannedQuantity} adet\nÜretilen: ${producedQuantity} adet`)) {
+                    
+                    // Üretim durumunu "completed" olarak güncelle
+                    const response = await fetch(`/api/active-productions/${currentProductionId}/complete`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            status: 'completed',
+                            completed_time: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        // Planlanan ürünlerde durumu güncelle
+                        if (production.plan_id) {
+                            await updateProductionPlanStatus(production.plan_id, 'completed');
+                            
+                            // Sipariş durumunu da güncelle
+                            await updateOrderStatusFromPlan(production.plan_id, 'completed');
+                        }
+                        
+                        // Modal'ı kapat
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('productionModal'));
+                        modal.hide();
+                        
+                        // Verileri yenile
+                        loadData();
+                        
+                        alert('Üretim başarıyla tamamlandı! Planlanan ürünler ve sipariş durumu güncellendi.');
+                    } else {
+                        const error = await response.json();
+                        console.error('Üretim tamamlama hatası:', response.status, error);
+                        alert('Üretim tamamlanamadı: ' + (error.message || 'Bilinmeyen hata'));
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Üretim tamamlama hatası:', error);
+                alert('Üretim tamamlanırken hata oluştu: ' + error.message);
+            }
+        }
+
+        // Planlanan ürün durumunu güncelle
+        async function updateProductionPlanStatus(planId, status) {
+            try {
+                console.log('Plan durumu güncelleniyor:', planId, status);
+                
+                const response = await fetch(`/api/production-plans/${planId}/update-status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Plan durumu başarıyla güncellendi');
+                } else {
+                    const error = await response.json();
+                    console.error('Plan durumu güncelleme hatası:', response.status, error);
+                }
+                
+            } catch (error) {
+                console.error('Plan durumu güncelleme hatası:', error);
+            }
+        }
+
+        // Plan ID'den sipariş durumunu güncelle
+        async function updateOrderStatusFromPlan(planId, status) {
+            try {
+                console.log('Plan ID\'den sipariş durumu güncelleniyor:', planId, status);
+                
+                // Önce plan detaylarını al
+                const planResponse = await fetch(`/api/production-plans/${planId}`);
+                if (!planResponse.ok) {
+                    console.error('Plan detayları alınamadı:', planResponse.status);
+                    return;
+                }
+                
+                const plan = await planResponse.json();
+                const orderId = plan.order_id;
+                
+                if (!orderId) {
+                    console.error('Plan\'da order_id bulunamadı');
+                    return;
+                }
+                
+                console.log('Sipariş durumu güncelleniyor:', orderId, status);
+                
+                // Sipariş durumunu güncelle
+                const response = await fetch(`/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Sipariş durumu başarıyla güncellendi');
+                } else {
+                    const error = await response.json();
+                    console.error('Sipariş durumu güncelleme hatası:', response.status, error);
+                }
+                
+            } catch (error) {
+                console.error('Sipariş durumu güncelleme hatası:', error);
+            }
+        }
+
+
+        // Üretimi duraklat
+        async function pauseProduction() {
+            if (!currentProductionId) return;
+            
+            if (confirm('Üretimi duraklatmak istediğinizden emin misiniz? Daha sonra devam edebilirsiniz.')) {
+                try {
+                    console.log('Üretim duraklatılıyor:', currentProductionId);
+                    
+                    // Önce mevcut üretim detaylarını al
+                    const productionResponse = await fetch(`/api/active-productions/${currentProductionId}`);
+                    if (!productionResponse.ok) {
+                        throw new Error('Üretim detayları alınamadı');
+                    }
+                    const production = await productionResponse.json();
+                    
+                    const response = await fetch(`/api/active-productions/${currentProductionId}/pause`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            status: 'paused',
+                            pause_time: new Date().toISOString(),
+                            produced_quantity: production.produced_quantity || 0 // Mevcut üretilen miktarı koru
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        // Modal'ı kapat
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('productionModal'));
+                        modal.hide();
+                        
+                        // Verileri yenile
+                        loadData();
+                        
+                        alert('Üretim başarıyla duraklatıldı! Yarıda kalan üretimler bölümünden devam edebilirsiniz.');
+                    } else {
+                        const error = await response.json();
+                        console.error('Üretim duraklatma hatası:', response.status, error);
+                        alert('Üretim duraklatılamadı: ' + (error.message || 'Bilinmeyen hata'));
+                    }
+                    
+                } catch (error) {
+                    console.error('Üretim duraklatma hatası:', error);
+                    alert('Üretim duraklatılırken hata oluştu: ' + error.message);
+                }
+            }
+        }
+
+        // Üretime devam et (modal içinden)
+        async function resumeProduction() {
+            if (!currentProductionId) return;
+            
+            try {
+                console.log('Üretime devam ediliyor:', currentProductionId);
+                
+                // Önce mevcut üretim detaylarını al
+                const productionResponse = await fetch(`/api/active-productions/${currentProductionId}`);
+                if (!productionResponse.ok) {
+                    throw new Error('Üretim detayları alınamadı');
+                }
+                const production = await productionResponse.json();
+                
+                const response = await fetch(`/api/active-productions/${currentProductionId}/resume`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'active',
+                        resume_time: new Date().toISOString(),
+                        produced_quantity: production.produced_quantity || 0 // Mevcut üretilen miktarı koru
+                    })
+                });
+                
+                if (response.ok) {
+                    // Butonları güncelle
+                    document.getElementById('pauseBtn').style.display = 'inline-block';
+                    document.getElementById('resumeBtn').style.display = 'none';
+                    
+                } else {
+                    const error = await response.json();
+                    console.error('Üretime devam etme hatası:', response.status, error);
+                    alert('Üretime devam edilemedi: ' + (error.message || 'Bilinmeyen hata'));
+                }
+                
+            } catch (error) {
+                console.error('Üretime devam etme hatası:', error);
+                alert('Üretime devam edilirken hata oluştu: ' + error.message);
+            }
+        }
+
+        // Yarıda kalan üretimlerden devam et
+        async function resumeProductionFromList(productionId) {
+            try {
+                    console.log('Yarıda kalan üretime devam ediliyor:', productionId);
+                    
+                    // Önce mevcut üretim detaylarını al
+                    const productionResponse = await fetch(`/api/active-productions/${productionId}`);
+                    if (!productionResponse.ok) {
+                        throw new Error('Üretim detayları alınamadı');
+                    }
+                    const production = await productionResponse.json();
+                    
+                    const response = await fetch(`/api/active-productions/${productionId}/resume`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            status: 'active',
+                            resume_time: new Date().toISOString(),
+                            produced_quantity: production.produced_quantity || 0 // Mevcut üretilen miktarı koru
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        // Üretim modalını aç
+                        currentProductionId = productionId;
+                        loadProductionForModal(productionId);
+                        const modal = new bootstrap.Modal(document.getElementById('productionModal'));
+                        modal.show();
+                        
+                        // Verileri yenile
+                        loadData();
+                        
+                    } else {
+                        const error = await response.json();
+                        console.error('Üretime devam etme hatası:', response.status, error);
+                        alert('Üretime devam edilemedi: ' + (error.message || 'Bilinmeyen hata'));
+                    }
+                    
+            } catch (error) {
+                console.error('Üretime devam etme hatası:', error);
+                alert('Üretime devam edilirken hata oluştu: ' + error.message);
+            }
+        }
+
+        // Barkod input'u için Enter tuşu desteği
+        document.addEventListener('DOMContentLoaded', function() {
+            const barcodeInput = document.getElementById('barcodeInput');
+            if (barcodeInput) {
+                // Enter tuşu ile işleme
+                barcodeInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        processBarcode();
+                    }
+                });
+                
+                // Otomatik işleme - barkod okutulduktan sonra
+                barcodeInput.addEventListener('input', function(e) {
+                    const barcode = e.target.value.trim();
+                    // Barkod uzunluğu 8 karakterden fazla ise otomatik işle
+                    if (barcode.length >= 8) {
+                        setTimeout(() => {
+                            processBarcode();
+                        }, 500); // 500ms bekle
+                    }
+                });
+                
+                // Üretim adedi input'u için Enter tuşu desteği
+                const quantityInput = document.getElementById('quantityInput');
+                if (quantityInput) {
+                    quantityInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            addProductionQuantity();
+                        }
+                    });
+                }
+            }
+        });
+        
+
+
+        // Çıkış yap
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                localStorage.removeItem('currentOperator');
+                window.location.href = 'operator-login.html';
+            }
+        }
+
+        // Yardımcı fonksiyonlar
+        function showLoading(elementId, show) {
+            document.getElementById(elementId).style.display = show ? 'block' : 'none';
+        }
+
+        function showEmpty(elementId, show) {
+            document.getElementById(elementId).style.display = show ? 'block' : 'none';
+        }
+
+        function updateStats(elementId, value) {
+            document.getElementById(elementId).textContent = value;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString('tr-TR');
+        }
+
+        function getPriorityBadgeClass(priority) {
+            // Sayısal değerleri de destekle
+            if (typeof priority === 'number') {
+                switch(priority) {
+                    case 1: return 'bg-success'; // Düşük - Yeşil
+                    case 2: return 'bg-info'; // Orta - Mavi
+                    case 3: return 'bg-warning'; // Yüksek - Sarı
+                    case 4: return 'bg-danger'; // ACİL - Kırmızı
+                    default: return 'bg-secondary';
+                }
+            }
+            
+            // String değerleri destekle
+            switch(priority) {
+                case 'urgent': return 'bg-danger'; // ACİL - Kırmızı
+                case 'high': return 'bg-warning'; // Yüksek - Sarı
+                case 'medium': return 'bg-info'; // Orta - Mavi
+                case 'low': return 'bg-success'; // Düşük - Yeşil
+                case '1': return 'bg-success'; // Düşük - Yeşil
+                case '2': return 'bg-info'; // Orta - Mavi
+                case '3': return 'bg-warning'; // Yüksek - Sarı
+                case '4': return 'bg-danger'; // ACİL - Kırmızı
+                default: return 'bg-secondary';
+            }
+        }
+
+        function getPriorityText(priority) {
+            // Sayısal değerleri de destekle
+            if (typeof priority === 'number') {
+                switch(priority) {
+                    case 1: return 'Düşük';
+                    case 2: return 'Orta';
+                    case 3: return 'Yüksek';
+                    case 4: return 'ACİL';
+                    default: return 'Belirtilmemiş';
+                }
+            }
+            
+            // String değerleri destekle
+            switch(priority) {
+                case 'urgent': return 'ACİL';
+                case 'high': return 'Yüksek';
+                case 'medium': return 'Orta';
+                case 'low': return 'Düşük';
+                case '1': return 'Düşük';
+                case '2': return 'Orta';
+                case '3': return 'Yüksek';
+                case '4': return 'ACİL';
+                default: return 'Belirtilmemiş';
+            }
+        }
+        
+        // Durum badge class'ı
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'approved': return 'bg-success';
+                case 'active': return 'bg-primary';
+                case 'in_progress': return 'bg-warning';
+                case 'pending': return 'bg-warning';
+                case 'completed': return 'bg-info';
+                case 'cancelled': return 'bg-danger';
+                default: return 'bg-secondary';
+            }
+        }
+        
+        // Durum metni
+        function getStatusText(status) {
+            switch(status) {
+                case 'approved': return 'Onaylandı';
+                case 'active': return 'Aktif';
+                case 'in_progress': return 'Devam Ediyor';
+                case 'pending': return 'Beklemede';
+                case 'completed': return 'Tamamlandı';
+                case 'cancelled': return 'İptal';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        // Plan status badge sınıfı
+        function getPlanStatusBadgeClass(status) {
+            switch(status) {
+                case 'draft': return 'bg-secondary';
+                case 'approved': return 'bg-success';
+                case 'in_progress': return 'bg-warning';
+                case 'completed': return 'bg-info';
+                case 'cancelled': return 'bg-danger';
+                default: return 'bg-secondary';
+            }
+        }
+
+        // Plan status metni
+        function getPlanStatusText(status) {
+            switch(status) {
+                case 'draft': return 'Taslak';
+                case 'approved': return 'Onaylandı';
+                case 'in_progress': return 'Devam Ediyor';
+                case 'completed': return 'Tamamlandı';
+                case 'cancelled': return 'İptal';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        // Sipariş durum badge sınıfı
+        function getOrderStatusBadgeClass(status) {
+            switch(status) {
+                case 'pending': return 'bg-warning';
+                case 'approved': return 'bg-success';
+                case 'in_progress': return 'bg-primary';
+                case 'completed': return 'bg-info';
+                case 'cancelled': return 'bg-danger';
+                case 'draft': return 'bg-secondary';
+                default: return 'bg-secondary';
+            }
+        }
+
+        // Sipariş durum metni
+        function getOrderStatusText(status) {
+            switch(status) {
+                case 'pending': return 'Beklemede';
+                case 'approved': return 'Onaylandı';
+                case 'in_progress': return 'Devam Ediyor';
+                case 'completed': return 'Tamamlandı';
+                case 'cancelled': return 'İptal';
+                case 'draft': return 'Taslak';
+                default: return 'Bilinmiyor';
+            }
+        }
+    </script>
+</body>
+</html>

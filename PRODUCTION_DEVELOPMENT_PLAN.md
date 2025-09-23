@@ -22,7 +22,7 @@
 - **Gelişmiş ürün arama sistemi (autocomplete)**
 - **Üretim geçmişinde filtreleme ve arama**
 
-### 📊 **Canlı Veri Durumu (V1.6.1)**
+### 📊 **Canlı Veri Durumu (V1.6.4)**
 - **76 aktif hammadde** (barkod desteği ile)
 - **12 aktif yarı mamul**
 - **244 aktif nihai ürün**
@@ -34,6 +34,10 @@
 - **4 rapor şablonu** mevcut
 - **8 bildirim türü** tanımlı
 - **Operatör kullanım takibi** aktif (48/46 saat Thunder Serisi, 0/10 saat ThunderPRO)
+- **5 aktif müşteri** (LTSAUTO, TRENDYOL, HEPSIBURADA, ARAATKI.COM, PAZARAMA)
+- **115+ API Endpoint** aktif
+- **Toplu Sipariş Sistemi** çalışıyor
+- **Müşteri Yönetimi** tam entegre
 
 ---
 
@@ -595,7 +599,19 @@ CREATE TABLE audit_logs (
 
 ---
 
-## 🎉 **V1.6.3 TAMAMLANDI! (Eylül 2025)**
+## 🎉 **V1.6.4 TAMAMLANDI! (Aralık 2024)**
+
+### **✅ V1.6.4 YENİ ÖZELLİKLER VE İYİLEŞTİRMELER:**
+- **Müşteri Yönetimi Sistemi**: Tam entegre müşteri CRUD işlemleri ✅
+- **Toplu Sipariş Girişi**: CSV/Excel ile toplu sipariş oluşturma ✅
+- **CSV Template Sistemi**: Dinamik template indirme ve müşteri seçimi ✅
+- **Yeni Sipariş Modal'ı**: Müşteri dropdown ile sipariş oluşturma ✅
+- **Toplu Sipariş API**: `/api/orders/bulk` endpoint'i eklendi ✅
+- **Müşteri API Endpoints**: Tam CRUD operasyonları (GET, POST, PUT, DELETE) ✅
+- **Frontend Entegrasyonu**: Tüm yeni özellikler UI'da aktif ✅
+- **Hata Yönetimi**: Kapsamlı hata yakalama ve kullanıcı bildirimleri ✅
+- **Cache Busting**: Frontend değişiklikleri anında yansıyor ✅
+- **Veri Validasyonu**: CSV verileri için kapsamlı validasyon ✅
 
 ### **✅ V1.6.3 KAPSAMLI PROJE KONTROLÜ VE HATA DÜZELTMELERİ:**
 - **API Endpoint Kontrolü**: Tüm 109 API endpoint'i test edildi ve çalışır durumda ✅
@@ -609,20 +625,62 @@ CREATE TABLE audit_logs (
 - **Server.js Optimizasyonu**: Hata yönetimi iyileştirildi ✅
 - **Terminal Log Temizliği**: Gereksiz log mesajları düzenlendi ✅
 
+### **🔧 V1.6.4'TE EKLENEN YENİ ÖZELLİKLER:**
+
+#### **1. Müşteri Yönetimi Sistemi:**
+- **Müşteri CRUD İşlemleri**: Ekleme, listeleme, güncelleme, silme
+- **Müşteri API Endpoints**: `/api/customers` (GET, POST, PUT, DELETE)
+- **Müşteri Modal'ı**: Yeni müşteri ekleme ve mevcut müşterileri yönetme
+- **Müşteri Dropdown**: Sipariş oluştururken müşteri seçimi
+- **Müşteri Validasyonu**: Zorunlu alanlar ve veri doğrulama
+
+#### **2. Toplu Sipariş Girişi:**
+- **CSV Template Sistemi**: Dinamik template indirme
+- **CSV Dosya Yükleme**: Dosya seçimi ve parse etme
+- **CSV Preview**: Yüklenen verilerin önizlemesi
+- **Toplu Sipariş API**: `/api/orders/bulk` endpoint'i
+- **Hata Raporlama**: Başarılı/başarısız siparişlerin detaylı raporu
+- **Müşteri Gruplama**: Aynı müşterinin siparişlerini gruplama
+
+#### **3. Yeni Sipariş Modal'ı İyileştirmeleri:**
+- **Müşteri Dropdown**: Text input yerine dropdown seçimi
+- **Müşteri Seçenekleri**: Mevcut müşterilerden seçim
+- **Otomatik Doldurma**: Seçilen müşteri bilgileri
+- **Hata Önleme**: Yanlış müşteri ismi girişi önleme
+
+#### **4. Frontend Entegrasyonu:**
+- **Cache Busting**: Değişikliklerin anında yansıması
+- **Debug Logging**: Gelişmiş hata ayıklama
+- **Kullanıcı Bildirimleri**: İşlem sonuçları için bildirimler
+- **Responsive Tasarım**: Mobil uyumlu arayüz
+
 ### **🔧 DÜZELTİLEN HATALAR:**
 1. **Sipariş Oluşturma**: `order_date` null hatası → Varsayılan tarih eklendi
 2. **API Validation**: Bigint ID validation → `parseInt()` kontrolü eklendi
 3. **Durum Senkronizasyonu**: `in_progress` durumu eksikti → Eklendi
 4. **Health Check**: Eksik endpoint → `/api/health` eklendi
 5. **Frontend Cache**: Değişiklikler yansımıyordu → Cache busting güncellendi
+6. **Müşteri Dropdown**: Müşteri listesi yüklenmiyordu → Debug logging eklendi
+7. **Toplu Sipariş API**: Yanlış tablo kullanımı → `order_management` tablosu kullanıldı
 
-### **📊 SİSTEM DURUMU (V1.6.3):**
-- **109 API Endpoint** aktif ve çalışıyor
+### **📊 SİSTEM DURUMU (V1.6.4):**
+- **115+ API Endpoint** aktif ve çalışıyor (6 yeni endpoint eklendi)
 - **Database Bağlantısı** stabil (Supabase)
 - **Health Check** çalışıyor
+- **Müşteri Yönetimi** tam entegre
+- **Toplu Sipariş Sistemi** aktif
 - **Frontend** tüm değişiklikleri yansıtıyor
 - **Error Handling** iyileştirildi
 - **Code Quality** yükseltildi
+- **Cache Busting** optimize edildi
+
+### **✅ V1.6.4'TE TAMAMLANAN V1.7.0+ ÖZELLİKLERİ:**
+- **Müşteri Yönetimi Sistemi (Faz 9)**: Kısmen tamamlandı ✅
+- **Toplu Sipariş Girişi (Faz 8)**: Tamamen tamamlandı ✅
+- **CSV/Excel Entegrasyonu (Faz 8)**: Tamamen tamamlandı ✅
+- **Veri Validasyonu (Faz 11)**: Kapsamlı validasyon sistemi ✅
+- **Hata Yönetimi (Faz 11)**: Gelişmiş hata yakalama ✅
+- **API Endpoint Genişletme (Faz 13)**: 6 yeni endpoint eklendi ✅
 
 ### **✅ V1.6.3'TE TAMAMLANAN V1.7.0+ ÖZELLİKLERİ:**
 - **Üretim Başlat Tab'ı Geliştirmeleri (Faz 8)**: Tamamen tamamlandı ✅
@@ -684,7 +742,15 @@ CREATE TABLE audit_logs (
 - **4 rapor şablonu** mevcut
 - **8 bildirim türü** tanımlı
 
-**ThunderV1 V1.6.0 tamamen production-ready!** 🎯
+**ThunderV1 V1.6.4 tamamen production-ready!** 🎯
+
+### **🚀 V1.6.4 YENİ ÖZELLİKLER ÖZETİ:**
+- **Müşteri Yönetimi**: Tam CRUD işlemleri ile müşteri yönetimi
+- **Toplu Sipariş**: CSV/Excel ile toplu sipariş oluşturma
+- **CSV Template**: Dinamik template indirme sistemi
+- **API Genişletme**: 6 yeni endpoint eklendi
+- **Frontend İyileştirme**: Müşteri dropdown ve gelişmiş UI
+- **Hata Yönetimi**: Kapsamlı hata yakalama ve raporlama
 
 ---
 

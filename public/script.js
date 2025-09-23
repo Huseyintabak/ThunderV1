@@ -2128,8 +2128,7 @@ async function showBOMCostDetails(productId, productType = 'yarimamul') {
 
 // Debug fonksiyonu - BOM durumunu kontrol et
 function debugBOMStatus() {
-    console.log('=== BOM DEBUG RAPORU ===');
-    console.log('Yarı Mamuller:', yarimamuller);
+    // Debug function - removed console logs
     console.log('Hammaddeler:', hammaddeler);
     console.log('Ürün Ağacı:', urunAgaci);
     
@@ -2154,13 +2153,12 @@ function debugBOMStatus() {
         }
     });
     
-    console.log('=== DEBUG RAPORU TAMAMLANDI ===');
+    // Debug completed
 }
 
 // Nihai ürünler için debug fonksiyonu
 function debugNihaiBOMStatus() {
-    console.log('=== NİHAİ ÜRÜN BOM DEBUG ===');
-    console.log('Nihai Ürünler:', nihaiUrunler);
+    // Debug function - removed console logs
     console.log('Ürün Ağacı:', urunAgaci);
     
     nihaiUrunler.forEach(nihai => {

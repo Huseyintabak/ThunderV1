@@ -1106,16 +1106,18 @@ app.get('/api/productions/history', async (req, res) => {
             .from('active_productions')
             .select(`
                 id,
-                plan_id,
+                order_id,
+                product_code,
                 product_name,
-                planned_quantity,
+                target_quantity,
                 produced_quantity,
-                status,
-                updated_at,
-                assigned_operator
+                is_completed,
+                completed_at,
+                operator_name,
+                production_data
             `)
-            .eq('status', 'completed')
-            .order('updated_at', { ascending: false });
+            .eq('is_completed', true)
+            .order('completed_at', { ascending: false });
             
         if (statesError) throw statesError;
         
@@ -1126,43 +1128,34 @@ app.get('/api/productions/history', async (req, res) => {
                 customer_name: null
             };
             
-            // Plan ID üzerinden sipariş bilgisini al
-            if (state.plan_id) {
-                // Önce plan'dan order_id'yi al
-                const { data: plan, error: planError } = await supabase
-                    .from('production_plans')
-                    .select('order_id')
-                    .eq('id', state.plan_id)
+            // Sipariş bilgisini al
+            if (state.order_id) {
+                const { data: order, error: orderError } = await supabase
+                    .from('order_management')
+                    .select('order_number, customer_name')
+                    .eq('id', state.order_id)
                     .single();
                 
-                if (!planError && plan && plan.order_id) {
-                    // Sonra sipariş bilgisini al
-                    const { data: order, error: orderError } = await supabase
-                        .from('order_management')
-                        .select('order_number, customer_name')
-                        .eq('id', plan.order_id)
-                        .single();
-                    
-                    if (!orderError && order) {
-                        orderInfo.order_number = order.order_number;
-                        orderInfo.customer_name = order.customer_name;
-                    }
+                if (!orderError && order) {
+                    orderInfo.order_number = order.order_number;
+                    orderInfo.customer_name = order.customer_name;
                 }
             }
             
             return {
                 id: state.id,
-                plan_id: state.plan_id,
+                order_id: state.order_id,
+                product_code: state.product_code,
                 product_name: state.product_name,
-                target_quantity: state.planned_quantity,
+                target_quantity: state.target_quantity,
                 produced_quantity: state.produced_quantity,
-                status: state.status,
-                is_completed: state.status === 'completed',
-                completed_at: state.updated_at,
-                operator_name: state.assigned_operator,
+                status: state.is_completed ? 'completed' : 'pending',
+                is_completed: state.is_completed,
+                completed_at: state.completed_at,
+                operator_name: state.operator_name,
                 order_number: orderInfo.order_number,
                 customer_name: orderInfo.customer_name,
-                production_data: null
+                production_data: state.production_data
             };
         }));
         
@@ -1266,24 +1259,26 @@ app.get("/api/productions/:id", async (req, res) => {
                 product_id: state.product_id,
                 product_type: "nihai",
                 quantity: state.produced_quantity || 0,
-                target_quantity: state.planned_quantity || 0,
-                status: state.status,
+                target_quantity: state.target_quantity || 0,
+                status: state.is_completed ? "completed" : "active",
                 start_time: state.created_at,
-                end_time: state.updated_at,
-                created_by: state.assigned_operator || "system",
+                end_time: state.completed_at,
+                created_by: state.operator_name || "system",
                 notes: state.notes,
                 created_at: state.created_at,
                 updated_at: state.updated_at,
                 product_name: state.product_name || "Bilinmeyen Ürün",
-                assigned_operator: state.assigned_operator || "Atanmamış",
+                product_code: state.product_code || "Bilinmeyen Kod",
+                assigned_operator: state.operator_name || "Atanmamış",
                 produced_quantity: state.produced_quantity || 0,
-                is_completed: state.status === 'completed'
+                is_completed: state.is_completed || false
             };
         }
         production.produced_quantity = 0;
-        production.status = 'active';
+        production.is_completed = false;
         production.product_name = production.product_name || 'Bilinmeyen Ürün';
-        production.planned_quantity = production.planned_quantity || 1;
+        production.product_code = production.product_code || 'Bilinmeyen Kod';
+        production.target_quantity = production.target_quantity || 1;
         production.assigned_operator = production.assigned_operator || 'Atanmamış';
         
         res.json(production);
@@ -4853,15 +4848,23 @@ async function createProductionPlanFromOrder(order) {
     
     console.log('Production plan created from order:', plan[0].id);
     
-    // Planı draft olarak bırak, operatör kabul ettiğinde approved olacak
-    console.log('Plan created for order:', order.id);
+    // Planı otomatik onayla ve aşamaları oluştur
+    await supabase
+      .from('production_plans')
+      .update({ status: 'approved' })
+      .eq('id', plan[0].id);
+      
+    // Aşamaları oluştur
+    await createStagesFromPlan(plan[0].id);
+    
+    console.log('Plan approved and stages created for order:', order.id);
     
   } catch (error) {
     console.error('Error creating production plan from order:', error);
   }
 }
 
-// Plan onaylandığında otomatik aşamalar oluştur (sadece aşamalar, üretim değil)
+// Plan onaylandığında otomatik aşamalar oluştur
 async function createStagesFromPlan(planId) {
   try {
     console.log('Creating stages for plan:', planId);
@@ -4874,6 +4877,69 @@ async function createStagesFromPlan(planId) {
       .single();
       
     if (planError) throw planError;
+    
+    // Önce mevcut production'ı kontrol et
+    let { data: existingProduction, error: existingError } = await supabase
+      .from('active_productions')
+      .select('*')
+      .eq('plan_id', planId)
+      .single();
+    
+    let production;
+    
+    if (existingError || !existingProduction) {
+      // Sipariş detaylarından product_code'u al
+      let productCode = 'Kod Yok';
+      if (plan.order_id) {
+        const { data: order, error: orderError } = await supabase
+          .from('order_management')
+          .select('product_details')
+          .eq('id', plan.order_id)
+          .single();
+        
+        if (!orderError && order?.product_details) {
+          try {
+            const productDetails = JSON.parse(order.product_details);
+            if (productDetails && productDetails.length > 0) {
+              productCode = productDetails[0].code || 'Kod Yok';
+            }
+          } catch (e) {
+            console.log('Product details parse error:', e);
+          }
+        }
+      }
+      
+      // Production yoksa oluştur
+      const productionData = {
+        plan_id: planId,
+        product_id: 1, // Varsayılan product_id
+        product_name: plan.plan_name,
+        product_type: plan.plan_type,
+        planned_quantity: plan.total_quantity || 1,
+        assigned_operator: plan.assigned_operator || 'Thunder Serisi Operatör', // Plandan operatör bilgisini al, yoksa varsayılan
+        status: 'active', // planned yerine active olarak oluştur
+        start_time: new Date().toISOString(),
+        current_stage: 'Başlangıç',
+        created_at: new Date().toISOString()
+      };
+      
+      const { data: newProduction, error: productionError } = await supabase
+        .from('active_productions')
+        .insert([productionData])
+        .select();
+        
+      if (productionError) {
+        console.error('Error creating production:', productionError);
+        return;
+      }
+      
+      production = newProduction[0];
+      console.log('Production created:', production.id);
+    } else {
+      // Mevcut production'ı kullan
+      production = existingProduction;
+      console.log('Using existing production:', production.id);
+    }
     
     // Plan tipine göre şablonları al
     const { data: templates, error: templateError } = await supabase
@@ -4889,26 +4955,27 @@ async function createStagesFromPlan(planId) {
       return;
     }
     
-    // Mevcut aşamaları kontrol et (plan_name ile)
+    // Mevcut aşamaları kontrol et
     const { data: existingStages, error: stagesError } = await supabase
       .from('production_stages')
       .select('*')
-      .eq('stage_name', plan.plan_name);
+      .eq('production_id', production.id);
       
     if (stagesError) {
       console.error('Error checking existing stages:', stagesError);
-      // Hata olsa bile devam et
+      return;
     }
     
     // Eğer aşamalar zaten varsa, tekrar oluşturma
     if (existingStages && existingStages.length > 0) {
-      console.log('Stages already exist for plan:', planId);
+      console.log('Stages already exist for production:', production.id);
       return;
     }
     
     // Her şablon için aşama oluştur
     for (const template of templates) {
       const stageData = {
+        production_id: production.id, // Production ID'sini kullan
         stage_name: template.stage_name,
         stage_order: template.stage_order,
         estimated_duration: template.estimated_duration || 0,
@@ -6900,7 +6967,7 @@ app.get('/api/dashboard/statistics', async (req, res) => {
 
 // Operatör paneli ana sayfası
 app.get('/operator-panel', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'operator-production.html'));
+  res.sendFile(path.join(__dirname, 'public', 'operator-panel.html'));
 });
 
 // Tekil üretim detayı getir
@@ -6941,233 +7008,6 @@ app.put('/api/active-productions/:id', async (req, res) => {
     res.json(data[0]);
   } catch (error) {
     console.error('Üretim güncelleme hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Üretimi duraklat
-app.put('/api/active-productions/:id/pause', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, pause_time } = req.body;
-    
-    const updateData = {
-      status: status || 'paused',
-      pause_time: pause_time || new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    const { data, error } = await supabase
-      .from('active_productions')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-      
-    if (error) throw error;
-    res.json(data[0]);
-  } catch (error) {
-    console.error('Üretim duraklatma hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Üretime devam et
-app.put('/api/active-productions/:id/resume', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, resume_time } = req.body;
-    
-    const updateData = {
-      status: status || 'active',
-      resume_time: resume_time || new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    const { data, error } = await supabase
-      .from('active_productions')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-      
-    if (error) throw error;
-    res.json(data[0]);
-  } catch (error) {
-    console.error('Üretime devam etme hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Üretimi tamamla
-app.put('/api/active-productions/:id/complete', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, completed_time } = req.body;
-    
-    const updateData = {
-      status: status || 'completed',
-      completed_time: completed_time || new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    const { data, error } = await supabase
-      .from('active_productions')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-      
-    if (error) throw error;
-    res.json(data[0]);
-  } catch (error) {
-    console.error('Üretim tamamlama hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Planlanan ürün durumunu güncelle
-app.put('/api/production-plans/:id/update-status', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const updateData = {
-      status: status || 'completed',
-      updated_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('production_plans')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-
-    if (error) throw error;
-    res.json(data[0]);
-  } catch (error) {
-    console.error('Plan durumu güncelleme hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Plan için aşamaları oluştur
-app.post('/api/production-plans/:id/create-stages', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Aşamaları oluştur
-    await createStagesFromPlan(id);
-    
-    res.json({ message: 'Aşamalar başarıyla oluşturuldu' });
-  } catch (error) {
-    console.error('Aşama oluşturma hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Tek plan detayını getir
-app.get('/api/production-plans/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const { data, error } = await supabase
-      .from('production_plans')
-      .select('*')
-      .eq('id', id)
-      .single();
-      
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Plan detayı getirme hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Aktif üretimleri temizle
-app.delete('/api/active-productions/clear', async (req, res) => {
-  try {
-    console.log('Aktif üretimler temizleniyor...');
-    
-    // Önce mevcut aktif üretimleri say
-    const { count } = await supabase
-      .from('active_productions')
-      .select('*', { count: 'exact', head: true });
-    
-    // Tüm aktif üretimleri sil
-    const { error } = await supabase
-      .from('active_productions')
-      .delete()
-      .gte('id', 1); // ID'si 1 ve üzeri olan tüm kayıtları sil
-    
-    if (error) throw error;
-    
-    console.log('Aktif üretimler başarıyla temizlendi');
-    res.json({ 
-      message: 'Aktif üretimler başarıyla temizlendi',
-      deleted_count: count || 0
-    });
-  } catch (error) {
-    console.error('Aktif üretimler temizleme hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Debug: Ürün barkod bilgilerini kontrol et
-app.get('/api/debug/product-barcodes', async (req, res) => {
-  try {
-    const { barcode } = req.query;
-    
-    let nihaiUrunler = [];
-    let yarimamuller = [];
-    
-    if (barcode) {
-      // Belirli bir barkod aranıyor
-      const { data: nihaiData, error: nihaiError } = await supabase
-        .from('nihai_urunler')
-        .select('id, ad, kod, barkod')
-        .eq('barkod', barcode);
-
-      const { data: yarimamulData, error: yarimError } = await supabase
-        .from('yarimamuller')
-        .select('id, ad, kod, barkod')
-        .eq('barkod', barcode);
-        
-      nihaiUrunler = nihaiData || [];
-      yarimamuller = yarimamulData || [];
-    } else {
-      // Tüm barkodları getir (debug için)
-      const { data: nihaiData, error: nihaiError } = await supabase
-        .from('nihai_urunler')
-        .select('id, ad, kod, barkod')
-        .not('barkod', 'is', null);
-
-      const { data: yarimamulData, error: yarimError } = await supabase
-        .from('yarimamuller')
-        .select('id, ad, kod, barkod')
-        .not('barkod', 'is', null);
-        
-      nihaiUrunler = nihaiData || [];
-      yarimamuller = yarimamulData || [];
-    }
-
-    // Siparişlerden product_details'leri al
-    const { data: orders, error: ordersError } = await supabase
-      .from('order_management')
-      .select('id, order_number, product_details')
-      .not('product_details', 'is', null)
-      .limit(5);
-
-    res.json({
-      nihai_urunler: nihaiUrunler || [],
-      yarimamuller: yarimamuller || [],
-      orders: orders || [],
-      errors: {
-        nihai: nihaiError?.message,
-        yarimamul: yarimError?.message,
-        orders: ordersError?.message
-      }
-    });
-  } catch (error) {
-    console.error('Debug barkod bilgileri hatası:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -7761,17 +7601,17 @@ app.get('/api/production-states', async (req, res) => {
   }
 });
 
-// Get production state by plan_id and product_name
-app.get('/api/production-states/:planId/:productName', async (req, res) => {
+// Get production state by order_id and product_code
+app.get('/api/production-states/:orderId/:productCode', async (req, res) => {
   try {
-    const { planId, productName } = req.params;
+    const { orderId, productCode } = req.params;
     
     if (supabase) {
       const { data, error } = await supabase
         .from('active_productions')
         .select('*')
-        .eq('plan_id', planId)
-        .eq('product_name', productName)
+        .eq('order_id', orderId)
+        .eq('product_code', productCode)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -7819,8 +7659,8 @@ app.post('/api/production-states', async (req, res) => {
       const { data: existingData, error: checkError } = await supabase
         .from('active_productions')
         .select('id')
-        .eq('plan_id', productionData.plan_id)
-        .eq('product_name', productionData.product_name)
+        .eq('order_id', productionData.order_id)
+        .eq('product_code', productionData.product_code)
         .single();
 
       if (checkError && checkError.code !== 'PGRST116') {
@@ -7938,9 +7778,9 @@ app.post('/api/complete-production', async (req, res) => {
       const { data: updatedState, error: stateError } = await supabase
         .from('active_productions')
         .update({
-          status: 'completed',
+          is_completed: true,
           is_active: false,
-          updated_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
           produced_quantity: completedQuantity
         })
         .eq('id', productionStateId)
@@ -7953,8 +7793,8 @@ app.post('/api/complete-production', async (req, res) => {
       const { data: activeProduction, error: activeError } = await supabase
         .from('active_productions')
         .select('id, plan_id')
-        .eq('plan_id', planId)
-        .eq('product_name', productName)
+        .eq('order_id', orderId)
+        .eq('product_code', productCode)
         .single();
       
       if (!activeError && activeProduction) {
@@ -8071,11 +7911,34 @@ app.get('/api/production-history/:productionStateId', async (req, res) => {
         console.log('Production history tablosu hatası:', historyError.message);
       }
 
-      // Eğer production_history'de veri yoksa, boş array döndür
+      // Eğer production_history'de veri yoksa, active_productions'den production_data.history'yi al
       if (!historyData || historyData.length === 0) {
-        console.log('Production history verisi bulunamadı');
-        res.json([]);
-        return;
+        const { data: productionState, error: stateError } = await supabase
+          .from('active_productions')
+          .select('production_data')
+          .eq('id', productionStateId)
+          .single();
+
+        if (stateError) {
+          console.log('Production state hatası:', stateError.message);
+          res.json([]);
+          return;
+        }
+
+        if (productionState && productionState.production_data && productionState.production_data.history) {
+          // production_data.history'yi production_history formatına çevir
+          const historyRecords = productionState.production_data.history.map(record => ({
+            id: Date.now() + Math.random(),
+            production_state_id: productionStateId,
+            action: record.barcode || 'Üretim',
+            quantity: record.quantity || 0,
+            operator_name: record.operator_name || 'Sistem',
+            timestamp: record.timestamp || new Date().toISOString()
+          }));
+          
+          res.json(historyRecords);
+          return;
+        }
       }
 
       res.json(historyData || []);
@@ -8092,12 +7955,12 @@ app.get('/api/production-history/:productionStateId', async (req, res) => {
 app.get('/api/completed-productions', async (req, res) => {
   try {
     if (supabase) {
-      // Tamamlanan production states'leri getir - status = 'completed' kullan
+      // Tamamlanan production states'leri getir
       const { data: productionStates, error: statesError } = await supabase
         .from('active_productions')
         .select('*')
-        .eq('status', 'completed')
-        .order('updated_at', { ascending: false });
+        .eq('is_completed', true)
+        .order('completed_at', { ascending: false });
       
       if (statesError) throw statesError;
       
@@ -8480,7 +8343,6 @@ app.get('/api/settings', async (req, res) => {
     res.status(500).json({ error: 'Settings yüklenemedi' });
   }
 });
-
 
 // WebSocket yönetimi kaldırıldı - polling kullanılacak
 

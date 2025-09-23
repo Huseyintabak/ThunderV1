@@ -980,81 +980,115 @@
 
     <!-- Stok Girişi Modal -->
     <div class="modal fade" id="stockEntryModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Stok Girişi</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-boxes me-2"></i>Toplu Stok Girişi
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="stockEntryForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Ürün Türü</label>
-                                    <select class="form-select" id="stock-product-type" required>
-                                        <option value="">Seçiniz</option>
-                                        <option value="hammadde">Hammadde</option>
-                                        <option value="yarimamul">Yarı Mamul</option>
-                                        <option value="nihai">Nihai Ürün</option>
-                                    </select>
+                    <!-- Ürün Ekleme Formu -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-plus me-2"></i>Yeni Ürün Ekle
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="addProductForm">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label class="form-label">Ürün Türü *</label>
+                                            <select class="form-select" id="stock-product-type" required onchange="loadStockProducts()">
+                                                <option value="">Seçiniz</option>
+                                                <option value="hammadde">Hammadde</option>
+                                                <option value="yarimamul">Yarı Mamul</option>
+                                                <option value="nihai">Nihai Ürün</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label class="form-label">Ürün *</label>
+                                            <select class="form-select" id="stock-product" required disabled>
+                                                <option value="">Önce ürün türü seçiniz</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">Miktar *</label>
+                                            <input type="number" class="form-control" id="stock-quantity" step="0.01" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">Birim Fiyat</label>
+                                            <input type="number" class="form-control" id="stock-unit-price" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="btn btn-success w-100" onclick="addProductToList()">
+                                                <i class="fas fa-plus me-1"></i>Ekle
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Referans No</label>
+                                            <input type="text" class="form-control" id="stock-reference">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Tedarikçi</label>
+                                            <input type="text" class="form-control" id="stock-supplier">
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div class="mb-3">
-                                    <label class="form-label">Ürün</label>
-                                    <select class="form-select" id="stock-product" required>
-                                        <option value="">Önce ürün türü seçiniz</option>
-                                    </select>
+                                    <label class="form-label">Açıklama</label>
+                                    <textarea class="form-control" id="stock-description" rows="2"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Eklenen Ürünler Listesi -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-list me-2"></i>Eklenen Ürünler
+                                <span class="badge bg-primary ms-2" id="product-count">0</span>
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearProductList()">
+                                <i class="fas fa-trash me-1"></i>Tümünü Temizle
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="product-list-container">
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-box-open fa-3x mb-3"></i>
+                                    <p>Henüz ürün eklenmedi. Yukarıdaki formu kullanarak ürün ekleyin.</p>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Miktar</label>
-                                    <input type="number" class="form-control" id="stock-quantity" step="0.01" required>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Birim</label>
-                                    <input type="text" class="form-control" id="stock-unit" readonly>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Birim Fiyat</label>
-                                    <input type="number" class="form-control" id="stock-unit-price" step="0.01">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Referans No</label>
-                                    <input type="text" class="form-control" id="stock-reference">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Tedarikçi</label>
-                                    <input type="text" class="form-control" id="stock-supplier">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Açıklama</label>
-                            <textarea class="form-control" id="stock-description" rows="3"></textarea>
-                        </div>
-                    </form>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-primary" onclick="submitStockEntry()">Stok Girişi Yap</button>
+                    <button type="button" class="btn btn-primary" onclick="submitBulkStockEntry()" id="submit-bulk-btn" disabled>
+                        <i class="fas fa-save me-1"></i>Toplu Stok Girişi Yap
+                    </button>
                 </div>
             </div>
         </div>
@@ -1403,6 +1437,264 @@
             } catch (error) {
                 console.error('Stok girişi error:', error);
                 showAlert('Stok girişi yapılamadı', 'error');
+            }
+        }
+
+        // Toplu stok girişi için global değişkenler
+        let productList = [];
+        let stockProducts = {};
+
+        // Ürün türüne göre ürünleri yükle
+        async function loadStockProducts() {
+            const productType = document.getElementById('stock-product-type').value;
+            const productSelect = document.getElementById('stock-product');
+            
+            if (!productType) {
+                productSelect.innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+                productSelect.disabled = true;
+                return;
+            }
+            
+            productSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+            productSelect.disabled = true;
+            
+            try {
+                let apiEndpoint = '';
+                switch(productType) {
+                    case 'hammadde':
+                        apiEndpoint = '/api/hammaddeler';
+                        break;
+                    case 'yarimamul':
+                        apiEndpoint = '/api/yarimamuller';
+                        break;
+                    case 'nihai':
+                        apiEndpoint = '/api/nihai_urunler';
+                        break;
+                    default:
+                        throw new Error('Geçersiz ürün tipi');
+                }
+                
+                const response = await fetch(apiEndpoint);
+                if (!response.ok) {
+                    throw new Error(`API hatası: ${response.status}`);
+                }
+                
+                const products = await response.json();
+                stockProducts[productType] = products;
+                
+                productSelect.innerHTML = '<option value="">Ürün seçiniz...</option>';
+                
+                if (!Array.isArray(products) || products.length === 0) {
+                    productSelect.innerHTML = '<option value="">Ürün bulunamadı</option>';
+                    productSelect.disabled = true;
+                    return;
+                }
+                
+                products.forEach((product, index) => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    const productName = product.ad || product.name || product.urun_adi || 'Bilinmeyen Ürün';
+                    const productCode = product.kod || product.code || 'Kod yok';
+                    option.textContent = `${productName} (${productCode})`;
+                    option.dataset.unit = product.birim || 'adet';
+                    productSelect.appendChild(option);
+                });
+                
+                productSelect.disabled = false;
+                
+            } catch (error) {
+                console.error('Ürün yükleme hatası:', error);
+                productSelect.innerHTML = '<option value="">Hata: Ürünler yüklenemedi</option>';
+                productSelect.disabled = true;
+                showAlert('Ürünler yüklenemedi: ' + error.message, 'error');
+            }
+        }
+
+        // Ürünü listeye ekle
+        function addProductToList() {
+            const productType = document.getElementById('stock-product-type').value;
+            const productId = document.getElementById('stock-product').value;
+            const quantity = document.getElementById('stock-quantity').value;
+            const unitPrice = document.getElementById('stock-unit-price').value;
+            const reference = document.getElementById('stock-reference').value;
+            const supplier = document.getElementById('stock-supplier').value;
+            const description = document.getElementById('stock-description').value;
+            
+            // Validation
+            if (!productType || !productId || !quantity) {
+                showAlert('Lütfen ürün türü, ürün ve miktar alanlarını doldurun', 'error');
+                return;
+            }
+            
+            // Ürün bilgilerini al
+            const products = stockProducts[productType] || [];
+            const selectedProduct = products.find(p => p.id == productId);
+            
+            if (!selectedProduct) {
+                showAlert('Seçilen ürün bulunamadı', 'error');
+                return;
+            }
+            
+            // Aynı ürün zaten eklenmiş mi kontrol et
+            const existingIndex = productList.findIndex(p => p.urun_id == productId && p.urun_tipi == productType);
+            if (existingIndex !== -1) {
+                // Miktarı güncelle
+                productList[existingIndex].miktar = parseFloat(productList[existingIndex].miktar) + parseFloat(quantity);
+                showAlert('Ürün miktarı güncellendi', 'info');
+            } else {
+                // Yeni ürün ekle
+                const productData = {
+                    urun_id: productId,
+                    urun_tipi: productType,
+                    miktar: parseFloat(quantity),
+                    birim: selectedProduct.birim || 'adet',
+                    birim_fiyat: parseFloat(unitPrice) || 0,
+                    referans_no: reference,
+                    aciklama: description,
+                    tedarikci: supplier,
+                    urun_adi: selectedProduct.ad || selectedProduct.name || selectedProduct.urun_adi || 'Bilinmeyen Ürün',
+                    urun_kodu: selectedProduct.kod || selectedProduct.code || 'Kod yok'
+                };
+                
+                productList.push(productData);
+                showAlert('Ürün listeye eklendi', 'success');
+            }
+            
+            // Formu temizle
+            document.getElementById('addProductForm').reset();
+            document.getElementById('stock-product').disabled = true;
+            document.getElementById('stock-product').innerHTML = '<option value="">Önce ürün türü seçiniz</option>';
+            
+            // Listeyi güncelle
+            updateProductList();
+        }
+
+        // Ürün listesini güncelle
+        function updateProductList() {
+            const container = document.getElementById('product-list-container');
+            const countBadge = document.getElementById('product-count');
+            const submitBtn = document.getElementById('submit-bulk-btn');
+            
+            countBadge.textContent = productList.length;
+            submitBtn.disabled = productList.length === 0;
+            
+            if (productList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-box-open fa-3x mb-3"></i>
+                        <p>Henüz ürün eklenmedi. Yukarıdaki formu kullanarak ürün ekleyin.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="table-responsive"><table class="table table-hover">';
+            html += '<thead><tr><th>Ürün Adı</th><th>Tür</th><th>Miktar</th><th>Birim</th><th>Birim Fiyat</th><th>Toplam</th><th>İşlemler</th></tr></thead>';
+            html += '<tbody>';
+            
+            productList.forEach((product, index) => {
+                const total = product.miktar * product.birim_fiyat;
+                html += `
+                    <tr>
+                        <td>
+                            <strong>${product.urun_adi}</strong><br>
+                            <small class="text-muted">${product.urun_kodu}</small>
+                        </td>
+                        <td><span class="badge bg-secondary">${product.urun_tipi}</span></td>
+                        <td>${product.miktar}</td>
+                        <td>${product.birim}</td>
+                        <td>₺${product.birim_fiyat.toFixed(2)}</td>
+                        <td><strong>₺${total.toFixed(2)}</strong></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeProductFromList(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            
+            // Toplam özet
+            const totalAmount = productList.reduce((sum, product) => sum + (product.miktar * product.birim_fiyat), 0);
+            const totalQuantity = productList.reduce((sum, product) => sum + product.miktar, 0);
+            
+            html += `
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="alert alert-info mb-0">
+                            <strong>Toplam Ürün Sayısı:</strong> ${productList.length}<br>
+                            <strong>Toplam Miktar:</strong> ${totalQuantity.toFixed(2)}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-success mb-0">
+                            <strong>Toplam Tutar:</strong> ₺${totalAmount.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        // Ürünü listeden çıkar
+        function removeProductFromList(index) {
+            productList.splice(index, 1);
+            updateProductList();
+            showAlert('Ürün listeden çıkarıldı', 'info');
+        }
+
+        // Tüm ürünleri temizle
+        function clearProductList() {
+            if (productList.length === 0) {
+                showAlert('Liste zaten boş', 'info');
+                return;
+            }
+            
+            if (confirm('Tüm ürünleri listeden çıkarmak istediğinizden emin misiniz?')) {
+                productList = [];
+                updateProductList();
+                showAlert('Tüm ürünler temizlendi', 'info');
+            }
+        }
+
+        // Toplu stok girişi yap
+        async function submitBulkStockEntry() {
+            if (productList.length === 0) {
+                showAlert('Lütfen en az bir ürün ekleyin', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/stock/bulk-entry', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ products: productList })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert(`Toplu stok girişi başarıyla yapıldı! ${result.successful} ürün eklendi.`, 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('stockEntryModal')).hide();
+                    
+                    // Formu ve listeyi temizle
+                    document.getElementById('addProductForm').reset();
+                    productList = [];
+                    updateProductList();
+                    
+                    // Dashboard istatistiklerini güncelle
+                    updateDashboardStats();
+                } else {
+                    showAlert(result.error || 'Toplu stok girişi yapılamadı', 'error');
+                }
+            } catch (error) {
+                console.error('Toplu stok girişi error:', error);
+                showAlert('Toplu stok girişi yapılamadı', 'error');
             }
         }
 

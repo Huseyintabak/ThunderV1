@@ -1,8 +1,20 @@
-# ThunderV1 - Üretim Yönetim Sistemi v1.6.5
+# ThunderV1 - Üretim Yönetim Sistemi v1.6.6
 
 ## Proje Açıklaması
 
 ThunderV1, hammadde ve üretim yönetimi için geliştirilmiş kapsamlı bir web uygulamasıdır. Sistem, hammaddelerden yarı mamul ürünler ve yarı mamullerden nihai ürünler üretme süreçlerini yönetir.
+
+## 🚀 V1.6.6 Yenilikleri
+- ✅ **Operatör Takibi Sistemi**: Gerçek zamanlı operatör performans takibi
+- ✅ **Planlanan Siparişler**: Sipariş planlama ve kabul sistemi
+- ✅ **Aktif Üretim Yönetimi**: Üretim durumu takibi ve yönetimi
+- ✅ **Barkod Doğrulama**: Gerçek zamanlı barkod doğrulama sistemi
+- ✅ **Üretim Süreci Modal**: Detaylı üretim süreci yönetimi
+- ✅ **Miktar Kontrolü**: Üretim miktarı doğrulama ve kontrol
+- ✅ **Operatör Paneli**: Operatörler için özel arayüz
+- ✅ **Sipariş Yönetimi**: Gelişmiş sipariş yönetim sistemi
+- ✅ **Real-time Updates**: Canlı veri güncellemeleri
+- ✅ **Database Schema Fixes**: Veritabanı uyumluluk düzeltmeleri
 
 ## 🚀 V1.6.5 Yenilikleri
 - ✅ **Entegre İş Süreci Yönetimi**: State Management, Event Bus, Workflow Engine

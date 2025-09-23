@@ -121,7 +121,10 @@ class RealtimeClient {
     }
     
     handleMessage(message) {
-        console.log('📨 WebSocket mesajı alındı:', message.type);
+        // Pong mesajlarını loglamayalım
+        if (message.type !== 'pong') {
+            console.log('📨 WebSocket mesajı alındı:', message.type);
+        }
         
         switch (message.type) {
             case 'welcome':

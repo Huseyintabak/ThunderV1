@@ -2,8 +2,8 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 
 // Supabase configuration
-const supabaseUrl = 'https://beynxlogttkrrkejvftz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE';
+const supabaseUrl = 'N/A';
+const supabaseKey = 'N/A';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
