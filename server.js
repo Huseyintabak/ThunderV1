@@ -7118,35 +7118,41 @@ app.get('/api/debug/product-barcodes', async (req, res) => {
     
     let nihaiUrunler = [];
     let yarimamuller = [];
+    let nihaiError = null;
+    let yarimError = null;
     
     if (barcode) {
       // Belirli bir barkod aranıyor
-      const { data: nihaiData, error: nihaiError } = await supabase
+      const nihaiResult = await supabase
         .from('nihai_urunler')
         .select('id, ad, kod, barkod')
         .eq('barkod', barcode);
 
-      const { data: yarimamulData, error: yarimError } = await supabase
+      const yarimamulResult = await supabase
         .from('yarimamuller')
         .select('id, ad, kod, barkod')
         .eq('barkod', barcode);
         
-      nihaiUrunler = nihaiData || [];
-      yarimamuller = yarimamulData || [];
+      nihaiUrunler = nihaiResult.data || [];
+      yarimamuller = yarimamulResult.data || [];
+      nihaiError = nihaiResult.error;
+      yarimError = yarimamulResult.error;
     } else {
       // Tüm barkodları getir (debug için)
-      const { data: nihaiData, error: nihaiError } = await supabase
+      const nihaiResult = await supabase
         .from('nihai_urunler')
         .select('id, ad, kod, barkod')
         .not('barkod', 'is', null);
 
-      const { data: yarimamulData, error: yarimError } = await supabase
+      const yarimamulResult = await supabase
         .from('yarimamuller')
         .select('id, ad, kod, barkod')
         .not('barkod', 'is', null);
         
-      nihaiUrunler = nihaiData || [];
-      yarimamuller = yarimamulData || [];
+      nihaiUrunler = nihaiResult.data || [];
+      yarimamuller = yarimamulResult.data || [];
+      nihaiError = nihaiResult.error;
+      yarimError = yarimamulResult.error;
     }
 
     // Siparişlerden product_details'leri al
@@ -7161,9 +7167,9 @@ app.get('/api/debug/product-barcodes', async (req, res) => {
       yarimamuller: yarimamuller || [],
       orders: orders || [],
       errors: {
-        nihai: nihaiError?.message,
-        yarimamul: yarimError?.message,
-        orders: ordersError?.message
+        nihai: nihaiError?.message || null,
+        yarimamul: yarimError?.message || null,
+        orders: ordersError?.message || null
       }
     });
   } catch (error) {
