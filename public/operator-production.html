@@ -441,6 +441,19 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                        <!-- Seçilen Ürün Bilgisi -->
+                        <div class="alert alert-info mb-3" id="selectedProductInfo" style="display: none;">
+                            <div class="row">
+                                <div class="col-8">
+                                    <strong>Seçilen Ürün:</strong> <span id="selectedProductName">-</span><br>
+                                    <strong>Ürün Kodu:</strong> <span id="selectedProductCode">-</span>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <small class="text-muted">Bu ürüne ait barkodları okutabilirsiniz</small>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="row mb-4">
                             <div class="col-12">
                                 <h6 class="text-muted">Ürün Bilgileri</h6>
@@ -487,8 +500,18 @@
                                                 <div class="text-info small" id="modalPlanId">-</div>
                                         </div>
                                             <div class="col-6">
+                                                <strong>Üretim ID:</strong>
+                                                <div class="text-info small" id="modalProductionId">-</div>
+                                        </div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6">
+                                                <strong>Planlanan Miktar:</strong>
+                                                <div class="text-info small" id="modalPlannedQuantity">-</div>
+                                        </div>
+                                            <div class="col-6">
                                                 <strong>Öncelik:</strong>
-                                                <span class="badge" id="modalPriority">-</span>
+                                                <span class="badge bg-info" id="modalPriority">-</span>
                                                 </div>
                                                 </div>
                                         <div class="row mb-2">
@@ -497,8 +520,8 @@
                                                 <div class="text-muted small" id="modalDeliveryDate">-</div>
                                             </div>
                                             <div class="col-6">
-                                                <strong>Üretilen:</strong>
-                                                <div class="text-info fw-bold" id="modalProducedQuantity">-</div>
+                                                <strong>Durum:</strong>
+                                                <div class="text-success fw-bold" id="modalStatus">-</div>
                                         </div>
                                     </div>
                                         <div class="row mb-2">
@@ -692,6 +715,7 @@
                 );
                 
                 console.log('Filtrelenmiş planlar:', plannedOrders);
+                console.log('Filtrelenmiş plan sayısı:', plannedOrders.length);
                 
                 updateStats('plannedOrdersCount', plannedOrders.length);
                 await displayPlannedOrders(plannedOrders);
@@ -864,20 +888,42 @@
             }
             
             // Her plan için sipariş detaylarını al
+            console.log('displayPlannedOrders çağrıldı, plan sayısı:', plans.length);
             const plansWithOrderDetails = await Promise.all(plans.map(async (plan) => {
                 try {
+                    console.log('Plan işleniyor:', plan.id, 'order_id:', plan.order_id);
                     if (plan.order_id) {
                         const response = await fetch(`/api/orders/${plan.order_id}`);
+                        console.log('Sipariş API yanıtı:', plan.order_id, response.status);
                         if (response.ok) {
                             const order = await response.json();
                             
                             // Sipariş detaylarından toplam miktarı hesapla
                             let totalQuantity = 0;
-                            if (order.product_details && Array.isArray(order.product_details)) {
-                                totalQuantity = order.product_details.reduce((sum, product) => {
-                                    return sum + (parseInt(product.quantity) || 0);
-                                }, 0);
+                            if (order.product_details) {
+                                let productDetails;
+                                try {
+                                    // product_details string ise parse et
+                                    productDetails = typeof order.product_details === 'string' 
+                                        ? JSON.parse(order.product_details) 
+                                        : order.product_details;
+                                } catch (parseError) {
+                                    console.error('Product details parse hatası:', parseError);
+                                    productDetails = [];
+                                }
+                                
+                                if (Array.isArray(productDetails)) {
+                                    totalQuantity = productDetails.reduce((sum, product) => {
+                                        return sum + (parseInt(product.quantity) || 0);
+                                    }, 0);
+                                }
                             }
+                            
+                            console.log('Sipariş miktar hesaplama:', {
+                                order_id: order.id,
+                                product_details: order.product_details,
+                                total_quantity: totalQuantity
+                            });
                             
                             return {
                                 ...plan,
@@ -1076,7 +1122,7 @@
             products.forEach(product => {
                         html += `
                             <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="card product-card">
+                                <div class="card product-card" style="cursor: pointer;" onclick="selectProductForProduction(${JSON.stringify(product).replace(/"/g, '&quot;')})">
                                     <div class="card-header">
                                         <h6 class="mb-0">
                                             <i class="fas fa-box me-2"></i>${product.name || 'Bilinmeyen Ürün'}
@@ -1123,7 +1169,7 @@
                                         </div>
                                     </div>
                                     <div class="card-footer">
-                                <button class="btn btn-start-production" onclick="startProductionProcess(${product.production_id})">
+                                <button class="btn btn-start-production" onclick="event.stopPropagation(); selectProductForProduction(${JSON.stringify(product).replace(/"/g, '&quot;')})">
                                             <i class="fas fa-play me-2"></i>Üretimi Başlat
                                         </button>
                                     </div>
@@ -1147,6 +1193,170 @@
             }
         }
 
+        
+        // Seçilen ürünü modal'da göster
+        function selectProductForProduction(product) {
+            console.log('Seçilen ürün:', product);
+            
+            // Seçilen ürün bilgisini global değişkende sakla (barkod kontrolü için)
+            window.selectedProduct = product;
+            
+            // currentProductionId'yi set et
+            currentProductionId = product.production_id;
+            
+            // Seçilen ürün bilgisini modal'da göster
+            document.getElementById('selectedProductName').textContent = product.name || product.product_name || 'N/A';
+            document.getElementById('selectedProductCode').textContent = product.code || product.product_code || 'N/A';
+            document.getElementById('selectedProductInfo').style.display = 'block';
+            
+            // Modal'ı aç ve seçilen ürün bilgilerini göster
+            try {
+                const modalElement = document.getElementById('productionModal');
+                if (modalElement) {
+                    // Bootstrap 5 modal'ı aç
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                } else {
+                    console.error('Modal elementi bulunamadı');
+                    return;
+                }
+            } catch (error) {
+                console.error('Modal açma hatası:', error);
+                // Alternatif yöntem: jQuery kullan
+                $('#productionModal').modal('show');
+            }
+            
+            // Modal içeriğini seçilen ürün bilgileriyle doldur
+            document.getElementById('modalProductCode').textContent = product.code || product.product_code || 'N/A';
+            document.getElementById('modalProductName').textContent = product.name || product.product_name || 'N/A';
+            document.getElementById('modalTargetQuantity').textContent = product.quantity || 0;
+            document.getElementById('modalOrderNumber').textContent = product.order_number || 'N/A';
+            document.getElementById('modalCustomerName').textContent = product.customer_name || 'N/A';
+            
+            // Eksik elementleri kontrol et ve ekle
+            const deliveryDateElement = document.getElementById('modalDeliveryDate');
+            if (deliveryDateElement) {
+                deliveryDateElement.textContent = product.delivery_date ? new Date(product.delivery_date).toLocaleDateString('tr-TR') : 'N/A';
+            }
+            
+            const priorityElement = document.getElementById('modalPriority');
+            if (priorityElement) {
+                const priority = product.priority === 'high' ? 'Yüksek' : product.priority === 'medium' ? 'Orta' : 'Düşük';
+                const priorityClass = product.priority === 'high' ? 'bg-danger' : product.priority === 'medium' ? 'bg-warning' : 'bg-info';
+                priorityElement.textContent = priority;
+                priorityElement.className = `badge ${priorityClass}`;
+            }
+            
+            const planIdElement = document.getElementById('modalPlanId');
+            if (planIdElement) {
+                planIdElement.textContent = product.plan_id || 'N/A';
+            }
+            
+            const productionIdElement = document.getElementById('modalProductionId');
+            if (productionIdElement) {
+                productionIdElement.textContent = product.production_id || 'N/A';
+            }
+            
+            const plannedQuantityElement = document.getElementById('modalPlannedQuantity');
+            if (plannedQuantityElement) {
+                plannedQuantityElement.textContent = product.planned_quantity || 0;
+            }
+            
+            const producedQuantity = product.produced_quantity || 0;
+            document.getElementById('modalProducedQuantity').textContent = producedQuantity;
+            console.log('Üretilen miktar:', producedQuantity);
+            
+            // Eksik bilgileri doldur
+            const operatorElement = document.getElementById('modalOperator');
+            if (operatorElement) {
+                operatorElement.textContent = product.assigned_operator || 'Atanmamış';
+            }
+            
+            const productDetailElement = document.getElementById('modalProductDetail');
+            if (productDetailElement) {
+                productDetailElement.textContent = product.name || product.product_name || 'N/A';
+            }
+            
+            const statusElement = document.getElementById('modalStatus');
+            if (statusElement) {
+                const status = product.status === 'active' ? 'Aktif' : product.status === 'completed' ? 'Tamamlandı' : product.status === 'paused' ? 'Duraklatıldı' : 'Bilinmeyen';
+                statusElement.textContent = status;
+            }
+            
+            // İlerleme hesapla
+            const plannedQty = product.planned_quantity || 0;
+            const producedQty = product.produced_quantity || 0;
+            const progress = plannedQty > 0 ? Math.round((producedQty / plannedQty) * 100) : 0;
+            
+            const progressBarElement = document.getElementById('modalProgressBar');
+            const progressTextElement = document.getElementById('modalProgressText');
+            if (progressBarElement) {
+                progressBarElement.style.width = progress + '%';
+                progressBarElement.setAttribute('aria-valuenow', progress);
+            }
+            if (progressTextElement) {
+                progressTextElement.textContent = progress + '%';
+            }
+            
+            // Barkod bilgisini al
+            loadBarcodeForProduct(product.code || product.product_code);
+            
+            // Üretim adedi girme alanını gizle (barkod okutulmadan önce)
+            hideQuantityInput();
+            
+            // Barkod alanını temizle ve sıfırla
+            const barcodeInput = document.getElementById('barcodeInput');
+            if (barcodeInput) {
+                barcodeInput.value = '';
+                barcodeInput.style.display = 'block';
+            }
+            
+            // Barkod durumunu sıfırla
+            showBarcodeStatus('Barkod okuyucu ile okutun veya manuel girin', 'info');
+        }
+        
+        // Ürün barkodunu yükle
+        async function loadBarcodeForProduct(productCode) {
+            if (!productCode || productCode === 'N/A') {
+                document.getElementById('modalProductBarcode').textContent = 'N/A';
+                return;
+            }
+            
+            try {
+                // Barkod arama başlıyor
+                const nihaiResponse = await fetch(`/api/nihai-urunler`);
+                
+                if (nihaiResponse.ok) {
+                    const nihaiData = await nihaiResponse.json();
+                    const nihaiProduct = nihaiData.find(p => p.kod === productCode);
+                    
+                    if (nihaiProduct && nihaiProduct.barkod) {
+                        document.getElementById('modalProductBarcode').textContent = nihaiProduct.barkod;
+                        return;
+                    }
+                }
+                
+                // Eğer nihai ürünlerde bulunamadıysa yarı mamullerde ara
+                const yarimamulResponse = await fetch(`/api/yarimamuller`);
+                
+                if (yarimamulResponse.ok) {
+                    const yarimamulData = await yarimamulResponse.json();
+                    const yarimamulProduct = yarimamulData.find(p => p.kod === productCode);
+                    
+                    if (yarimamulProduct && yarimamulProduct.barkod) {
+                        document.getElementById('modalProductBarcode').textContent = yarimamulProduct.barkod;
+                        return;
+                    }
+                }
+                
+                // Barkod bulunamadı
+                document.getElementById('modalProductBarcode').textContent = 'N/A';
+                
+            } catch (error) {
+                console.error('❌ Barkod bilgisi alınamadı:', error);
+                document.getElementById('modalProductBarcode').textContent = 'N/A';
+            }
+        }
         
         let currentProductionId = null;
 
@@ -1245,7 +1455,9 @@
                                                     plan_name: production.product_name,
                                                     production_id: production.id,
                                                     planned_quantity: production.planned_quantity,
-                                                    produced_quantity: production.produced_quantity
+                                                    produced_quantity: production.produced_quantity,
+                                                    assigned_operator: production.assigned_operator || 'Atanmamış',
+                                                    status: production.status || 'active'
                                                 });
                                             });
                                         }
@@ -1292,6 +1504,20 @@
         async function startProductionFromPlan(planId, planName, quantity) {
             try {
                 console.log('Plan kabul ediliyor:', planId, planName, quantity);
+                
+                // Önce bu plan için mevcut aktif üretim var mı kontrol et
+                // Mevcut aktif üretim kontrol ediliyor
+                const existingProductionsResponse = await fetch('/api/active-productions');
+                if (existingProductionsResponse.ok) {
+                    const existingProductions = await existingProductionsResponse.json();
+                    const existingProduction = existingProductions.find(p => p.plan_id === planId && p.status === 'active');
+                    
+                    if (existingProduction) {
+                        console.log('⚠️ Bu plan için zaten aktif üretim mevcut:', existingProduction);
+                        alert('Bu plan için zaten aktif üretim mevcut! Üretim ID: ' + existingProduction.id);
+                        return;
+                    }
+                }
                 
                 // Plan durumunu 'approved' olarak güncelle
                 const updateResponse = await fetch(`/api/production-plans/${planId}/update-status`, {
@@ -1423,8 +1649,7 @@
                                     console.log('Gerçek ürün kodu bulundu:', productCode);
                                     
                                     // Barkod bilgisini al - ürün kodundan ürün bilgilerini bul
-                                    console.log('🔍 ProductDetails kontrol:', productDetails);
-                                    console.log('🔍 ProductDetails[0]:', productDetails[0]);
+                                    // ProductDetails kontrol ediliyor
                                     console.log('🔍 ProductDetails[0].code:', productDetails[0]?.code);
                                     
                                     // productCode zaten doğru şekilde alınmış, onu kullan
@@ -1653,6 +1878,13 @@
                 return;
             }
             
+            // currentProductionId kontrolü
+            console.log('currentProductionId:', currentProductionId);
+            if (!currentProductionId) {
+                showBarcodeStatus('Önce bir üretim seçin!', 'danger');
+                return;
+            }
+            
             // Mevcut üretim bilgilerini al ve miktar kontrolü yap
             try {
                 const productionResponse = await fetch(`/api/active-productions/${currentProductionId}`);
@@ -1709,10 +1941,20 @@
             }
         }
         
-        // Barkod doğrulama - Gerçek zamanlı veritabanı kontrolü
+        // Barkod doğrulama - Sadece seçilen ürüne ait barkodları kabul et
         async function validateBarcode(barcode) {
             try {
                 console.log('Barkod doğrulanıyor:', barcode);
+                
+                // Seçilen ürün bilgisini kontrol et
+                if (!window.selectedProduct) {
+                    console.error('Seçilen ürün bilgisi bulunamadı');
+                    showBarcodeStatus('Önce bir ürün seçin!', 'danger');
+                    return false;
+                }
+                
+                const selectedProduct = window.selectedProduct;
+                console.log('Seçilen ürün:', selectedProduct);
                 
                 // Gerçek zamanlı barkod kontrolü - veritabanından direkt kontrol
                 const response = await fetch(`/api/debug/product-barcodes?barcode=${barcode}`);
@@ -1729,16 +1971,27 @@
                     const product = data.nihai_urunler[0];
                     console.log('Nihai ürün barkod eşleşmesi bulundu:', product);
                     
-                    // Ürün kodunu global değişkende sakla
-                    window.currentBarcodeProduct = {
-                        type: 'nihai',
-                        id: product.id,
-                        code: product.kod,
-                        name: product.ad,
-                        barcode: product.barkod
-                    };
-                    
-                    return true;
+                    // Seçilen ürün kodu ile eşleşiyor mu kontrol et
+                    if (product.kod === selectedProduct.code || product.kod === selectedProduct.product_code) {
+                        console.log('✅ Barkod seçilen ürüne ait!');
+                        
+                        // Ürün kodunu global değişkende sakla
+                        window.currentBarcodeProduct = {
+                            type: 'nihai',
+                            id: product.id,
+                            code: product.kod,
+                            name: product.ad,
+                            barcode: product.barkod
+                        };
+                        
+                        return true;
+                    } else {
+                        console.log('❌ Barkod seçilen ürüne ait değil!');
+                        console.log('Seçilen ürün kodu:', selectedProduct.code || selectedProduct.product_code);
+                        console.log('Barkod ürün kodu:', product.kod);
+                        showBarcodeStatus('Bu barkod seçilen ürüne ait değil!', 'danger');
+                        return false;
+                    }
                 }
                 
                 // Yarımamul ürünlerde barkod var mı?
@@ -1746,22 +1999,35 @@
                     const product = data.yarimamuller[0];
                     console.log('Yarımamul barkod eşleşmesi bulundu:', product);
                     
-                    // Ürün kodunu global değişkende sakla
-                    window.currentBarcodeProduct = {
-                        type: 'yarimamul',
-                        id: product.id,
-                        code: product.kod,
-                        name: product.ad,
-                        barcode: product.barkod
-                    };
-                    
-                    return true;
+                    // Seçilen ürün kodu ile eşleşiyor mu kontrol et
+                    if (product.kod === selectedProduct.code || product.kod === selectedProduct.product_code) {
+                        console.log('✅ Barkod seçilen ürüne ait!');
+                        
+                        // Ürün kodunu global değişkende sakla
+                        window.currentBarcodeProduct = {
+                            type: 'yarimamul',
+                            id: product.id,
+                            code: product.kod,
+                            name: product.ad,
+                            barcode: product.barkod
+                        };
+                        
+                        return true;
+                    } else {
+                        console.log('❌ Barkod seçilen ürüne ait değil!');
+                        console.log('Seçilen ürün kodu:', selectedProduct.code || selectedProduct.product_code);
+                        console.log('Barkod ürün kodu:', product.kod);
+                        showBarcodeStatus('Bu barkod seçilen ürüne ait değil!', 'danger');
+                        return false;
+                    }
                 }
                 
                 console.log('Barkod eşleşmedi - veritabanında bulunamadı');
+                showBarcodeStatus('Barkod veritabanında bulunamadı!', 'danger');
                 return false;
             } catch (error) {
                 console.error('Barkod doğrulama hatası:', error);
+                showBarcodeStatus('Barkod doğrulama hatası!', 'danger');
                 return false;
             }
         }

@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCustomers();
     
     // Sipariş Yönetimi tab'ı için direkt yükleme (varsayılan aktif tab)
-    console.log('🎯 Sayfa yüklendi - Sipariş Yönetimi verileri yükleniyor...');
+    // Sayfa yüklendi - Sipariş Yönetimi verileri yükleniyor
     loadOrders();
     loadPlanningStatistics();
 });
@@ -172,7 +172,7 @@ function setupTabEventListeners() {
     const stagesTab = document.getElementById('production-stages-tab');
     if (stagesTab) {
         stagesTab.addEventListener('shown.bs.tab', function() {
-            console.log('🎯 Üretim Aşamaları tab\'ı açıldı - Event listener çalışıyor');
+            // Üretim Aşamaları tab'ı açıldı
             // Tüm aşama verilerini yükle
             console.log('📊 Tüm aşama verilerini yüklüyor...');
             loadStageTemplates();
@@ -557,7 +557,7 @@ function loadTabData(tabId) {
             }
             break;
         case 'production-stages-tab':
-            console.log('🎯 loadTabData: Üretim Aşamaları tab verileri yükleniyor...');
+            // Üretim Aşamaları tab verileri yükleniyor
             if (typeof loadStageTemplates === 'function') {
                 loadStageTemplates();
                 loadStagePerformance();
@@ -627,7 +627,7 @@ function setupEventListeners() {
     
     // Operatör Takibi tab'ı için event listener
     document.getElementById('production-stages-tab').addEventListener('shown.bs.tab', function() {
-        console.log('🎯 Operatör Takibi tab\'ı aktif oldu, operatör durumu yükleniyor...');
+        // Operatör Takibi tab'ı aktif oldu
         loadOperatorStatus();
     });
     
@@ -5036,7 +5036,8 @@ window.renderPlansView = function(plans) {
 
 // Siparişleri görüntüleme
 function displayOrders(orders) {
-    const container = document.getElementById('orders-container');
+    const activeContainer = document.getElementById('active-orders-container');
+    const completedContainer = document.getElementById('completed-orders-container');
     
     // Siparişleri en son eklenen en üstte olacak şekilde sırala
     if (orders && orders.length > 0) {
@@ -5051,11 +5052,45 @@ function displayOrders(orders) {
     updateOrderStatistics(orders);
     
     if (!orders || orders.length === 0) {
+        activeContainer.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz üretimde olan sipariş bulunmuyor</h5>
+                <p class="text-muted">Yeni sipariş eklemek için "Yeni Sipariş" butonuna tıklayın.</p>
+            </div>
+        `;
+        completedContainer.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz tamamlanan sipariş bulunmuyor</h5>
+                <p class="text-muted">Tamamlanan siparişler burada görünecek.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Siparişleri durumlarına göre ayır
+    const activeOrders = orders.filter(order => 
+        order.status === 'pending' || order.status === 'processing' || order.status === 'approved'
+    );
+    const completedOrders = orders.filter(order => 
+        order.status === 'completed'
+    );
+    
+    // Üretimde olan siparişleri göster
+    displayOrderSection(activeContainer, activeOrders, 'Üretimde olan sipariş bulunmuyor');
+    
+    // Tamamlanan siparişleri göster
+    displayOrderSection(completedContainer, completedOrders, 'Tamamlanan sipariş bulunmuyor');
+}
+
+// Sipariş bölümünü görüntüleme
+function displayOrderSection(container, orders, emptyMessage) {
+    if (!orders || orders.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4">
-                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Henüz sipariş bulunmuyor</h5>
-                <p class="text-muted">Yeni sipariş eklemek için "Yeni Sipariş" butonuna tıklayın.</p>
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">${emptyMessage}</h5>
             </div>
         `;
         return;

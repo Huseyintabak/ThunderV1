@@ -142,22 +142,45 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Sipariş Listesi -->
-                                <div class="row">
+                                <!-- Üretimde Olan Siparişler -->
+                                <div class="row mb-4">
                                     <div class="col-12">
                                         <div class="card">
-                                            <div class="card-header">
+                                            <div class="card-header bg-warning text-dark">
                                                 <h6 class="mb-0">
-                                                    <i class="fas fa-list me-2"></i>Aktif Siparişler
+                                                    <i class="fas fa-cogs me-2"></i>Üretimde Olan Siparişler
                                                 </h6>
                                             </div>
                                             <div class="card-body">
-                                                <div id="orders-container">
+                                                <div id="active-orders-container">
                                                     <div class="text-center py-4">
-                                                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                                                <h5 class="text-muted">Siparişler yükleniyor...</h5>
-                                                <p class="text-muted">Sipariş verileri getiriliyor...</p>
-                                                        </div>
+                                                        <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                                                        <h5 class="text-muted">Üretimde olan siparişler yükleniyor...</h5>
+                                                        <p class="text-muted">Sipariş verileri getiriliyor...</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tamamlanan Siparişler -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header bg-success text-white">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-check-circle me-2"></i>Tamamlanan Siparişler
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="completed-orders-container">
+                                                    <div class="text-center py-4">
+                                                        <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                                                        <h5 class="text-muted">Tamamlanan siparişler yükleniyor...</h5>
+                                                        <p class="text-muted">Sipariş verileri getiriliyor...</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1414,7 +1437,7 @@
             
             // Sipariş Yönetimi tab'ı için veri yükle
             if (typeof loadOrders === 'function') {
-                console.log('✅ loadOrders fonksiyonu bulundu, çağrılıyor...');
+                // loadOrders fonksiyonu çağrılıyor
                 loadOrders();
             } else {
                 console.error('❌ loadOrders fonksiyonu bulunamadı!');
@@ -1438,7 +1461,7 @@
                 if (response.ok) {
                     htmlCustomers = await response.json();
                     window.htmlCustomers = htmlCustomers; // window objesine de ata
-                    console.log('✅ API\'den müşteriler yüklendi:', htmlCustomers);
+                    // API'den müşteriler yüklendi
                     // Müşteri listesini göster
                     displayCustomers();
                 } else {
@@ -1510,7 +1533,7 @@
                 return;
             }
             
-            console.log('✅ customer-name select elementi bulundu');
+            // customer-name select elementi bulundu
             select.innerHTML = '<option value="">Müşteri seçiniz...</option>';
             
             if (!htmlCustomers || htmlCustomers.length === 0) {
@@ -1528,7 +1551,7 @@
                 select.appendChild(option);
             });
             
-            console.log('✅ Müşteri seçenekleri yüklendi:', htmlCustomers.length, 'müşteri');
+            // Müşteri seçenekleri yüklendi
             console.log('🔍 Select element options count:', select.options.length);
         }
         
@@ -4542,6 +4565,174 @@
             };
             return texts[priority] || priority;
         }
+        
+        // Operatör Takibi Fonksiyonları
+        async function loadOperatorStatus() {
+            try {
+                // Operatör istatistiklerini yükle
+                await loadOperatorStats();
+                
+                // Operatör listesini yükle
+                await loadOperatorsList();
+            } catch (error) {
+                console.error('❌ Operatör durumu yükleme hatası:', error);
+            }
+        }
+        
+        // Operatör istatistiklerini yükle
+        async function loadOperatorStats() {
+            try {
+                // Aktif üretimleri al
+                const productionsResponse = await fetch('/api/active-productions');
+                const productions = await productionsResponse.json();
+                
+                // Operatörleri al
+                const operatorsResponse = await fetch('/api/operators');
+                const operators = await operatorsResponse.json();
+                
+                // Bugün tamamlanan üretimleri al
+                const today = new Date().toISOString().split('T')[0];
+                const completedResponse = await fetch(`/api/completed-productions?date=${today}`);
+                const completedProductions = await completedResponse.json();
+                
+                // İstatistikleri hesapla
+                const totalOperators = operators.length;
+                const activeOperators = [...new Set(productions.map(p => p.assigned_operator))].length;
+                const activeProductions = productions.length;
+                const completedToday = completedProductions.length;
+                const producedToday = completedProductions.reduce((sum, p) => sum + (p.produced_quantity || 0), 0);
+                
+                // Verimlilik hesapla (basit hesaplama)
+                const efficiency = totalOperators > 0 ? Math.round((activeOperators / totalOperators) * 100) : 0;
+                
+                // İstatistikleri güncelle
+                document.getElementById('total-operators-count').textContent = totalOperators;
+                document.getElementById('active-operators-count').textContent = activeOperators;
+                document.getElementById('active-productions-count').textContent = activeProductions;
+                document.getElementById('completed-today-count').textContent = completedToday;
+                document.getElementById('produced-today-count').textContent = producedToday;
+                document.getElementById('efficiency-rate').textContent = efficiency + '%';
+                
+                // İstatistikler güncellendi
+                
+            } catch (error) {
+                console.error('❌ Operatör istatistikleri yükleme hatası:', error);
+            }
+        }
+        
+        // Operatör listesini yükle
+        async function loadOperatorsList() {
+            try {
+                const container = document.getElementById('operators-list-container');
+                
+                // Operatörleri al
+                const operatorsResponse = await fetch('/api/operators');
+                const operators = await operatorsResponse.json();
+                
+                // Aktif üretimleri al
+                const productionsResponse = await fetch('/api/active-productions');
+                const productions = await productionsResponse.json();
+                
+                if (operators.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Henüz operatör bulunmuyor</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Operatör listesini oluştur
+                const operatorsHtml = operators.map(operator => {
+                    // Bu operatörün aktif üretimlerini bul
+                    const operatorProductions = productions.filter(p => p.assigned_operator === operator.name);
+                    const isActive = operatorProductions.length > 0;
+                    const statusClass = isActive ? 'success' : 'secondary';
+                    const statusText = isActive ? 'Aktif' : 'Beklemede';
+                    
+                    return `
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="avatar bg-${statusClass} text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">${operator.name}</h6>
+                                            <small class="text-muted">${operator.role || 'Operatör'}</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <div class="border-end">
+                                                <h5 class="mb-0 text-${statusClass}">${operatorProductions.length}</h5>
+                                                <small class="text-muted">Aktif Üretim</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <h5 class="mb-0 text-info">${operator.experience || 0}</h5>
+                                            <small class="text-muted">Deneyim (Yıl)</small>
+                                        </div>
+                                    </div>
+                                    
+                                    ${isActive ? `
+                                        <div class="mt-3">
+                                            <small class="text-muted">Aktif Üretimler:</small>
+                                            <div class="mt-1">
+                                                ${operatorProductions.map(prod => `
+                                                    <span class="badge bg-primary me-1 mb-1">${prod.product_name}</span>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="mt-3">
+                                        <span class="badge bg-${statusClass}">${statusText}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = `
+                    <div class="row">
+                        ${operatorsHtml}
+                    </div>
+                `;
+                
+                // Operatör listesi yüklendi
+                
+            } catch (error) {
+                console.error('❌ Operatör listesi yükleme hatası:', error);
+                const container = document.getElementById('operators-list-container');
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <p class="text-muted">Operatörler yüklenirken hata oluştu</p>
+                        <button class="btn btn-primary btn-sm" onclick="loadOperatorStatus()">
+                            <i class="fas fa-sync me-1"></i>Tekrar Dene
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Sayfa yüklendiğinde operatör takibini başlat
+        document.addEventListener('DOMContentLoaded', function() {
+            // Operatör Takibi tab'ına tıklandığında verileri yükle
+            const operatorTab = document.getElementById('production-stages-tab');
+            if (operatorTab) {
+                operatorTab.addEventListener('click', function() {
+                    setTimeout(() => {
+                        loadOperatorStatus();
+                    }, 100);
+                });
+            }
+        });
     </script>
     
 
