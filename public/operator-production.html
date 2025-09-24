@@ -1423,36 +1423,71 @@
                                     console.log('Gerçek ürün kodu bulundu:', productCode);
                                     
                                     // Barkod bilgisini al - ürün kodundan ürün bilgilerini bul
-                                    if (productDetails[0].code) {
+                                    console.log('🔍 ProductDetails kontrol:', productDetails);
+                                    console.log('🔍 ProductDetails[0]:', productDetails[0]);
+                                    console.log('🔍 ProductDetails[0].code:', productDetails[0]?.code);
+                                    
+                                    // productCode zaten doğru şekilde alınmış, onu kullan
+                                    if (productCode && productCode !== 'N/A') {
                                         try {
-                                            console.log('Ürün kodu için barkod aranıyor:', productDetails[0].code);
+                                            console.log('🔍 Barkod arama başlıyor...');
+                                            console.log('Ürün kodu (productCode):', productCode);
+                                            console.log('Ürün detayı:', productDetails[0]);
                                             
                                             // Önce nihai ürünlerde ara
+                                            console.log('📦 Nihai ürünlerde aranıyor...');
                                             const nihaiResponse = await fetch(`/api/nihai-urunler`);
+                                            console.log('Nihai ürünler API yanıtı:', nihaiResponse.status);
+                                            
                                             if (nihaiResponse.ok) {
                                                 const nihaiData = await nihaiResponse.json();
-                                                const nihaiProduct = nihaiData.find(p => p.kod === productDetails[0].code);
+                                                console.log('Nihai ürünler sayısı:', nihaiData.length);
+                                                console.log('İlk 3 nihai ürün:', nihaiData.slice(0, 3));
+                                                
+                                                const nihaiProduct = nihaiData.find(p => p.kod === productCode);
+                                                console.log('Aranan ürün kodu:', productCode);
+                                                console.log('Bulunan nihai ürün:', nihaiProduct);
+                                                
                                                 if (nihaiProduct && nihaiProduct.barkod) {
                                                     productBarcode = nihaiProduct.barkod;
-                                                    console.log('Nihai ürün barkod bulundu:', productBarcode);
+                                                    console.log('✅ Nihai ürün barkod bulundu:', productBarcode);
+                                                } else {
+                                                    console.log('❌ Nihai ürünlerde barkod bulunamadı');
                                                 }
+                                            } else {
+                                                console.error('❌ Nihai ürünler API hatası:', nihaiResponse.status);
                                             }
                                             
                                             // Eğer nihai ürünlerde bulunamadıysa yarı mamullerde ara
                                             if (productBarcode === 'N/A') {
+                                                console.log('📦 Yarı mamullerde aranıyor...');
                                                 const yarimamulResponse = await fetch(`/api/yarimamuller`);
+                                                console.log('Yarı mamuller API yanıtı:', yarimamulResponse.status);
+                                                
                                                 if (yarimamulResponse.ok) {
                                                     const yarimamulData = await yarimamulResponse.json();
-                                                    const yarimamulProduct = yarimamulData.find(p => p.kod === productDetails[0].code);
+                                                    console.log('Yarı mamuller sayısı:', yarimamulData.length);
+                                                    
+                                                    const yarimamulProduct = yarimamulData.find(p => p.kod === productCode);
+                                                    console.log('Bulunan yarı mamul:', yarimamulProduct);
+                                                    
                                                     if (yarimamulProduct && yarimamulProduct.barkod) {
                                                         productBarcode = yarimamulProduct.barkod;
-                                                        console.log('Yarı mamul barkod bulundu:', productBarcode);
+                                                        console.log('✅ Yarı mamul barkod bulundu:', productBarcode);
+                                                    } else {
+                                                        console.log('❌ Yarı mamullerde barkod bulunamadı');
                                                     }
+                                                } else {
+                                                    console.error('❌ Yarı mamuller API hatası:', yarimamulResponse.status);
                                                 }
                                             }
+                                            
+                                            console.log('🎯 Final barkod değeri:', productBarcode);
                                         } catch (barcodeError) {
-                                            console.error('Barkod bilgisi alınamadı:', barcodeError);
+                                            console.error('❌ Barkod bilgisi alınamadı:', barcodeError);
                                         }
+                                    } else {
+                                        console.log('❌ Ürün kodu bulunamadı');
                                     }
                                 }
                             }
