@@ -1422,16 +1422,32 @@
                                     productDetail = productDetails[0].name || productDetails[0].product_name || production.product_name || 'N/A';
                                     console.log('Gerçek ürün kodu bulundu:', productCode);
                                     
-                                    // Barkod bilgisini al - ürün kodundan barkod arama
+                                    // Barkod bilgisini al - ürün kodundan ürün bilgilerini bul
                                     if (productDetails[0].code) {
                                         try {
-                                            const barcodeResponse = await fetch(`/api/debug/product-barcodes?barcode=${productDetails[0].code}`);
-                                            if (barcodeResponse.ok) {
-                                                const barcodeData = await barcodeResponse.json();
-                                                if (barcodeData.nihai_urunler && barcodeData.nihai_urunler.length > 0) {
-                                                    productBarcode = barcodeData.nihai_urunler[0].barkod || 'N/A';
-                                                } else if (barcodeData.yarimamuller && barcodeData.yarimamuller.length > 0) {
-                                                    productBarcode = barcodeData.yarimamuller[0].barkod || 'N/A';
+                                            console.log('Ürün kodu için barkod aranıyor:', productDetails[0].code);
+                                            
+                                            // Önce nihai ürünlerde ara
+                                            const nihaiResponse = await fetch(`/api/nihai-urunler`);
+                                            if (nihaiResponse.ok) {
+                                                const nihaiData = await nihaiResponse.json();
+                                                const nihaiProduct = nihaiData.find(p => p.kod === productDetails[0].code);
+                                                if (nihaiProduct && nihaiProduct.barkod) {
+                                                    productBarcode = nihaiProduct.barkod;
+                                                    console.log('Nihai ürün barkod bulundu:', productBarcode);
+                                                }
+                                            }
+                                            
+                                            // Eğer nihai ürünlerde bulunamadıysa yarı mamullerde ara
+                                            if (productBarcode === 'N/A') {
+                                                const yarimamulResponse = await fetch(`/api/yarimamuller`);
+                                                if (yarimamulResponse.ok) {
+                                                    const yarimamulData = await yarimamulResponse.json();
+                                                    const yarimamulProduct = yarimamulData.find(p => p.kod === productDetails[0].code);
+                                                    if (yarimamulProduct && yarimamulProduct.barkod) {
+                                                        productBarcode = yarimamulProduct.barkod;
+                                                        console.log('Yarı mamul barkod bulundu:', productBarcode);
+                                                    }
                                                 }
                                             }
                                         } catch (barcodeError) {

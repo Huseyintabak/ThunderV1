@@ -294,6 +294,32 @@ app.delete('/api/hammaddeler/:id', async (req, res) => {
   }
 });
 
+// Nihai Ürün API endpoints
+app.get('/api/nihai-urunler', async (req, res) => {
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('nihai_urunler')
+        .select('*')
+        .eq('aktif', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase nihai_urunler error:', error);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      res.json(data || []);
+    } else {
+      res.json(nihaiUrunler);
+    }
+  } catch (error) {
+    console.error('Nihai urunler API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Yarı Mamul API endpoints
 app.get('/api/yarimamuller', async (req, res) => {
   try {
