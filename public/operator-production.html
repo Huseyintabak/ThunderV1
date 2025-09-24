@@ -1076,7 +1076,7 @@
                                         <div class="row mb-2">
                                             <div class="col-6">
                                                 <strong>Ürün Kodu:</strong>
-                                        <div class="text-primary fw-bold">${product.code || 'N/A'}</div>
+                                        <div class="text-primary fw-bold">${product.code || product.product_code || 'N/A'}</div>
                                             </div>
                                             <div class="col-6">
                                                 <strong>Miktar:</strong>
@@ -1220,6 +1220,10 @@
                                             productDetails.forEach(product => {
                                                 productsWithDetails.push({
                                                     ...product,
+                                                    // Ürün kodunu doğru alanlardan al
+                                                    code: product.code || product.product_code || 'N/A',
+                                                    name: product.name || product.product_name || 'Bilinmeyen Ürün',
+                                                    quantity: product.quantity || 0,
                                                     order_number: order.order_number,
                                                     customer_name: order.customer_name,
                                                     delivery_date: order.delivery_date,
