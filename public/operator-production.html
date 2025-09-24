@@ -1493,7 +1493,13 @@
                 const isValidBarcode = await validateBarcode(barcode);
                 
                 if (isValidBarcode) {
-                    showBarcodeStatus('Barkod geçerli! Üretim adedini girin.', 'success');
+                    // Ürün bilgilerini al
+                    const productInfo = window.currentBarcodeProduct;
+                    if (productInfo) {
+                        showBarcodeStatus(`Barkod geçerli! Ürün: ${productInfo.name} (${productInfo.code}) - Üretim adedini girin.`, 'success');
+                    } else {
+                        showBarcodeStatus('Barkod geçerli! Üretim adedini girin.', 'success');
+                    }
                     
                     // Üretim adedi girme alanını göster ve temizle
                     showQuantityInput();
@@ -1590,7 +1596,13 @@
                 // Üretim miktarını artır
                 await updateProducedQuantity(quantity);
                 
-                showBarcodeStatus(`${quantity} adet üretim başarıyla eklendi! Tekrar barkod okutun.`, 'success');
+                // Ürün bilgilerini al ve göster
+                const productInfo = window.currentBarcodeProduct;
+                if (productInfo) {
+                    showBarcodeStatus(`${quantity} adet ${productInfo.name} (${productInfo.code}) üretimi başarıyla eklendi! Tekrar barkod okutun.`, 'success');
+                } else {
+                    showBarcodeStatus(`${quantity} adet üretim başarıyla eklendi! Tekrar barkod okutun.`, 'success');
+                }
                 
                 // Alanları temizle ve gizle
                 quantityInput.value = '1';
@@ -1634,13 +1646,35 @@
                 
                 // Nihai ürünlerde barkod var mı?
                 if (data.nihai_urunler && data.nihai_urunler.length > 0) {
-                    console.log('Nihai ürün barkod eşleşmesi bulundu:', data.nihai_urunler[0]);
+                    const product = data.nihai_urunler[0];
+                    console.log('Nihai ürün barkod eşleşmesi bulundu:', product);
+                    
+                    // Ürün kodunu global değişkende sakla
+                    window.currentBarcodeProduct = {
+                        type: 'nihai',
+                        id: product.id,
+                        code: product.kod,
+                        name: product.ad,
+                        barcode: product.barkod
+                    };
+                    
                     return true;
                 }
                 
                 // Yarımamul ürünlerde barkod var mı?
                 if (data.yarimamuller && data.yarimamuller.length > 0) {
-                    console.log('Yarımamul barkod eşleşmesi bulundu:', data.yarimamuller[0]);
+                    const product = data.yarimamuller[0];
+                    console.log('Yarımamul barkod eşleşmesi bulundu:', product);
+                    
+                    // Ürün kodunu global değişkende sakla
+                    window.currentBarcodeProduct = {
+                        type: 'yarimamul',
+                        id: product.id,
+                        code: product.kod,
+                        name: product.ad,
+                        barcode: product.barkod
+                    };
+                    
                     return true;
                 }
                 
