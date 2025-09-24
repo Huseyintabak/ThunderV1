@@ -1218,10 +1218,13 @@
                                         
                                         if (productDetails && productDetails.length > 0) {
                                             productDetails.forEach(product => {
+                                                console.log('Ürün detayı işleniyor:', product);
+                                                const productCode = product.code || product.product_code || 'N/A';
+                                                console.log('Ürün kodu:', productCode);
                                                 productsWithDetails.push({
                                                     ...product,
                                                     // Ürün kodunu doğru alanlardan al
-                                                    code: product.code || product.product_code || 'N/A',
+                                                    code: productCode,
                                                     name: product.name || product.product_name || 'Bilinmeyen Ürün',
                                                     quantity: product.quantity || 0,
                                                     order_number: order.order_number,
@@ -1403,8 +1406,10 @@
                                 }
                                 
                                 if (productDetails && productDetails.length > 0) {
-                                    productCode = productDetails[0].code || production.product_name || 'N/A';
-                                    productDetail = productDetails[0].name || production.product_name || 'N/A';
+                                    // Gerçek ürün kodunu al
+                                    productCode = productDetails[0].code || productDetails[0].product_code || 'N/A';
+                                    productDetail = productDetails[0].name || productDetails[0].product_name || production.product_name || 'N/A';
+                                    console.log('Gerçek ürün kodu bulundu:', productCode);
                                 }
                             }
                                     orderNumber = order.order_number || '#' + production.id;
