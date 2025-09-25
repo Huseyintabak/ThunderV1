@@ -114,12 +114,16 @@ log "PM2 konfigürasyonu yapılıyor..."
 if [ -f "ecosystem.config.js" ]; then
     pm2 start ecosystem.config.js --env production
     pm2 save
-    pm2 startup
+    log "PM2 startup konfigürasyonu yapılıyor..."
+    sudo pm2 startup
+    log "PM2 startup komutu çalıştırıldı. Sistem yeniden başlatıldığında uygulama otomatik başlayacak."
 else
     warning "ecosystem.config.js bulunamadı, basit PM2 konfigürasyonu kullanılıyor..."
     pm2 start server.js --name thunder-production --env production
     pm2 save
-    pm2 startup
+    log "PM2 startup konfigürasyonu yapılıyor..."
+    sudo pm2 startup
+    log "PM2 startup komutu çalıştırıldı. Sistem yeniden başlatıldığında uygulama otomatik başlayacak."
 fi
 
 # Nginx konfigürasyonu
