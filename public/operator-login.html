@@ -127,10 +127,7 @@
                         <form id="operatorLoginForm">
                             <div class="form-floating">
                                 <select class="form-select operator-select" id="operatorSelect" required>
-                                    <option value="">Operatör seçiniz...</option>
-                                    <option value="thunder-serisi">Thunder Serisi Operatör</option>
-                                    <option value="thunderpro-serisi">ThunderPRO Serisi Operatör</option>
-                                    <option value="thunderx-serisi">ThunderX Serisi Operatör</option>
+                                    <option value="">Operatör yükleniyor...</option>
                                 </select>
                                 <label for="operatorSelect">
                                     <i class="fas fa-user me-2"></i>Operatör
@@ -209,13 +206,39 @@
                     return;
                 }
                 
+                // Gerçek zamanlı oturum doğrulama
+                const verifyResponse = await fetch('/api/operators/verify-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        operatorId: selectedOperator.id,
+                        sessionToken: null
+                    })
+                });
+
+                if (!verifyResponse.ok) {
+                    showAlert('Operatör oturumu doğrulanamadı!', 'danger');
+                    return;
+                }
+
+                const verification = await verifyResponse.json();
+                
+                if (!verification.valid) {
+                    showAlert('Operatör oturumu geçersiz!', 'danger');
+                    return;
+                }
+                
                 // Operatör bilgilerini localStorage'a kaydet
                 const operatorInfo = {
-                    id: selectedOperator.id,
-                    name: selectedOperator.name,
-                    email: selectedOperator.email,
-                    role: selectedOperator.role,
-                    loginTime: new Date().toISOString()
+                    id: verification.operator.id,
+                    name: verification.operator.name,
+                    email: verification.operator.email,
+                    role: verification.operator.role,
+                    loginTime: new Date().toISOString(),
+                    lastVerified: new Date().toISOString(),
+                    sessionToken: null // Gelecekte session token eklenebilir
                 };
                 
                 localStorage.setItem('currentOperator', JSON.stringify(operatorInfo));
@@ -265,16 +288,25 @@
         // Operatörleri yükle
         async function loadOperators() {
             try {
+                console.log('👥 Operatörler yükleniyor...');
                 const response = await fetch('/api/operators');
                 if (!response.ok) {
                     throw new Error('Operatörler yüklenemedi');
                 }
                 
                 const operators = await response.json();
+                console.log('📋 Yüklenen operatörler:', operators);
+                
                 const operatorSelect = document.getElementById('operatorSelect');
                 
-                // Mevcut seçenekleri temizle (ilk seçenek hariç)
+                // Mevcut seçenekleri temizle
                 operatorSelect.innerHTML = '<option value="">Operatör seçiniz...</option>';
+                
+                if (operators.length === 0) {
+                    operatorSelect.innerHTML = '<option value="">Operatör bulunamadı</option>';
+                    showAlert('Sistemde aktif operatör bulunamadı!', 'warning');
+                    return;
+                }
                 
                 // Operatörleri dropdown'a ekle
                 operators.forEach(operator => {
@@ -284,8 +316,12 @@
                     operatorSelect.appendChild(option);
                 });
                 
+                console.log('✅ Operatörler dropdown\'a yüklendi:', operators.length, 'operatör');
+                
             } catch (error) {
-                console.error('Operatörler yükleme hatası:', error);
+                console.error('❌ Operatörler yükleme hatası:', error);
+                const operatorSelect = document.getElementById('operatorSelect');
+                operatorSelect.innerHTML = '<option value="">Operatörler yüklenemedi</option>';
                 showAlert('Operatörler yüklenemedi: ' + error.message, 'danger');
             }
         }

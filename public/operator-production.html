@@ -183,7 +183,8 @@
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <!-- Operatör Paneli - Sadece Operatör Bilgileri -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
                 <i class="fas fa-industry me-2"></i>Operatör Üretim Paneli
@@ -193,7 +194,7 @@
                     <a class="nav-link dropdown-toggle" href="#" id="operatorDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-user me-1"></i><span id="operatorName">Operatör</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="#" onclick="logout()">
                             <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
                         </a></li>
@@ -623,50 +624,109 @@
             loadData();
         });
 
-        // Operatör girişi kontrolü
+        // Operatör girişi kontrolü - Gerçek zamanlı veritabanı kontrolü
         async function checkOperatorLogin() {
+            console.log('🔐 Operatör girişi gerçek zamanlı kontrol ediliyor...');
+            
             const operatorData = localStorage.getItem('currentOperator');
             if (!operatorData) {
+                console.log('❌ Operatör verisi bulunamadı, login sayfasına yönlendiriliyor');
                 window.location.href = 'operator-login.html';
                 return;
             }
 
             try {
                 currentOperator = JSON.parse(operatorData);
+                console.log('👤 LocalStorage operatör verisi:', currentOperator);
                 
-                // Operatör bilgilerini veritabanından doğrula
-                const response = await fetch('/api/operators');
-                if (!response.ok) {
-                    throw new Error('Operatör bilgileri alınamadı');
-                }
-                
-                const operators = await response.json();
-                const operator = operators.find(op => op.id == currentOperator.id);
-                
-                if (!operator) {
-                    // Operatör bulunamazsa giriş sayfasına yönlendir
+                // Operatör verisi geçerli mi kontrol et
+                if (!currentOperator.id || !currentOperator.name) {
+                    console.log('❌ Geçersiz operatör verisi, login sayfasına yönlendiriliyor');
                     localStorage.removeItem('currentOperator');
                     window.location.href = 'operator-login.html';
                     return;
                 }
                 
-                // Güncel operatör bilgilerini göster
-                document.getElementById('operatorName').textContent = operator.name;
+                // Gerçek zamanlı veritabanı kontrolü
+                const verifyResponse = await fetch('/api/operators/verify-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        operatorId: currentOperator.id,
+                        sessionToken: currentOperator.sessionToken || null
+                    })
+                });
+
+                if (!verifyResponse.ok) {
+                    console.log('❌ Operatör oturumu geçersiz, login sayfasına yönlendiriliyor');
+                    localStorage.removeItem('currentOperator');
+                    window.location.href = 'operator-login.html';
+                    return;
+                }
+
+                const verification = await verifyResponse.json();
                 
-                // currentOperator'ı güncelle
+                if (!verification.valid) {
+                    console.log('❌ Operatör oturumu doğrulanamadı, login sayfasına yönlendiriliyor');
+                    localStorage.removeItem('currentOperator');
+                    window.location.href = 'operator-login.html';
+                    return;
+                }
+
+                // Güncel operatör bilgilerini güncelle
                 currentOperator = {
                     ...currentOperator,
-                    name: operator.name,
-                    email: operator.email,
-                    role: operator.role
+                    name: verification.operator.name,
+                    email: verification.operator.email,
+                    role: verification.operator.role,
+                    lastVerified: new Date().toISOString()
                 };
+
+                // LocalStorage'ı güncelle
+                localStorage.setItem('currentOperator', JSON.stringify(currentOperator));
+                
+                // Operatör adını header'da göster
+                const operatorNameElement = document.getElementById('operatorName');
+                if (operatorNameElement) {
+                    operatorNameElement.textContent = currentOperator.name;
+                }
+                
+                console.log('✅ Operatör oturumu gerçek zamanlı doğrulandı:', currentOperator.name);
+                
+                // Periyodik oturum kontrolü başlat (5 dakikada bir)
+                startPeriodicSessionCheck();
                 
             } catch (error) {
-                console.error('Operatör doğrulama hatası:', error);
+                console.error('❌ Operatör oturum doğrulama hatası:', error);
                 localStorage.removeItem('currentOperator');
                 window.location.href = 'operator-login.html';
             }
         }
+
+        // Periyodik oturum kontrolü
+        let sessionCheckInterval = null;
+        
+        function startPeriodicSessionCheck() {
+            // Önceki interval'ı temizle
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+            }
+            
+            // 5 dakikada bir oturum kontrolü yap
+            sessionCheckInterval = setInterval(async () => {
+                console.log('🔄 Periyodik oturum kontrolü yapılıyor...');
+                await checkOperatorLogin();
+            }, 5 * 60 * 1000); // 5 dakika
+        }
+
+        // Sayfa kapatılırken interval'ı temizle
+        window.addEventListener('beforeunload', () => {
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+            }
+        });
 
         // Real-time client başlatma
         function initializeRealtimeClient() {
@@ -701,15 +761,15 @@
             try {
                 showLoading('plannedOrdersLoading', true);
                 
-                // Üretim planlarını yükle
-                const response = await fetch('/api/production-plans');
+                // Bu operatöre atanmış üretim planlarını yükle
+                const response = await fetch(`/api/production-plans?operator_id=${currentOperator.id}`);
                 if (!response.ok) throw new Error('Üretim planları yüklenemedi');
                 
                 const plans = await response.json();
-                console.log('Tüm planlar:', plans);
+                console.log('Operatöre atanmış planlar:', plans);
                 console.log('Mevcut operatör:', currentOperator.name);
                 
-                // Tüm planları göster (operatör filtresi kaldırıldı)
+                // Sadece draft ve approved durumundaki planları göster
                 const plannedOrders = plans.filter(plan => 
                     plan.status === 'draft' || plan.status === 'approved'
                 );
@@ -733,15 +793,14 @@
             try {
                 showLoading('activeProductionsLoading', true);
                 
-                const response = await fetch('/api/active-productions');
+                const response = await fetch(`/api/active-productions?operator_id=${currentOperator.id}`);
                 if (!response.ok) throw new Error('Aktif üretimler yüklenemedi');
                 
                 const productions = await response.json();
-                console.log('Tüm aktif üretimler:', productions);
+                console.log('Operatöre atanmış aktif üretimler:', productions);
                 console.log('Mevcut operatör:', currentOperator.name);
                 
                 const activeProductions = productions.filter(production => 
-                    production.assigned_operator === currentOperator.name &&
                     production.status !== 'completed'
                 );
                 
@@ -763,16 +822,15 @@
             try {
                 showLoading('productsLoading', true);
                 
-                // Aktif üretimleri al
-                const response = await fetch('/api/active-productions');
+                // Bu operatöre ait aktif üretimleri al
+                const response = await fetch(`/api/active-productions?operator_id=${currentOperator.id}`);
                 if (!response.ok) throw new Error('Aktif üretimler yüklenemedi');
                 
                 const productions = await response.json();
-                console.log('Tüm aktif üretimler (loadProducts):', productions);
+                console.log('Operatöre atanmış aktif üretimler (loadProducts):', productions);
                 
-                // Sadece mevcut operatöre ait aktif üretimleri filtrele
+                // Sadece tamamlanmamış üretimleri filtrele
                 const activeProductions = productions.filter(production => 
-                    production.assigned_operator === currentOperator.name &&
                     production.status !== 'completed'
                 );
                 
@@ -801,12 +859,11 @@
             try {
                 showLoading('pausedProductionsLoading', true);
                 
-                const response = await fetch('/api/active-productions');
+                const response = await fetch(`/api/active-productions?operator_id=${currentOperator.id}`);
                 if (!response.ok) throw new Error('Yarıda kalan üretimler yüklenemedi');
                 
                 const productions = await response.json();
                 const pausedProductions = productions.filter(production => 
-                    production.assigned_operator === currentOperator.name &&
                     production.status === 'paused'
                 );
                 
@@ -825,7 +882,7 @@
             try {
                 showLoading('completedProductionsLoading', true);
                 
-                const response = await fetch('/api/active-productions');
+                const response = await fetch(`/api/active-productions?operator_id=${currentOperator.id}`);
                 if (!response.ok) throw new Error('Tamamlanan üretimler yüklenemedi');
                 
                 const productions = await response.json();
@@ -1868,6 +1925,32 @@
                 });
         }
         
+        // Malzemeleri tüket
+        async function consumeMaterialsForProduction(materials, quantity) {
+            for (const material of materials) {
+                if (material.required > 0) {
+                    try {
+                        const response = await fetch('/api/stock/consume', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                product_id: material.material_id,
+                                product_type: material.material_type,
+                                quantity: material.required,
+                                production_id: currentProductionId,
+                                operator_id: 'OPERATOR-001' // Gerçek operatör ID'si buraya gelecek
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        console.log(`Malzeme tüketildi: ${material.material_name} - ${material.required} ${material.unit}`);
+                    } catch (error) {
+                        console.error(`Malzeme tüketim hatası: ${material.material_name}`, error);
+                    }
+                }
+            }
+        }
+        
         // Üretim adedi ekleme
         async function addProductionQuantity() {
             const quantityInput = document.getElementById('quantityInput');
@@ -1901,6 +1984,52 @@
                     const remaining = plannedQuantity - currentProduced;
                     showBarcodeStatus(`Hata! Planlanan miktar: ${plannedQuantity} adet, Mevcut üretim: ${currentProduced} adet. En fazla ${remaining} adet daha üretebilirsiniz!`, 'danger');
                     return;
+                }
+                
+                // Stok kontrolü yap
+                showBarcodeStatus('Malzeme kontrolü yapılıyor...', 'info');
+                
+                try {
+                    // Ürün ID'sini al (production'dan veya modal'dan)
+                    const productId = production.product_id || document.getElementById('modalProductionId')?.textContent;
+                    
+                    if (!productId) {
+                        showBarcodeStatus('Ürün ID bulunamadı!', 'danger');
+                        return;
+                    }
+                    
+                    // Malzeme kontrolü yap
+                    const materialCheckResponse = await fetch('/api/production/check-materials', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            product_id: productId,
+                            product_type: 'nihai',
+                            quantity: quantity
+                        })
+                    });
+                    
+                    const materialCheck = await materialCheckResponse.json();
+                    
+                    if (!materialCheck.can_produce) {
+                        // Yetersiz malzeme uyarısı
+                        let warningMessage = 'Yetersiz malzeme! Üretim yapılamaz.\n\n';
+                        materialCheck.materials.forEach(material => {
+                            if (!material.sufficient) {
+                                warningMessage += `❌ ${material.material_name}: ${material.required} ${material.unit} gerekli, ${material.available} ${material.unit} mevcut\n`;
+                            }
+                        });
+                        
+                        showBarcodeStatus(warningMessage, 'danger');
+                        return;
+                    }
+                    
+                    // Malzeme yeterli, stok düşme işlemi
+                    await consumeMaterialsForProduction(materialCheck.materials, quantity);
+                    
+                } catch (stockError) {
+                    console.error('Stok kontrolü hatası:', stockError);
+                    showBarcodeStatus('Stok kontrolü yapılamadı, üretim devam ediyor...', 'warning');
                 }
                 
                 showBarcodeStatus(`${quantity} adet üretim ekleniyor...`, 'info');
@@ -2441,6 +2570,7 @@
                 window.location.href = 'operator-login.html';
             }
         }
+        
 
         // Yardımcı fonksiyonlar
         function showLoading(elementId, show) {

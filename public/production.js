@@ -3958,14 +3958,49 @@ async function loadProductionPlans() {
 
 // Üretim planlarını görüntüleme
 function displayProductionPlans(plans) {
-    const container = document.getElementById('production-plans-container');
+    const activeContainer = document.getElementById('active-plans-container');
+    const completedContainer = document.getElementById('completed-plans-container');
     
+    if (!plans || plans.length === 0) {
+        activeContainer.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz üretimde olan plan bulunmuyor</h5>
+                <p class="text-muted">Yeni bir üretim planı oluşturmak için "Yeni Plan" butonuna tıklayın.</p>
+            </div>
+        `;
+        completedContainer.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Henüz tamamlanan plan bulunmuyor</h5>
+                <p class="text-muted">Tamamlanan planlar burada görünecek.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Planları durumlarına göre ayır
+    const activePlans = plans.filter(plan => 
+        plan.status === 'draft' || plan.status === 'approved' || plan.status === 'in_progress'
+    );
+    const completedPlans = plans.filter(plan => 
+        plan.status === 'completed'
+    );
+    
+    // Üretimde olan planları göster
+    displayPlanSection(activeContainer, activePlans, 'Üretimde olan plan bulunmuyor');
+    
+    // Tamamlanan planları göster
+    displayPlanSection(completedContainer, completedPlans, 'Tamamlanan plan bulunmuyor');
+}
+
+// Plan bölümünü görüntüleme
+function displayPlanSection(container, plans, emptyMessage) {
     if (!plans || plans.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4">
-                <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Henüz üretim planı bulunmuyor</h5>
-                <p class="text-muted">Yeni bir üretim planı oluşturmak için "Yeni Plan" butonuna tıklayın.</p>
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">${emptyMessage}</h5>
             </div>
         `;
         return;
@@ -4273,15 +4308,8 @@ async function updateOrderStatistics(orders = null) {
 
 // İstatistik elementlerini güncelle
 function updateOrderStatisticsElements(total, pending, processing, completed) {
-    const totalElement = document.getElementById('total-orders');
-    const pendingElement = document.getElementById('pending-orders');
-    const processingElement = document.getElementById('processing-orders');
-    const completedElement = document.getElementById('completed-orders');
-    
-    if (totalElement) totalElement.textContent = total;
-    if (pendingElement) pendingElement.textContent = pending;
-    if (processingElement) processingElement.textContent = processing;
-    if (completedElement) completedElement.textContent = completed;
+    // Elementler kaldırıldığı için bu fonksiyon artık gerekli değil
+    console.log('📊 Sipariş istatistikleri:', { total, pending, processing, completed });
 }
 
 // Durum mesajlarını Türkçeleştir
@@ -5209,8 +5237,8 @@ async function loadPlanningStatistics() {
 function updatePlanningStatistics(stats) {
     document.getElementById('total-plans').textContent = stats.total_plans || 0;
     document.getElementById('active-plans').textContent = stats.active_plans || 0;
-    document.getElementById('total-orders').textContent = stats.total_orders || 0;
-    // total-value güncellemesi kaldırıldı - HTML'den de kaldırıldı
+    // total-orders elementi kaldırıldı - artık güncellenmiyor
+    console.log('📊 Planlama istatistikleri:', stats);
 }
 
 // Yardımcı fonksiyonlar

@@ -49,8 +49,6 @@ async function loadAllData() {
         // Sonra ürün ağacını yükle
         await loadUrunAgaci();
         
-        // Stok kartlarını güncelle
-        renderYarimamulStockCards();
         
         console.log('Tüm veriler yüklendi');
     } catch (error) {
@@ -81,10 +79,6 @@ function showSection(sectionName) {
     // Seçilen bölümü göster
     document.getElementById(sectionName + '-section').style.display = 'block';
     
-    // Yarı mamul sekmesine geçildiğinde stok kartlarını güncelle
-    if (sectionName === 'yarimamul') {
-        renderYarimamulStockCards();
-    }
     
     
 }
@@ -150,6 +144,10 @@ async function addHammadde(hammadde) {
 
 function renderHammaddeListesi() {
     const tbody = document.getElementById('hammadde-listesi');
+    if (!tbody) {
+        console.warn('hammadde-listesi tbody bulunamadı');
+        return;
+    }
     tbody.innerHTML = '';
 
     hammaddeler.forEach(hammadde => {
@@ -253,6 +251,10 @@ async function addYarimamul(yarimamul) {
 
 function renderYarimamulListesi() {
     const tbody = document.getElementById('yarimamul-listesi');
+    if (!tbody) {
+        console.warn('yarimamul-listesi tbody bulunamadı');
+        return;
+    }
     tbody.innerHTML = '';
 
     yarimamuller.forEach(yarimamul => {
@@ -272,12 +274,6 @@ function renderYarimamulListesi() {
                     <button class="btn btn-warning btn-sm" onclick="editYarimamul(${yarimamul.id})" title="Düzenle">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-info btn-sm" onclick="showBOMCostDetails(${yarimamul.id})" title="BOM Maliyet Detayları">
-                        <i class="fas fa-calculator"></i>
-                    </button>
-                    <button class="btn btn-success btn-sm" onclick="updateYarimamulCostFromBOM(${yarimamul.id}).then(() => loadYarimamuller())" title="BOM'dan Maliyet Hesapla">
-                        <i class="fas fa-sync"></i>
-                    </button>
                     <button class="btn btn-danger btn-sm" onclick="deleteYarimamul(${yarimamul.id})" title="Sil">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -287,86 +283,8 @@ function renderYarimamulListesi() {
         tbody.appendChild(row);
     });
     
-    // Yarı mamul stok kartlarını güncelle
-    renderYarimamulStockCards();
 }
 
-// Yarı mamul stok kartlarını göster
-function renderYarimamulStockCards() {
-    const container = document.getElementById('yarimamul-stock-cards');
-    container.innerHTML = '';
-
-    yarimamuller.forEach(yarimamul => {
-        const card = document.createElement('div');
-        card.className = 'col-md-4 mb-3';
-        
-        const stockStatus = yarimamul.miktar > 0 ? 'success' : 'warning';
-        const stockText = yarimamul.miktar > 0 ? 'Stokta' : 'Stok Yok';
-        const totalValue = (yarimamul.miktar * yarimamul.birim_maliyet).toFixed(2);
-        
-        card.innerHTML = `
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="card-title mb-0">${yarimamul.ad}</h6>
-                        <span class="badge bg-${stockStatus}">${stockText}</span>
-                    </div>
-                    <p class="card-text small text-muted mb-2">${yarimamul.kod}</p>
-                    <div class="row text-center">
-                        <div class="col-4">
-                            <div class="border-end">
-                                <div class="h5 mb-0 text-primary">${yarimamul.miktar}</div>
-                                <small class="text-muted">${yarimamul.birim}</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="border-end">
-                                <div class="h6 mb-0 text-info">₺${yarimamul.birim_maliyet.toFixed(2)}</div>
-                                <small class="text-muted">Birim Maliyet</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="h6 mb-0 text-success">₺${totalValue}</div>
-                            <small class="text-muted">Toplam Değer</small>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="d-grid gap-1">
-                            <button class="btn btn-outline-primary btn-sm" onclick="showBOMCostDetails(${yarimamul.id})" title="BOM Maliyet Detayları">
-                                <i class="fas fa-calculator me-1"></i>BOM Detay
-                            </button>
-                            <button class="btn btn-outline-success btn-sm" onclick="updateYarimamulCostFromBOM(${yarimamul.id}).then(() => loadYarimamuller())" title="BOM'dan Maliyet Hesapla">
-                                <i class="fas fa-sync me-1"></i>Maliyet Hesapla
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-    
-    // Toplam stok değerini hesapla ve göster
-    const totalStockValue = yarimamuller.reduce((total, yarimamul) => {
-        return total + (yarimamul.miktar * yarimamul.birim_maliyet);
-    }, 0);
-    
-    // Toplam değer kartını ekle
-    const totalCard = document.createElement('div');
-    totalCard.className = 'col-md-12 mb-3';
-    totalCard.innerHTML = `
-        <div class="card border-success">
-            <div class="card-body text-center">
-                <h5 class="card-title text-success mb-0">
-                    <i class="fas fa-calculator me-2"></i>Toplam Stok Değeri
-                </h5>
-                <div class="h3 text-success mt-2">₺${totalStockValue.toFixed(2)}</div>
-                <small class="text-muted">${yarimamuller.length} yarı mamul ürün</small>
-            </div>
-        </div>
-    `;
-    container.appendChild(totalCard);
-}
 
 // Nihai ürün işlemleri
 async function loadNihaiUrunler() {
@@ -429,6 +347,10 @@ async function addNihaiUrun(nihai) {
 
 function renderNihaiListesi() {
     const tbody = document.getElementById('nihai-listesi');
+    if (!tbody) {
+        console.warn('nihai-listesi tbody bulunamadı');
+        return;
+    }
     tbody.innerHTML = '';
 
     nihaiUrunler.forEach(nihai => {
@@ -626,6 +548,10 @@ async function addMultipleUrunAgaci(altUrunler) {
 
 function renderUrunAgaciListesi() {
     const tbody = document.getElementById('urun-agaci-listesi');
+    if (!tbody) {
+        console.warn('urun-agaci-listesi tbody bulunamadı');
+        return;
+    }
     tbody.innerHTML = '';
 
     // Veri yüklenmemişse bekle
@@ -827,6 +753,10 @@ function updateAllAltUrunSelects(altUrunler) {
 // Mevcut alt ürünleri form alanlarına doldur
 function fillAltUrunForm(altUrunDetaylari) {
     const container = document.getElementById('alt-urunler-container');
+    if (!container) {
+        console.warn('alt-urunler-container bulunamadı');
+        return;
+    }
     container.innerHTML = '';
     
     if (altUrunDetaylari.length === 0) {
@@ -1062,6 +992,10 @@ function displayMaterialCalculationResults(materials, anaUrun, altUrun, quantity
     const resultsDiv = document.getElementById('material-calculation-results');
     const tbody = document.getElementById('material-calculation-list');
     
+    if (!tbody) {
+        console.warn('material-calculation-list tbody bulunamadı');
+        return;
+    }
     tbody.innerHTML = '';
 
     if (totalCost === null) {
@@ -1749,6 +1683,10 @@ function clearUrunAgaciForm() {
     
     // Tüm alt ürün satırlarını sil
     const container = document.getElementById('alt-urunler-container');
+    if (!container) {
+        console.warn('alt-urunler-container bulunamadı');
+        return;
+    }
     container.innerHTML = '';
     
     // İlk satırı ekle
@@ -2814,6 +2752,10 @@ async function loadWorkOrders() {
 // İş emirlerini göster
 function displayWorkOrders(orders) {
     const tbody = document.getElementById('work-orders-list');
+    if (!tbody) {
+        console.warn('work-orders-list tbody bulunamadı');
+        return;
+    }
     tbody.innerHTML = '';
 
     if (orders.length === 0) {
@@ -2965,5 +2907,17 @@ function clearWorkOrderFilters() {
     document.getElementById('filter-priority').value = '';
     document.getElementById('filter-personnel').value = '';
     displayWorkOrders(workOrders);
+}
+
+// İş emri modal'ını göster
+function showWorkOrderModal() {
+    // İş emirleri modal'ını göster
+    const modal = new bootstrap.Modal(document.getElementById('workOrderModal'));
+    modal.show();
+}
+
+// Yeni iş emri oluştur
+function createWorkOrder() {
+    showAlert('Yeni İş Emri oluşturma özelliği yakında eklenecek', 'info');
 }
 
