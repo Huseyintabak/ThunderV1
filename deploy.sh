@@ -81,7 +81,11 @@ cd $PROJECT_DIR
 # Git repository kontrolü
 if [ ! -d ".git" ]; then
     log "Git repository klonlanıyor..."
+    log "Not: Eğer authentication hatası alırsanız, repository'yi public yapın veya SSH key kullanın"
     git clone https://github.com/Huseyintabak/ThunderV1.git .
+    if [ $? -ne 0 ]; then
+        error "Git clone başarısız! Repository'yi public yapın veya SSH key kullanın."
+    fi
 else
     log "Git repository güncelleniyor..."
     git pull origin main
