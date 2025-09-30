@@ -7188,7 +7188,7 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       
       supabase
         .from('order_management')
-        .select('id, status, order_date, delivery_date, total_amount')
+        .select('id, status, order_date, delivery_date, total_amount, product_details, completed_at')
         .gte('order_date', startDate.toISOString())
         .lte('order_date', endDate.toISOString()),
       
@@ -7211,8 +7211,10 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       materials: materials.length
     });
 
-    // Günlük üretim trendi
+    // Günlük üretim trendi - production_states ve order_management'ten
     const dailyProduction = {};
+    
+    // Production_states'ten gelen veriler
     productions.forEach(p => {
       const dateField = p.completed_at || p.created_at || p.last_update_time;
       if (!dateField) return; // Tarih alanı yoksa atla
@@ -7223,6 +7225,38 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       }
       dailyProduction[date].count++;
       dailyProduction[date].quantity += p.produced_quantity || 0;
+    });
+    
+    // Order_management'ten gelen tamamlanan siparişler
+    orders.forEach(order => {
+      if (order.status === 'completed' || order.status === 'delivered') {
+        const dateField = order.completed_at || order.delivery_date || order.order_date;
+        if (!dateField) return;
+        
+        const date = new Date(dateField).toISOString().split('T')[0];
+        if (!dailyProduction[date]) {
+          dailyProduction[date] = { count: 0, quantity: 0 };
+        }
+        
+        // Product_details'ten toplam miktarı hesapla
+        let totalQuantity = 0;
+        if (order.product_details) {
+          try {
+            const productDetails = typeof order.product_details === 'string' 
+              ? JSON.parse(order.product_details) 
+              : order.product_details;
+            
+            if (Array.isArray(productDetails)) {
+              totalQuantity = productDetails.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+            }
+          } catch (e) {
+            console.log('Product details parse error:', e);
+          }
+        }
+        
+        dailyProduction[date].count++;
+        dailyProduction[date].quantity += totalQuantity;
+      }
     });
     
     // Test verisi oluşturma kaldırıldı - sadece gerçek veri göster
@@ -7257,10 +7291,31 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       }
     });
 
-    // Veri kaynağını belirle
-    const hasRealProductionData = productions.length > 0;
+    // Veri kaynağını belirle - hem production_states hem de order_management'ten
+    const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered');
+    const hasRealProductionData = productions.length > 0 || completedOrders.length > 0;
     const hasRealQualityData = qualityChecks.length > 0;
     const dataSource = hasRealProductionData ? 'real' : 'mock';
+    
+    // Toplam üretim sayısını hesapla (production_states + completed orders)
+    const totalProductionCount = productions.length + completedOrders.length;
+    const totalProductionQuantity = productions.reduce((sum, p) => sum + (p.produced_quantity || 0), 0) +
+      completedOrders.reduce((sum, order) => {
+        let quantity = 0;
+        if (order.product_details) {
+          try {
+            const productDetails = typeof order.product_details === 'string' 
+              ? JSON.parse(order.product_details) 
+              : order.product_details;
+            if (Array.isArray(productDetails)) {
+              quantity = productDetails.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+            }
+          } catch (e) {
+            console.log('Product details parse error:', e);
+          }
+        }
+        return sum + quantity;
+      }, 0);
     
     const advancedStats = {
       period: period,
@@ -7271,9 +7326,9 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       data_source: dataSource,
       is_mock_data: !hasRealProductionData,
     production: {
-      total_productions: productions.length,
-      completed_productions: productions.filter(p => p.status === 'completed').length,
-      total_quantity: productions.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
+      total_productions: totalProductionCount,
+      completed_productions: completedOrders.length,
+      total_quantity: totalProductionQuantity,
         daily_trend: Object.keys(dailyProduction).map(date => ({
           date,
           count: dailyProduction[date].count,
