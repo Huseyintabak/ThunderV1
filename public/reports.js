@@ -156,7 +156,7 @@ function updateMetricChanges() {
 // Gelişmiş istatistikleri yükle
 async function loadAdvancedStats() {
     try {
-        const response = await fetch('/api/dashboard/advanced-stats');
+        const response = await fetch('/api/dashboard/advanced-stats?period=' + currentPeriod);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }

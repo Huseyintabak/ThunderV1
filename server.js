@@ -7161,7 +7161,9 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
     // Önce production_states tablosunu sorgula (operatör verileri burada)
     let productionsResult = await supabase
       .from('production_states')
-      .select('id, order_id, product_code, product_name, target_quantity, produced_quantity, is_active, is_completed, start_time, last_update_time, completed_at, operator_id, operator_name, production_data, created_at, updated_at');
+      .select('id, order_id, product_code, product_name, target_quantity, produced_quantity, is_active, is_completed, start_time, last_update_time, completed_at, operator_id, operator_name, production_data, created_at, updated_at')
+      .gte('completed_at', startDate.toISOString())
+      .lte('completed_at', endDate.toISOString());
     
     console.log('Production states result:', productionsResult);
     
