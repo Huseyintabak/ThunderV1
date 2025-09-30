@@ -7188,9 +7188,7 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       
       supabase
         .from('order_management')
-        .select('id, status, order_date, delivery_date, total_amount, product_details, completed_at')
-        .gte('order_date', startDate.toISOString())
-        .lte('order_date', endDate.toISOString()),
+        .select('id, status, order_date, delivery_date, total_amount, product_details, completed_at, created_at, updated_at'),
       
       supabase
         .from('stok_hareketleri')
@@ -7201,8 +7199,17 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
 
     const productions = productionsResult.data || [];
     const qualityChecks = qualityResult.data || [];
-    const orders = ordersResult.data || [];
+    const allOrders = ordersResult.data || [];
     const materials = materialsResult.data || [];
+    
+    // Order'ları tarih aralığına göre filtrele
+    const orders = allOrders.filter(order => {
+      const orderDate = order.order_date || order.created_at || order.updated_at;
+      if (!orderDate) return false;
+      
+      const orderDateObj = new Date(orderDate);
+      return orderDateObj >= startDate && orderDateObj <= endDate;
+    });
 
     console.log('Dashboard API - Sonuçlar:', {
       productions: productions.length,
