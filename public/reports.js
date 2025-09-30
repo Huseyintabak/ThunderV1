@@ -191,11 +191,11 @@ async function loadAdvancedStats() {
         // Advanced stats oluştur
         const data = {
             data_source: 'real',
-            is_mock_data: productionHistory.length === 0,
+            is_mock_data: historyArray.length === 0,
             production: {
-                total_productions: productionHistory.length,
-                completed_productions: productionHistory.filter(p => p.status === 'completed').length,
-                total_quantity: productionHistory.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
+                total_productions: historyArray.length,
+                completed_productions: historyArray.filter(p => p.status === 'completed').length,
+                total_quantity: historyArray.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
                 daily_trend: []
             },
             customers: {
