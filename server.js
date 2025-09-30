@@ -7302,7 +7302,6 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
     });
 
     // Veri kaynağını belirle - hem production_states hem de order_management'ten
-    const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered');
     const hasRealProductionData = productions.length > 0 || completedOrders.length > 0;
     const hasRealQualityData = qualityChecks.length > 0;
     const dataSource = hasRealProductionData ? 'real' : 'mock';
