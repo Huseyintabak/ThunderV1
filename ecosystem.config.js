@@ -13,10 +13,10 @@ module.exports = {
       PORT: 3000,
       HOST: '0.0.0.0'
     },
-    // Log ayarları
-    log_file: '/var/log/thunder-production/combined.log',
-    out_file: '/var/log/thunder-production/out.log',
-    error_file: '/var/log/thunder-production/error.log',
+    // Log ayarları (proje dizinine taşındı)
+    log_file: './logs/combined.log',
+    out_file: './logs/out.log',
+    error_file: './logs/error.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     
     // Restart ayarları
