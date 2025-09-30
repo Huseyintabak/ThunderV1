@@ -88,14 +88,25 @@ async function loadAllData() {
 async function loadDashboardStats() {
     try {
         const response = await fetch('/api/dashboard/statistics');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const data = await response.json();
         dashboardStats = data;
         displayDashboardStats(data);
         return data;
     } catch (error) {
         console.error('Dashboard istatistikleri yüklenemedi:', error);
-        showAlert('Dashboard istatistikleri yüklenemedi', 'error');
-        throw error;
+        // Fallback data ile devam et
+        const fallbackData = {
+            total_productions: 0,
+            active_productions: 0,
+            completed_productions: 0,
+            total_cost: 0
+        };
+        dashboardStats = fallbackData;
+        displayDashboardStats(fallbackData);
+        return fallbackData;
     }
 }
 
@@ -137,14 +148,19 @@ function updateMetricChanges() {
 // Gelişmiş istatistikleri yükle
 async function loadAdvancedStats() {
     try {
-        // Doğrudan production_history endpoint'ini kullan
-        const productionHistoryResponse = await fetch('/api/productions/history');
+        // Önce dashboard/advanced-stats endpoint'ini dene
+        let response = await fetch('/api/dashboard/advanced-stats');
         
-        if (!productionHistoryResponse.ok) {
-            throw new Error('Failed to load production history');
+        if (!response.ok) {
+            // Fallback olarak production_history endpoint'ini kullan
+            response = await fetch('/api/productions/history');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
         }
         
-        const productionHistory = await productionHistoryResponse.json();
+        const productionHistory = await response.json();
         console.log('Production history loaded:', productionHistory);
         
         // Müşteri başı üretim analizi
@@ -263,13 +279,24 @@ function updateDataSourceIndicator(stats) {
 async function loadRealtimeData() {
     try {
         const response = await fetch('/api/dashboard/realtime');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const data = await response.json();
         realtimeData = data;
         updateRealtimeData(data);
         return data;
     } catch (error) {
         console.error('Real-time veriler yüklenemedi:', error);
-        throw error;
+        // Fallback data ile devam et
+        const fallbackData = {
+            active_productions: [],
+            recent_notifications: [],
+            system_status: { status: 'unknown', uptime: 0 }
+        };
+        realtimeData = fallbackData;
+        updateRealtimeData(fallbackData);
+        return fallbackData;
     }
 }
 
@@ -805,12 +832,17 @@ function createCustomerProductionChart() {
 async function loadOperatorPerformance() {
     try {
         const response = await fetch('/api/dashboard/advanced-stats?period=' + currentPeriod);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const data = await response.json();
         updateOperatorPerformanceTable(data.operators || []);
         return data.operators;
     } catch (error) {
         console.error('Operatör performansı yüklenemedi:', error);
-        throw error;
+        // Fallback olarak boş array ile devam et
+        updateOperatorPerformanceTable([]);
+        return [];
     }
 }
 
@@ -1477,13 +1509,14 @@ async function loadStockAlerts() {
     try {
         const response = await fetch('/api/dashboard/stock-alerts');
         if (!response.ok) {
-            throw new Error('Stok alarmları yüklenemedi');
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const alerts = await response.json();
         updateStockAlerts(alerts);
     } catch (error) {
         console.error('Stok alarmları yükleme hatası:', error);
+        // Fallback olarak boş array ile devam et
         updateStockAlerts([]);
     }
 }
