@@ -653,7 +653,7 @@ function getTableData(widget) {
 }
 
 // Üretim trendi grafiği oluştur
-function createProductionTrendChart() {
+function createProductionTrendChart(data = null) {
     const ctx = document.getElementById('productionTrendChart');
     if (!ctx) return;
     
@@ -668,20 +668,20 @@ function createProductionTrendChart() {
         charts.productionTrend.destroy();
     }
     
-    const data = advancedStats?.production?.daily_trend || [];
+    const chartData = data || advancedStats?.production?.daily_trend || [];
     
     // Sadece gerçek veri kullan
     let labels, values;
-    const hasData = data.length > 0 && data.some(item => (item.quantity || item.count) > 0);
+    const hasData = chartData.length > 0 && chartData.some(item => (item.quantity || item.count) > 0);
     
     if (!hasData) {
       console.log('Gerçek veri bulunamadı - boş grafik gösteriliyor');
       showNoDataChart(ctx, 'production');
       return;
     } else {
-      console.log('Gerçek veri kullanılıyor:', data);
-      labels = data.map(item => new Date(item.date).toLocaleDateString('tr-TR'));
-      values = data.map(item => item.quantity || item.count);
+      console.log('Gerçek veri kullanılıyor:', chartData);
+      labels = chartData.map(item => new Date(item.date).toLocaleDateString('tr-TR'));
+      values = chartData.map(item => item.quantity || item.count);
       updateChartTitle('productionTrendChart', 'Üretim Trendi');
     }
     
@@ -745,7 +745,7 @@ function createProductionTrendChart() {
 }
 
 // Müşteri başı üretim grafiği oluştur
-function createCustomerProductionChart() {
+function createCustomerProductionChart(data = null) {
     const ctx = document.getElementById('qualityDistributionChart');
     if (!ctx) return;
     
@@ -760,7 +760,7 @@ function createCustomerProductionChart() {
         charts.customerProduction.destroy();
     }
     
-    const customerData = advancedStats?.customers?.customer_production || [];
+    const customerData = data || advancedStats?.customers?.customer_production || [];
     
     // Eğer veri yoksa "Veri Yok" göster
     if (customerData.length === 0) {
