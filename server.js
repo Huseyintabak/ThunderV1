@@ -7188,7 +7188,8 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       
       supabase
         .from('order_management')
-        .select('id, status, order_date, delivery_date, total_amount, product_details, completed_at, created_at, updated_at'),
+        .select('*')
+        .limit(10),
       
       supabase
         .from('stok_hareketleri')
@@ -7201,6 +7202,14 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
     const qualityChecks = qualityResult.data || [];
     const allOrders = ordersResult.data || [];
     const materials = materialsResult.data || [];
+    
+    // Order_management tablosu kontrolü
+    console.log('Order_management sorgu sonucu:', {
+      error: ordersResult.error,
+      data: ordersResult.data,
+      count: ordersResult.count,
+      status: ordersResult.status
+    });
     
     // Order'ları tarih aralığına göre filtrele
     const orders = allOrders.filter(order => {
