@@ -1,250 +1,94 @@
-# ThunderV1 - Canlıya Alma ve Deployment Rehberi
+# 🚀 Canlı Sunucuya Aktarma Rehberi
 
-## 📋 **İÇİNDEKİLER**
-1. [Deployment Öncesi Hazırlık](#deployment-öncesi-hazırlık)
-2. [Sunucu Gereksinimleri](#sunucu-gereksinimleri)
-3. [Veritabanı Kurulumu](#veritabanı-kurulumu)
-4. [Uygulama Deployment](#uygulama-deployment)
-5. [Nginx Konfigürasyonu (Localhost)](#nginx-konfigürasyonu-localhost)
-6. [Monitoring ve Logging](#monitoring-ve-logging)
-7. [Backup ve Güvenlik](#backup-ve-güvenlik)
-8. [Performans Optimizasyonu](#performans-optimizasyonu)
-9. [Troubleshooting](#troubleshooting)
-10. [Maintenance](#maintenance)
+## 📋 Ön Gereksinimler
 
----
+### 1. Sunucu Gereksinimleri
+- **İşletim Sistemi**: Ubuntu 20.04+ veya CentOS 7+
+- **Node.js**: v18+ (LTS önerilir)
+- **NPM**: v8+
+- **PM2**: Process Manager (production için)
+- **Nginx**: Reverse proxy (opsiyonel)
+- **SSL Sertifikası**: Let's Encrypt (önerilir)
 
-## 🔧 **DEPLOYMENT ÖNCESİ HAZIRLIK**
+### 2. Veritabanı
+- **Supabase**: Production environment
+- **Environment Variables**: `.env` dosyası
 
-### **1.1 Kod Hazırlığı**
-- [ ] **Code Review**: Tüm kodlar gözden geçirildi
-- [ ] **Testing**: Unit testler ve integration testler tamamlandı
-- [ ] **Security Audit**: Güvenlik açıkları kontrol edildi
-- [ ] **Performance Testing**: Performans testleri yapıldı
-- [ ] **Environment Variables**: Tüm environment değişkenleri tanımlandı
-- [ ] **Database Migrations**: Veritabanı migration'ları hazırlandı
+## 🔧 Kurulum Adımları
 
-### **1.2 Environment Konfigürasyonu**
+### 1. Sunucuya Bağlanma
 ```bash
-# Production Environment Variables
-NODE_ENV=production
-PORT=3000
-
-# Supabase (Mevcut projeden aynı bilgiler)
-SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ4OTkwNywiZXhwIjoyMDczMDY1OTA3fQ.XpsgrVHXZPJ5Z0_-VrA62mL0nDxSnQQeRsm6UHGLfXA
-
-# JWT ve Session (Production için güçlü secret'lar)
-JWT_SECRET=x/v7dOYf5fRkmNyBPON7iaP82AJDXXJog+afbchTaEaLgbcP+yUbJcOQdhunD05kN9UxHtRMchQ3fJqFU4l7Gw==
-SESSION_SECRET=your_session_secret_production
-
-# Redis (Opsiyonel - caching için)
-REDIS_URL=redis://localhost:6379
-
-# Diğer Production Ayarları
-LOG_LEVEL=info
+ssh kullanici@sunucu-ip-adresi
 ```
 
-### **1.3 Build Optimizasyonu**
-- [ ] **Minification**: CSS/JS dosyaları minify edildi
-- [ ] **Compression**: Gzip/Brotli compression aktif
-- [ ] **Image Optimization**: Resimler optimize edildi
-- [ ] **Bundle Analysis**: Bundle boyutu analiz edildi
-- [ ] **Tree Shaking**: Gereksiz kodlar temizlendi
-
----
-
-## 🖥️ **SUNUCU GEREKSİNİMLERİ**
-
-### **2.1 Minimum Sistem Gereksinimleri**
-- **CPU**: 2 vCPU (4 vCPU önerilen)
-- **RAM**: 4GB (8GB önerilen)
-- **Storage**: 50GB SSD (100GB önerilen)
-- **Network**: 100 Mbps (1 Gbps önerilen)
-- **OS**: Ubuntu 20.04 LTS veya üzeri
-
-### **2.2 Önerilen Sunucu Konfigürasyonu**
-- **CPU**: 4 vCPU
-- **RAM**: 8GB
-- **Storage**: 100GB SSD
-- **Network**: 1 Gbps
-- **OS**: Ubuntu 22.04 LTS
-
-### **2.3 Cloud Provider Seçenekleri**
-
-#### **AWS EC2**
+### 2. Sistem Güncelleme
 ```bash
-# Instance Type: t3.medium (2 vCPU, 4GB RAM)
-# Storage: gp3 50GB
-# Security Groups: HTTP(80), HTTPS(443), SSH(22)
-# Key Pair: ThunderV1-keypair
-```
-
-#### **DigitalOcean Droplet**
-```bash
-# Droplet Size: 4GB RAM, 2 vCPUs, 80GB SSD
-# Image: Ubuntu 22.04 LTS
-# Region: Frankfurt (Avrupa)
-# VPC: Default
-```
-
-#### **Google Cloud Platform**
-```bash
-# Machine Type: e2-medium (2 vCPU, 4GB RAM)
-# Boot Disk: 50GB SSD
-# Region: europe-west1
-# Network: default
-```
-
----
-
-## 🗄️ **VERİTABANI KURULUMU**
-
-### **3.1 Supabase (Mevcut Database Kullanımı)**
-```bash
-# 1. Mevcut Supabase projesini kullanma
-# 2. Production environment için aynı database URL'leri
-# 3. RLS (Row Level Security) politikaları zaten aktif
-# 4. Mevcut veriler korunacak
-
-# Supabase bağlantı bilgileri (mevcut projeden)
-SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ4OTkwNywiZXhwIjoyMDczMDY1OTA3fQ.XpsgrVHXZPJ5Z0_-VrA62mL0nDxSnQQeRsm6UHGLfXA
-```
-
-### **3.2 Redis Kurulumu (Opsiyonel - Caching için)**
-```bash
-# Redis kurulumu (caching ve session yönetimi için)
-sudo apt install redis-server
-
-# Redis servisini başlatma
-sudo systemctl start redis-server
-sudo systemctl enable redis-server
-
-# Redis konfigürasyonu
-sudo nano /etc/redis/redis.conf
-# requirepass your_redis_password
-# maxmemory 256mb
-# maxmemory-policy allkeys-lru
-```
-
-### **3.3 Database Migration (Gerekirse)**
-```bash
-# Eğer yeni tablolar veya sütunlar eklendiyse
-# Mevcut Supabase projesinde SQL migration'ları çalıştır
-
-# Supabase Dashboard > SQL Editor'da çalıştırılacak migration'lar:
-# - Yeni tablolar
-# - Yeni sütunlar
-# - Index'ler
-# - RLS politikaları
-```
-
-### **3.4 Supabase Production Konfigürasyonu**
-```bash
-# Supabase Dashboard'da yapılacak ayarlar:
-
-# 1. API Keys kontrolü
-# - Anon key production için uygun mu?
-# - Service role key güvenli mi?
-
-# 2. RLS (Row Level Security) Politikaları
-# - Tüm tablolar için RLS aktif mi?
-# - Production için uygun politikalar var mı?
-
-# 3. Database Ayarları
-# - Connection pooling aktif mi?
-# - Query timeout ayarları uygun mu?
-
-# 4. Monitoring ve Logging
-# - Database logs aktif mi?
-# - API logs aktif mi?
-# - Error tracking aktif mi?
-
-# 5. Backup Ayarları
-# - Otomatik backup aktif mi?
-# - Point-in-time recovery aktif mi?
-```
-
----
-
-## 🚀 **UYGULAMA DEPLOYMENT**
-
-### **4.1 Sunucu Hazırlığı**
-```bash
-# 1. Sunucuya bağlanma
-ssh -i your-key.pem ubuntu@your-server-ip
-
-# 2. Sistem güncelleme
 sudo apt update && sudo apt upgrade -y
+```
 
-# 3. Node.js kurulumu
+### 3. Node.js Kurulumu
+```bash
+# NodeSource repository ekle
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+
+# Node.js kur
 sudo apt-get install -y nodejs
 
-# 4. PM2 kurulumu (Process Manager)
-sudo npm install -g pm2
-
-# 5. Nginx kurulumu
-sudo apt install nginx
-
-# 6. UFW (Firewall) konfigürasyonu
-sudo ufw allow ssh
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
+# Versiyon kontrolü
+node --version
+npm --version
 ```
 
-### **4.2 Uygulama Kurulumu**
+### 4. PM2 Kurulumu
 ```bash
-# 1. Proje dizini oluşturma
-sudo mkdir -p /var/www/thunderv1
-sudo chown ubuntu:ubuntu /var/www/thunderv1
-cd /var/www/thunderv1
+sudo npm install -g pm2
+```
 
-# 2. Git repository'den klonlama
-git clone https://github.com/Huseyintabak/ThunderV1.git .
+### 5. Proje Klonlama
+```bash
+# Proje dizinine git
+cd /var/www
 
-# 3. Dependencies kurulumu
-npm install --production
+# GitHub'dan klonla
+git clone https://github.com/Huseyintabak/ThunderV1.git
+cd ThunderV1
 
-# 4. Environment variables ayarlama
+# Bağımlılıkları kur
+npm install
+```
+
+### 6. Environment Variables
+```bash
+# .env dosyası oluştur
 nano .env
 ```
 
-### **4.3 Environment Variables (.env)**
-```bash
-# Production Environment Variables
-NODE_ENV=production
+**`.env` dosyası içeriği:**
+```env
+# Supabase Configuration
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Server Configuration
 PORT=3000
+NODE_ENV=production
 
-# Supabase (Mevcut projeden aynı bilgiler)
-SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ4OTkwNywiZXhwIjoyMDczMDY1OTA3fQ.XpsgrVHXZPJ5Z0_-VrA62mL0nDxSnQQeRsm6UHGLfXA
-
-# JWT ve Session (Production için güçlü secret'lar)
-JWT_SECRET=x/v7dOYf5fRkmNyBPON7iaP82AJDXXJog+afbchTaEaLgbcP+yUbJcOQdhunD05kN9UxHtRMchQ3fJqFU4l7Gw==
-SESSION_SECRET=your_session_secret_production
-
-# Redis (Opsiyonel - caching için)
-REDIS_URL=redis://localhost:6379
-
-# Diğer Production Ayarları
-LOG_LEVEL=info
+# Database Configuration
+DATABASE_URL=your_database_url
 ```
 
-### **4.4 PM2 Konfigürasyonu**
+### 7. PM2 ile Başlatma
 ```bash
-# ecosystem.config.js oluşturma
+# PM2 ecosystem dosyası oluştur
 nano ecosystem.config.js
 ```
 
+**`ecosystem.config.js` içeriği:**
 ```javascript
 module.exports = {
   apps: [{
-    name: 'thunderv1',
+    name: 'thunder-v1',
     script: 'server.js',
     instances: 'max',
     exec_mode: 'cluster',
@@ -260,85 +104,34 @@ module.exports = {
 };
 ```
 
-### **4.5 Uygulamayı Başlatma**
 ```bash
-# 1. Log dizini oluşturma
+# Log dizini oluştur
 mkdir logs
 
-# 2. PM2 ile uygulamayı başlatma
+# PM2 ile başlat
 pm2 start ecosystem.config.js
 
-# 3. PM2'yi sistem başlangıcında çalıştırma
+# PM2'yi sistem başlangıcında otomatik başlat
 pm2 startup
 pm2 save
-
-# 4. Uygulama durumunu kontrol etme
-pm2 status
-pm2 logs thunderv1
 ```
 
----
-
-## 🌐 **NGINX KONFİGÜRASYONU (LOCALHOST)**
-
-### **5.1 Nginx Konfigürasyonu (Localhost)**
+### 8. Nginx Konfigürasyonu (Opsiyonel)
 ```bash
-# Nginx konfigürasyon dosyası oluşturma
-sudo nano /etc/nginx/sites-available/thunderv1
+# Nginx kur
+sudo apt install nginx -y
+
+# Konfigürasyon dosyası oluştur
+sudo nano /etc/nginx/sites-available/thunder-v1
 ```
 
+**Nginx konfigürasyonu:**
 ```nginx
 server {
     listen 80;
-    server_name localhost;
+    server_name your-domain.com;
 
-    # Gzip Compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
-
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-
-    # Static Files
     location / {
-        root /var/www/thunderv1/public;
-        index index.html;
-        try_files $uri $uri/ @nodejs;
-    }
-
-    # API Routes
-    location /api {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # WebSocket Support
-    location /socket.io/ {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Node.js Fallback
-    location @nodejs {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -352,326 +145,182 @@ server {
 }
 ```
 
-### **5.2 Nginx'i Aktifleştirme**
 ```bash
-# 1. Site'ı aktifleştir
-sudo ln -s /etc/nginx/sites-available/thunderv1 /etc/nginx/sites-enabled/
+# Site'ı aktifleştir
+sudo ln -s /etc/nginx/sites-available/thunder-v1 /etc/nginx/sites-enabled/
 
-# 2. Default site'ı kaldır (opsiyonel)
-sudo rm /etc/nginx/sites-enabled/default
-
-# 3. Nginx konfigürasyonunu test et
-sudo nginx -t
-
-# 4. Nginx'i yeniden başlat
-sudo systemctl reload nginx
+# Nginx'i yeniden başlat
+sudo systemctl restart nginx
 ```
 
----
-
-## 📊 **MONITORING VE LOGGING**
-
-### **6.1 PM2 Monitoring**
+### 9. SSL Sertifikası (Let's Encrypt)
 ```bash
-# PM2 monitoring dashboard
-pm2 install pm2-logrotate
-pm2 install pm2-server-monit
+# Certbot kur
+sudo apt install certbot python3-certbot-nginx -y
 
-# Monitoring komutları
+# SSL sertifikası al
+sudo certbot --nginx -d your-domain.com
+
+# Otomatik yenileme test et
+sudo certbot renew --dry-run
+```
+
+## 🔄 Güncelleme İşlemi
+
+### 1. Kod Güncelleme
+```bash
+# Proje dizinine git
+cd /var/www/ThunderV1
+
+# Son değişiklikleri çek
+git pull origin main
+
+# Bağımlılıkları güncelle (gerekirse)
+npm install
+
+# PM2'yi yeniden başlat
+pm2 restart thunder-v1
+```
+
+### 2. Veritabanı Güncelleme
+```bash
+# Supabase Dashboard'dan migration'ları çalıştır
+# veya SQL script'leri manuel olarak çalıştır
+```
+
+## 📊 Monitoring ve Loglar
+
+### 1. PM2 Monitoring
+```bash
+# Uygulama durumu
+pm2 status
+
+# Logları görüntüle
+pm2 logs thunder-v1
+
+# Real-time monitoring
 pm2 monit
-pm2 logs thunderv1 --lines 100
-pm2 restart thunderv1
-pm2 reload thunderv1
 ```
 
-### **6.2 Nginx Logging**
+### 2. Sistem Monitoring
 ```bash
-# Nginx log dosyaları
-tail -f /var/log/nginx/access.log
-tail -f /var/log/nginx/error.log
-
-# Log rotation konfigürasyonu
-sudo nano /etc/logrotate.d/nginx
-```
-
-### **6.3 System Monitoring**
-```bash
-# System monitoring araçları
-sudo apt install htop iotop nethogs
+# Sistem kaynakları
+htop
 
 # Disk kullanımı
 df -h
 
 # Memory kullanımı
 free -h
-
-# CPU kullanımı
-top
 ```
 
-### **6.4 Application Monitoring (Opsional)**
+## 🛠️ Sorun Giderme
+
+### 1. Uygulama Başlamıyor
 ```bash
-# New Relic kurulumu
-npm install newrelic
+# Logları kontrol et
+pm2 logs thunder-v1 --lines 100
 
-# Sentry kurulumu
-npm install @sentry/node
-
-# Winston logging
-npm install winston
+# Manuel başlat
+node server.js
 ```
 
----
-
-## 🔒 **BACKUP VE GÜVENLİK**
-
-### **7.1 Database Backup (Supabase)**
+### 2. Port Çakışması
 ```bash
-# Supabase backup script
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
+# Port kullanımını kontrol et
+sudo netstat -tulpn | grep :3000
 
-# Supabase CLI ile backup alma
-npx supabase db dump --db-url "postgresql://postgres:[password]@[host]:5432/postgres" > /backup/thunderv1_supabase_$DATE.sql
-gzip /backup/thunderv1_supabase_$DATE.sql
-
-# Alternatif: Supabase Dashboard'dan manual backup
-# 1. Supabase Dashboard > Settings > Database
-# 2. "Download backup" butonuna tıkla
-# 3. Backup dosyasını sunucuya yükle
-
-# Otomatik backup (crontab)
-0 2 * * * /path/to/supabase_backup_script.sh
+# Process'i sonlandır
+sudo kill -9 PID
 ```
 
-### **7.2 Application Backup**
+### 3. Veritabanı Bağlantı Sorunu
 ```bash
-# Uygulama dosyaları backup
-tar -czf /backup/thunderv1_app_$(date +%Y%m%d).tar.gz /var/www/thunderv1
+# Environment variables kontrol et
+cat .env
+
+# Supabase bağlantısını test et
+curl -X GET "https://your-project.supabase.co/rest/v1/"
 ```
 
-### **7.3 Security Hardening**
+## 🔒 Güvenlik
+
+### 1. Firewall
 ```bash
-# 1. SSH güvenliği
-sudo nano /etc/ssh/sshd_config
-# Port 22 değiştir
-# PasswordAuthentication no
-# PermitRootLogin no
+# UFW kur
+sudo apt install ufw -y
 
-# 2. Fail2ban kurulumu
-sudo apt install fail2ban
-sudo systemctl enable fail2ban
-sudo systemctl start fail2ban
-
-# 3. UFW firewall
-sudo ufw status
+# Temel kurallar
 sudo ufw allow ssh
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 80
+sudo ufw allow 443
 sudo ufw enable
-
-# 4. Automatic security updates
-sudo apt install unattended-upgrades
-sudo dpkg-reconfigure -plow unattended-upgrades
 ```
 
----
+### 2. SSL/TLS
+- Let's Encrypt sertifikası kullan
+- HTTPS yönlendirmesi aktif et
+- Güvenli header'lar ekle
 
-## ⚡ **PERFORMANS OPTİMİZASYONU**
+### 3. Environment Variables
+- `.env` dosyasını `.gitignore`'a ekle
+- Production'da farklı API key'ler kullan
+- Hassas bilgileri güvenli tut
 
-### **8.1 Nginx Optimizasyonu**
+## 📈 Performans Optimizasyonu
+
+### 1. PM2 Cluster Mode
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'thunder-v1',
+    script: 'server.js',
+    instances: 'max', // CPU core sayısı kadar
+    exec_mode: 'cluster'
+  }]
+};
+```
+
+### 2. Nginx Caching
 ```nginx
-# /etc/nginx/nginx.conf optimizasyonları
-worker_processes auto;
-worker_connections 1024;
-
-# Gzip compression
-gzip on;
-gzip_vary on;
-gzip_min_length 1024;
-gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-# Caching
-location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+# Static dosyalar için cache
+location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
     expires 1y;
     add_header Cache-Control "public, immutable";
 }
 ```
 
-### **8.2 Node.js Optimizasyonu**
-```javascript
-// server.js optimizasyonları
-const cluster = require('cluster');
-const numCPUs = require('os').cpus().length;
+### 3. Database Optimization
+- Supabase connection pooling
+- Query optimization
+- Index'ler ekle
 
-if (cluster.isMaster) {
-    for (let i = 0; i < numCPUs; i++) {
-        cluster.fork();
-    }
-} else {
-    // Uygulama kodu
-}
+## 🚨 Acil Durum
+
+### 1. Rollback
+```bash
+# Önceki commit'e dön
+git log --oneline
+git reset --hard COMMIT_HASH
+pm2 restart thunder-v1
 ```
 
-### **8.3 Database Optimizasyonu**
-```sql
--- PostgreSQL optimizasyonları
--- Index'ler oluşturma
-CREATE INDEX idx_orders_status ON order_management(status);
-CREATE INDEX idx_orders_date ON order_management(order_date);
-CREATE INDEX idx_production_plans_status ON production_plans(status);
+### 2. Backup
+```bash
+# Veritabanı backup
+# Supabase Dashboard'dan export al
 
--- Query optimizasyonu
-EXPLAIN ANALYZE SELECT * FROM order_management WHERE status = 'approved';
+# Kod backup
+tar -czf backup-$(date +%Y%m%d).tar.gz /var/www/ThunderV1
 ```
+
+## 📞 Destek
+
+- **GitHub Issues**: https://github.com/Huseyintabak/ThunderV1/issues
+- **Documentation**: README.md
+- **Logs**: `/var/www/ThunderV1/logs/`
 
 ---
 
-## 🔧 **TROUBLESHOOTING**
-
-### **9.1 Yaygın Sorunlar**
-
-#### **Uygulama Başlamıyor**
-```bash
-# PM2 loglarını kontrol et
-pm2 logs thunderv1
-
-# Port kullanımını kontrol et
-sudo netstat -tlnp | grep :3000
-
-# Process'leri kontrol et
-ps aux | grep node
-```
-
-#### **Nginx 502 Bad Gateway**
-```bash
-# Nginx error loglarını kontrol et
-sudo tail -f /var/log/nginx/error.log
-
-# Node.js uygulamasının çalışıp çalışmadığını kontrol et
-curl http://localhost:3000/api/health
-```
-
-#### **Database Bağlantı Sorunu (Supabase)**
-```bash
-# Supabase bağlantısını test et
-curl -X GET "https://beynxlogttkrrkejvftz.supabase.co/rest/v1/" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE"
-
-# Supabase servis durumunu kontrol et
-curl -X GET "https://beynxlogttkrrkejvftz.supabase.co/rest/v1/health"
-
-# Environment variables'ları kontrol et
-echo $SUPABASE_URL
-echo $SUPABASE_ANON_KEY
-```
-
-### **9.2 Log Analizi**
-```bash
-# Hata loglarını filtrele
-grep "ERROR" /var/log/nginx/error.log
-grep "ERROR" /var/www/thunderv1/logs/err.log
-
-# Performans logları
-grep "slow" /var/www/thunderv1/logs/combined.log
-```
-
----
-
-## 🔄 **MAINTENANCE**
-
-### **10.1 Günlük Bakım**
-```bash
-# 1. Sistem durumunu kontrol et
-pm2 status
-sudo systemctl status nginx
-
-# 2. Supabase bağlantısını kontrol et
-curl -X GET "https://beynxlogttkrrkejvftz.supabase.co/rest/v1/health"
-
-# 3. Disk kullanımını kontrol et
-df -h
-
-# 4. Log dosyalarını temizle
-sudo find /var/log -name "*.log" -type f -mtime +7 -delete
-```
-
-### **10.2 Haftalık Bakım**
-```bash
-# 1. Sistem güncellemeleri
-sudo apt update && sudo apt upgrade -y
-
-# 2. Uygulama güncellemeleri
-cd /var/www/thunderv1
-git pull origin main
-npm install
-pm2 reload thunderv1
-
-# 3. Supabase durum kontrolü
-# Supabase Dashboard'da:
-# - Database performansını kontrol et
-# - API kullanımını kontrol et
-# - Storage kullanımını kontrol et
-# - RLS politikalarını kontrol et
-```
-
-### **10.3 Aylık Bakım**
-```bash
-# 1. SSL sertifika yenileme kontrolü
-sudo certbot renew --dry-run
-
-# 2. Backup testi
-# Backup dosyalarının restore edilebilirliğini test et
-
-# 3. Security audit
-sudo apt list --upgradable
-sudo fail2ban-client status
-```
-
----
-
-## 📋 **DEPLOYMENT CHECKLIST**
-
-### **Pre-Deployment**
-- [ ] Kod review tamamlandı
-- [ ] Testler başarılı
-- [ ] Environment variables hazırlandı
-- [ ] Database migration'ları hazırlandı
-- [ ] Supabase bağlantı bilgileri hazırlandı
-
-### **Deployment**
-- [ ] Sunucu kurulumu tamamlandı
-- [ ] Uygulama kurulumu tamamlandı
-- [ ] Nginx konfigürasyonu yapıldı
-- [ ] PM2 ile uygulama başlatıldı
-- [ ] Monitoring kuruldu
-
-### **Post-Deployment**
-- [ ] Uygulama localhost'ta erişilebilir durumda
-- [ ] API endpoint'leri çalışıyor
-- [ ] Supabase database bağlantısı aktif
-- [ ] Monitoring çalışıyor
-- [ ] Backup sistemi aktif
-
----
-
-## 🎯 **SONUÇ**
-
-Bu deployment rehberi ile ThunderV1 uygulamasını localhost'ta güvenli ve performanslı bir şekilde çalıştırabilirsiniz. Her adımı dikkatli bir şekilde takip ederek, production-ready bir sistem kurmuş olacaksınız.
-
-**Önemli Notlar:**
-- Her adımı test edin
-- Supabase bağlantısını düzenli olarak kontrol edin
-- Monitoring sistemlerini aktif tutun
-- Security güncellemelerini takip edin
-- Performance metriklerini izleyin
-- Localhost'ta çalıştığı için domain ve SSL gerekmez
-
-**Destek:**
-- GitHub Issues: https://github.com/Huseyintabak/ThunderV1/issues
-- Documentation: https://github.com/Huseyintabak/ThunderV1/wiki
-- Email: support@thunderv1.com
-
----
-
-*Bu rehber, ThunderV1 uygulamasının production ortamına deployment'ı için hazırlanmıştır. Güncellemeler ve iyileştirmeler için GitHub repository'sini takip edin.*
+**Not**: Bu rehber production environment için hazırlanmıştır. Test environment'da önce deneyiniz.
