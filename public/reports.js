@@ -156,106 +156,52 @@ function updateMetricChanges() {
 // Gelişmiş istatistikleri yükle
 async function loadAdvancedStats() {
     try {
-        // Önce dashboard/advanced-stats endpoint'ini dene
-        let response = await fetch('/api/dashboard/advanced-stats');
-        
+        const response = await fetch('/api/dashboard/advanced-stats');
         if (!response.ok) {
-            // Fallback olarak production_history endpoint'ini kullan
-            response = await fetch('/api/productions/history');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const productionHistory = await response.json();
-        console.log('Production history loaded:', productionHistory);
+        const data = await response.json();
+        console.log('Advanced stats loaded:', data);
         
-        // Veri tipini kontrol et ve array'e çevir
-        let historyArray = [];
-        if (Array.isArray(productionHistory)) {
-            historyArray = productionHistory;
-        } else if (productionHistory && Array.isArray(productionHistory.data)) {
-            historyArray = productionHistory.data;
-        } else if (productionHistory && typeof productionHistory === 'object') {
-            // Eğer object ise, values'ları array'e çevir
-            historyArray = Object.values(productionHistory);
-        } else {
-            console.warn('Production history is not an array, using empty array');
-            historyArray = [];
-        }
-        
-        // Müşteri başı üretim analizi
-        const customerProduction = {};
-        historyArray.forEach(p => {
-            const customer = p.customer_name || 'Bilinmeyen Müşteri';
-            if (!customerProduction[customer]) {
-                customerProduction[customer] = { count: 0, quantity: 0 };
-            }
-            customerProduction[customer].count++;
-            customerProduction[customer].quantity += p.produced_quantity || 0;
-        });
-
-        // Advanced stats oluştur
-        const data = {
-            data_source: 'real',
-            is_mock_data: historyArray.length === 0,
-            production: {
-                total_productions: historyArray.length,
-                completed_productions: historyArray.filter(p => p.status === 'completed').length,
-                total_quantity: historyArray.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
-                daily_trend: []
-            },
-            customers: {
-                total_customers: Object.keys(customerProduction).length,
-                customer_production: Object.keys(customerProduction).map(customer => ({
-                    customer_name: customer,
-                    production_count: customerProduction[customer].count,
-                    total_quantity: customerProduction[customer].quantity
-                })).sort((a, b) => b.total_quantity - a.total_quantity)
-            }
-        };
-        
-        // Günlük trend hesapla
-        const dailyProduction = {};
-        const period = currentPeriod || '7d';
-        const days = period === '1d' ? 1 : period === '7d' ? 7 : period === '30d' ? 30 : 90;
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - days);
-        
-        historyArray.forEach(p => {
-            const completedDate = new Date(p.completed_at);
-            if (completedDate >= startDate && completedDate <= endDate) {
-                const date = completedDate.toISOString().split('T')[0];
-                if (!dailyProduction[date]) {
-                    dailyProduction[date] = { count: 0, quantity: 0 };
-                }
-                dailyProduction[date].count++;
-                dailyProduction[date].quantity += p.produced_quantity || 0;
-            }
-        });
-        
-        data.production.daily_trend = Object.keys(dailyProduction).map(date => ({
-            date,
-            count: dailyProduction[date].count,
-            quantity: dailyProduction[date].quantity
-        })).sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        console.log('Advanced stats:', data);
-        
-        advancedStats = data;
-        updateAdvancedMetrics(data);
-        
-        // Update data source indicator
-        updateDataSourceIndicator(data.is_mock_data);
-        
+        // API'den gelen veriyi direkt kullan
+        displayAdvancedStats(data);
         return data;
+        
     } catch (error) {
         console.error('Gelişmiş istatistikler yüklenemedi:', error);
-        showAlert('Gelişmiş istatistikler yüklenemedi', 'error');
-        throw error;
+        // Fallback data ile devam et
+        const fallbackData = {
+            production: { total_productions: 0, completed_productions: 0, total_quantity: 0, daily_trend: [] },
+            operators: [],
+            quality: { total_checks: 0, pass_rate: 0, daily_trend: [] },
+            customers: { total_customers: 0, customer_production: [] }
+        };
+        displayAdvancedStats(fallbackData);
+        return fallbackData;
     }
+}
+
+// Advanced stats'ı görüntüle
+function displayAdvancedStats(data) {
+    console.log('Displaying advanced stats:', data);
+    
+    // Production istatistikleri
+    const productionStats = data.production || {};
+    document.getElementById('totalProductions').textContent = productionStats.total_productions || 0;
+    document.getElementById('completedProductions').textContent = productionStats.completed_productions || 0;
+    document.getElementById('totalQuantity').textContent = productionStats.total_quantity || 0;
+    
+    // Operatör performansı
+    const operators = data.operators || [];
+    updateOperatorPerformanceTable(operators);
+    
+    // Grafikleri güncelle
+    createProductionTrendChart(data.production?.daily_trend || []);
+    createCustomerProductionChart(data.customers?.customer_production || []);
+    
+    advancedStats = data;
+    updateAdvancedMetrics(data);
 }
 
 // Gelişmiş metrikleri güncelle
