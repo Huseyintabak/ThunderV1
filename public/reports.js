@@ -82,7 +82,7 @@ async function loadAllData() {
         console.log('✅ Tüm veriler başarıyla yüklendi');
         
         // Real-time indicator'ı güncelle
-        updateRealTimeIndicator();
+        updateRealTimeIndicator(true);
         
     } catch (error) {
         console.error('❌ Veri yükleme hatası:', error);
@@ -1751,6 +1751,20 @@ function showAlert(message, type = 'info') {
             alertDiv.parentNode.removeChild(alertDiv);
         }
     }, 5000);
+}
+
+// Real-time indicator'ı güncelle
+function updateRealTimeIndicator(isActive = true) {
+    const indicator = document.querySelector('.real-time-badge');
+    if (indicator) {
+        if (isActive) {
+            indicator.className = 'real-time-badge bg-success';
+            indicator.title = 'Gerçek zamanlı veri gösteriliyor.';
+        } else {
+            indicator.className = 'real-time-badge bg-warning';
+            indicator.title = 'Veri yükleniyor...';
+        }
+    }
 }
 
 // Sayfa kapatılırken temizlik
