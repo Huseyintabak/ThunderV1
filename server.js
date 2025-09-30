@@ -7214,11 +7214,15 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
     console.log('Dashboard API - Sonuçlar:', {
       productions: productions.length,
       qualityChecks: qualityChecks.length,
+      allOrders: allOrders.length,
       orders: orders.length,
       materials: materials.length
     });
     
     // Order durumlarını detaylı logla
+    console.log('Tüm order\'lar:', allOrders.slice(0, 3)); // İlk 3 order'ı göster
+    console.log('Filtrelenmiş order\'lar:', orders.slice(0, 3)); // İlk 3 filtrelenmiş order'ı göster
+    
     const orderStatuses = {};
     orders.forEach(order => {
       orderStatuses[order.status] = (orderStatuses[order.status] || 0) + 1;
