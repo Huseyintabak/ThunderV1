@@ -8580,7 +8580,6 @@ app.post('/api/complete-production', async (req, res) => {
         .from('active_productions')
         .update({
           status: 'completed',
-          is_active: false,
           updated_at: new Date().toISOString(),
           produced_quantity: completedQuantity
         })
@@ -8594,27 +8593,13 @@ app.post('/api/complete-production', async (req, res) => {
       const { data: activeProduction, error: activeError } = await supabase
         .from('active_productions')
         .select('id, plan_id')
-        .eq('plan_id', planId)
-        .eq('product_name', productName)
+        .eq('id', productionStateId)
         .single();
-      
-      if (!activeError && activeProduction) {
-        const { error: updateActiveError } = await supabase
-          .from('active_productions')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            produced_quantity: completedQuantity
-          })
-          .eq('id', activeProduction.id);
-        
-        if (updateActiveError) console.error('Active production güncelleme hatası:', updateActiveError);
-      }
       
       // 3. Production plan'ı completed olarak güncelle
       // Önce active_productions'dan plan_id'yi al, yoksa doğrudan order_id ile bul
       let planId = null;
-      if (activeProduction && activeProduction.plan_id) {
+      if (!activeError && activeProduction && activeProduction.plan_id) {
         planId = activeProduction.plan_id;
       } else {
         // Active production yoksa, production_plans'dan order_id ile bul
@@ -8627,6 +8612,19 @@ app.post('/api/complete-production', async (req, res) => {
         if (!planSearchError && planData) {
           planId = planData.id;
         }
+      }
+      
+      if (!activeError && activeProduction) {
+        const { error: updateActiveError } = await supabase
+          .from('active_productions')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            produced_quantity: completedQuantity
+          })
+          .eq('id', activeProduction.id);
+        
+        if (updateActiveError) console.error('Active production güncelleme hatası:', updateActiveError);
       }
       
       if (planId) {
@@ -8673,6 +8671,142 @@ app.post('/api/complete-production', async (req, res) => {
           .in('status', ['pending', 'active', 'in_progress']);
         
         if (stagesError) console.error('Production stages güncelleme hatası:', stagesError);
+      }
+      
+      // 6. STOK YÖNETİMİ - BOM tabanlı stok güncelleme
+      try {
+        console.log('📦 Stok güncelleme başlatılıyor...');
+        
+        // BOM'u al
+        console.log('🔍 BOM sorgusu yapılıyor:', {
+          product_id: updatedState.product_id,
+          product_name: updatedState.product_name
+        });
+        
+        const { data: bomData, error: bomError } = await supabase
+          .from('urun_agaci')
+          .select('*')
+          .eq('ana_urun_id', updatedState.product_id || 1) // Varsayılan olarak 1
+          .eq('ana_urun_tipi', 'nihai');
+        
+        if (bomError) {
+          console.error('BOM sorgulama hatası:', bomError);
+        } else if (bomData && bomData.length > 0) {
+          console.log('🌳 BOM bulundu:', bomData.length, 'malzeme');
+          console.log('🔍 BOM verisi:', bomData);
+          
+          // Her malzeme için stok düş
+          for (const bomItem of bomData) {
+            const requiredQuantity = (bomItem.gerekli_miktar || 1) * completedQuantity;
+            
+            console.log(`📉 Stok düşülüyor: ${bomItem.alt_urun_id} (${bomItem.alt_urun_tipi}) - ${requiredQuantity} ${bomItem.birim}`);
+            
+            // Stok hareketi kaydet
+            const { data: stockMovement, error: stockError } = await supabase
+              .from('stok_hareketleri')
+              .insert({
+                urun_id: bomItem.alt_urun_id,
+                urun_tipi: bomItem.alt_urun_tipi,
+                hareket_tipi: 'cikis',
+                miktar: requiredQuantity,
+                birim: bomItem.birim || 'adet',
+                referans_no: `PROD-${productionStateId}`,
+                aciklama: `Üretim tüketimi - ${updatedState.product_name || 'Ürün'} (${completedQuantity} adet)`,
+                operator: 'system'
+              })
+              .select();
+            
+            if (stockError) {
+              console.error('Stok hareketi kaydetme hatası:', stockError);
+            } else {
+              console.log('✅ Stok hareketi kaydedildi:', stockMovement[0].id);
+            }
+            
+            // Stok miktarını güncelle
+            const tableName = bomItem.alt_urun_tipi === 'hammadde' ? 'hammaddeler' : 
+                              bomItem.alt_urun_tipi === 'yarimamul' ? 'yarimamuller' : 'nihai_urunler';
+            
+            const { data: currentStock, error: currentError } = await supabase
+              .from(tableName)
+              .select('miktar')
+              .eq('id', bomItem.alt_urun_id)
+              .single();
+            
+            if (!currentError && currentStock) {
+              const newQuantity = (currentStock.miktar || 0) - requiredQuantity;
+              
+              const { error: updateError } = await supabase
+                .from(tableName)
+                .update({ 
+                  miktar: Math.max(0, newQuantity), // Negatif stok önle
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', bomItem.alt_urun_id);
+              
+              if (updateError) {
+                console.error('Stok güncelleme hatası:', updateError);
+              } else {
+                console.log(`✅ ${tableName} stok güncellendi: ${currentStock.miktar} -> ${Math.max(0, newQuantity)}`);
+              }
+            }
+          }
+          
+          // 7. NİHAİ ÜRÜN STOĞUNU ARTIR
+          console.log('📈 Nihai ürün stoğu artırılıyor...');
+          
+          // Nihai ürün stok hareketi (giriş)
+          const { data: finalProductMovement, error: finalStockError } = await supabase
+            .from('stok_hareketleri')
+            .insert({
+              urun_id: updatedState.product_id || 1,
+              urun_tipi: 'nihai',
+              hareket_tipi: 'giris',
+              miktar: completedQuantity,
+              birim: 'adet',
+              referans_no: `PROD-${productionStateId}`,
+              aciklama: `Üretim çıkışı - ${updatedState.product_name || 'Ürün'}`,
+              operator: 'system'
+            })
+            .select();
+          
+          if (finalStockError) {
+            console.error('Nihai ürün stok hareketi hatası:', finalStockError);
+          } else {
+            console.log('✅ Nihai ürün stok hareketi kaydedildi:', finalProductMovement[0].id);
+          }
+          
+          // Nihai ürün stok miktarını artır
+          const { data: currentFinalStock, error: currentFinalError } = await supabase
+            .from('nihai_urunler')
+            .select('miktar')
+            .eq('id', updatedState.product_id || 1)
+            .single();
+          
+          if (!currentFinalError && currentFinalStock) {
+            const newFinalQuantity = (currentFinalStock.miktar || 0) + completedQuantity;
+            
+            const { error: updateFinalError } = await supabase
+              .from('nihai_urunler')
+              .update({ 
+                miktar: newFinalQuantity,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', updatedState.product_id || 1);
+            
+            if (updateFinalError) {
+              console.error('Nihai ürün stok güncelleme hatası:', updateFinalError);
+            } else {
+              console.log(`✅ Nihai ürün stok güncellendi: ${currentFinalStock.miktar} -> ${newFinalQuantity}`);
+            }
+          }
+          
+          console.log('🎉 Stok güncelleme tamamlandı!');
+        } else {
+          console.log('⚠️ BOM bulunamadı, stok güncelleme atlandı');
+        }
+      } catch (stockUpdateError) {
+        console.error('❌ Stok güncelleme hatası:', stockUpdateError);
+        // Stok hatası olsa bile üretim tamamlanmış sayılır
       }
       
       console.log('✅ Üretim başarıyla tamamlandı:', updatedState);

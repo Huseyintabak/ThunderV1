@@ -88,7 +88,7 @@ function displayPlanSection(containerId, plans, emptyMessage) {
                     <div class="col-md-4 text-end">
                         <button class="btn btn-success btn-sm" onclick="generateWorkOrder(${plan.id})" title="İş Emri Çıkar">
                             <i class="fas fa-file-alt me-1"></i>İş Emri Çıkar
-                        </button>
+                            </button>
                     </div>
                 </div>
             </div>
@@ -631,7 +631,7 @@ function printWorkOrder(workOrderId) {
             // Sayfa yüklendikten sonra yazdırma dialogunu aç
             printWindow.onload = function() {
                 setTimeout(() => {
-                    printWindow.focus();
+            printWindow.focus();
                     printWindow.print();
                     showAlert('İş emri yazdırma penceresi açıldı', 'success');
                 }, 500);
