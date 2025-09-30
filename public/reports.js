@@ -163,9 +163,23 @@ async function loadAdvancedStats() {
         const productionHistory = await response.json();
         console.log('Production history loaded:', productionHistory);
         
+        // Veri tipini kontrol et ve array'e çevir
+        let historyArray = [];
+        if (Array.isArray(productionHistory)) {
+            historyArray = productionHistory;
+        } else if (productionHistory && Array.isArray(productionHistory.data)) {
+            historyArray = productionHistory.data;
+        } else if (productionHistory && typeof productionHistory === 'object') {
+            // Eğer object ise, values'ları array'e çevir
+            historyArray = Object.values(productionHistory);
+        } else {
+            console.warn('Production history is not an array, using empty array');
+            historyArray = [];
+        }
+        
         // Müşteri başı üretim analizi
         const customerProduction = {};
-        productionHistory.forEach(p => {
+        historyArray.forEach(p => {
             const customer = p.customer_name || 'Bilinmeyen Müşteri';
             if (!customerProduction[customer]) {
                 customerProduction[customer] = { count: 0, quantity: 0 };
@@ -202,7 +216,7 @@ async function loadAdvancedStats() {
         const startDate = new Date();
         startDate.setDate(endDate.getDate() - days);
         
-        productionHistory.forEach(p => {
+        historyArray.forEach(p => {
             const completedDate = new Date(p.completed_at);
             if (completedDate >= startDate && completedDate <= endDate) {
                 const date = completedDate.toISOString().split('T')[0];
