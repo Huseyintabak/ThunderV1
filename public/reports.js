@@ -81,8 +81,10 @@ async function loadAllData() {
         
         console.log('✅ Tüm veriler başarıyla yüklendi');
         
-        // Real-time indicator'ı güncelle
-        updateRealTimeIndicator(true);
+        // Real-time indicator'ı güncelle (fonksiyon kontrolü ile)
+        if (typeof updateRealTimeIndicator === 'function') {
+            updateRealTimeIndicator(true);
+        }
         
     } catch (error) {
         console.error('❌ Veri yükleme hatası:', error);
