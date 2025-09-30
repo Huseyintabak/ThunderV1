@@ -186,11 +186,23 @@ async function loadAdvancedStats() {
 function displayAdvancedStats(data) {
     console.log('Displaying advanced stats:', data);
     
-    // Production istatistikleri
+    // Production istatistikleri (element kontrolü ile)
     const productionStats = data.production || {};
-    document.getElementById('totalProductions').textContent = productionStats.total_productions || 0;
-    document.getElementById('completedProductions').textContent = productionStats.completed_productions || 0;
-    document.getElementById('totalQuantity').textContent = productionStats.total_quantity || 0;
+    
+    const totalProductionsEl = document.getElementById('totalProductions');
+    if (totalProductionsEl) {
+        totalProductionsEl.textContent = productionStats.total_productions || 0;
+    }
+    
+    const completedProductionsEl = document.getElementById('completedProductions');
+    if (completedProductionsEl) {
+        completedProductionsEl.textContent = productionStats.completed_productions || 0;
+    }
+    
+    const totalQuantityEl = document.getElementById('totalQuantity');
+    if (totalQuantityEl) {
+        totalQuantityEl.textContent = productionStats.total_quantity || 0;
+    }
     
     // Operatör performansı
     const operators = data.operators || [];
