@@ -7278,11 +7278,16 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
             
             if (Array.isArray(productDetails)) {
               totalQuantity = productDetails.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+              console.log(`Order ${order.id} product_details miktarı:`, totalQuantity);
             }
           } catch (e) {
             console.log('Product details parse error:', e);
           }
         }
+        
+        // Order'ın kendi quantity'sini de ekle
+        const orderQuantity = parseInt(order.quantity) || 0;
+        console.log(`Order ${order.id} quantity:`, orderQuantity, 'product_details:', totalQuantity);
         
         dailyProduction[date].count++;
         dailyProduction[date].quantity += totalQuantity;
