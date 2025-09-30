@@ -57,9 +57,9 @@ module.exports = {
     // Performance
     max_memory_restart: '512M',
     
-    // Security
-    uid: 'www-data',
-    gid: 'www-data'
+    // Security - uid/gid kaldırıldı (PM2 hatası nedeniyle)
+    // uid: 'www-data',
+    // gid: 'www-data'
   }],
   
   // Deployment configuration
