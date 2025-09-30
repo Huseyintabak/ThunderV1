@@ -3749,169 +3749,7 @@ app.post('/api/barcodes/validate', async (req, res) => {
     }
 });
 
-// ========================================
-// RAPORLAMA API'LERİ - FAZ 3
-// ========================================
 
-// Raporlama API'leri
-app.get('/api/reports/production-summary', async (req, res) => {
-    try {
-        const { start_date, end_date } = req.query;
-        
-        if (!supabase) {
-            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
-        }
-        
-        let query = supabase
-            .from('productions')
-            .select('*');
-            
-        if (start_date) {
-            query = query.gte('start_time', start_date);
-        }
-        if (end_date) {
-            query = query.lte('start_time', end_date);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        // İstatistikleri hesapla
-        const summary = {
-            total_productions: data.length,
-            completed: data.filter(p => p.status === 'completed').length,
-            active: data.filter(p => p.status === 'active').length,
-            cancelled: data.filter(p => p.status === 'cancelled').length,
-            total_quantity: data.reduce((sum, p) => sum + p.quantity, 0),
-            total_target: data.reduce((sum, p) => sum + p.target_quantity, 0),
-            efficiency: data.length > 0 ? 
-                (data.filter(p => p.status === 'completed').length / data.length * 100).toFixed(2) : 0,
-            completion_rate: data.length > 0 ? 
-                (data.filter(p => p.status === 'completed').length / data.length * 100).toFixed(2) : 0,
-            average_quantity: data.length > 0 ? 
-                (data.reduce((sum, p) => sum + p.quantity, 0) / data.length).toFixed(2) : 0
-        };
-        
-        res.json(summary);
-    } catch (error) {
-        console.error('Production summary error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/reports/material-usage', async (req, res) => {
-    try {
-        const { period = 'month' } = req.query;
-        
-        if (!supabase) {
-            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
-        }
-        
-        // Son 30 günlük veri
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30);
-        
-        const { data: productions, error: prodError } = await supabase
-            .from('productions')
-            .select('*')
-            .gte('start_time', startDate.toISOString())
-            .lte('start_time', endDate.toISOString());
-            
-        if (prodError) throw prodError;
-        
-        // Malzeme kullanımını hesapla
-        const materialUsage = {};
-        let totalMaterialCost = 0;
-        
-        productions.forEach(production => {
-            // Basit malzeme kullanım hesaplama
-            if (production.product_type === 'yarimamul') {
-                materialUsage[`yarimamul_${production.product_id}`] = 
-                    (materialUsage[`yarimamul_${production.product_id}`] || 0) + production.quantity;
-            } else if (production.product_type === 'nihai') {
-                materialUsage[`nihai_${production.product_id}`] = 
-                    (materialUsage[`nihai_${production.product_id}`] || 0) + production.quantity;
-            }
-            
-            // Basit maliyet hesaplama (örnek)
-            totalMaterialCost += production.quantity * 10; // Her ürün için 10 TL maliyet varsayımı
-        });
-        
-        res.json({
-            period,
-            start_date: startDate.toISOString(),
-            end_date: endDate.toISOString(),
-            total_productions: productions.length,
-            material_usage: materialUsage,
-            total_material_cost: totalMaterialCost,
-            average_daily_production: (productions.length / 30).toFixed(2)
-        });
-    } catch (error) {
-        console.error('Material usage report error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/reports/efficiency', async (req, res) => {
-    try {
-        const { production_id } = req.query;
-        
-        if (!production_id) {
-            return res.status(400).json({ error: 'Production ID gerekli' });
-        }
-        
-        if (!supabase) {
-            return res.status(500).json({ error: 'Supabase bağlantısı yok' });
-        }
-        
-        // Üretim detaylarını al
-        const { data: production, error: prodError } = await supabase
-            .from('productions')
-            .select('*')
-            .eq('id', production_id)
-            .single();
-            
-        if (prodError) throw prodError;
-        
-        // Barkod taramaları - KALDIRILDI (barcode_scans tablosu kullanılmıyor)
-        const scans = []; // Boş array olarak ayarlandı
-        
-        // Verimlilik hesapla
-        const totalScans = scans.length;
-        const successfulScans = scans.filter(s => s.success).length;
-        const efficiency = totalScans > 0 ? (successfulScans / totalScans * 100).toFixed(2) : 0;
-        
-        // Zaman hesaplamaları
-        const startTime = new Date(production.start_time);
-        const endTime = production.end_time ? new Date(production.end_time) : new Date();
-        const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
-        
-        // Üretim hızı (dakikada üretilen ürün sayısı)
-        const productionRate = durationMinutes > 0 ? (production.quantity / durationMinutes).toFixed(2) : 0;
-        
-        res.json({
-            production_id: parseInt(production_id),
-            total_scans: totalScans,
-            successful_scans: successfulScans,
-            failed_scans: totalScans - successfulScans,
-            efficiency: parseFloat(efficiency),
-            production_status: production.status,
-            target_quantity: production.target_quantity,
-            actual_quantity: production.quantity,
-            completion_percentage: production.target_quantity > 0 ? 
-                ((production.quantity / production.target_quantity) * 100).toFixed(2) : 0,
-            duration_minutes: durationMinutes,
-            production_rate: parseFloat(productionRate),
-            start_time: production.start_time,
-            end_time: production.end_time,
-            created_by: production.created_by
-        });
-    } catch (error) {
-        console.error('Efficiency report error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
 
 // ========================================
 // STOK YÖNETİMİ API'LERİ - STOK GİRİŞİ
@@ -6950,129 +6788,10 @@ app.put('/api/dashboard/widgets/:id', async (req, res) => {
   }
 });
 
-// Rapor şablonlarını listele
-app.get('/api/reports/templates', async (req, res) => {
-  try {
-    const { report_type, is_public } = req.query;
-    
-    let query = supabase
-      .from('report_templates')
-      .select('*')
-      .eq('is_active', true)
-      .order('template_name');
 
-    if (report_type) {
-      query = query.eq('report_type', report_type);
-    }
-    if (is_public !== undefined) {
-      query = query.eq('is_public', is_public === 'true');
-    }
 
-    const { data, error } = await query;
 
-    if (error) throw error;
-    res.json(data || []);
-  } catch (error) {
-    console.error('Rapor şablonları error:', error);
-    res.status(500).json({ error: 'Rapor şablonları yüklenemedi' });
-  }
-});
 
-// Rapor şablonu oluştur
-app.post('/api/reports/templates', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('report_templates')
-      .insert([req.body])
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Rapor şablonu oluşturma error:', error);
-    res.status(500).json({ error: 'Rapor şablonu oluşturulamadı' });
-  }
-});
-
-// Rapor oluştur
-app.post('/api/reports/generate', async (req, res) => {
-  try {
-    const { template_id, parameters, report_name } = req.body;
-
-    // Şablon bilgilerini al
-    const { data: template, error: templateError } = await supabase
-      .from('report_templates')
-      .select('*')
-      .eq('id', template_id)
-      .single();
-
-    if (templateError || !template) {
-      return res.status(400).json({ error: 'Rapor şablonu bulunamadı' });
-    }
-
-    // Rapor geçmişine kaydet
-    const { data: reportHistory, error: historyError } = await supabase
-      .from('report_history')
-      .insert([{
-        template_id,
-        report_name: report_name || template.template_name,
-        parameters_used: parameters,
-        generated_by: 'system',
-        status: 'generating'
-      }])
-      .select()
-      .single();
-
-    if (historyError) throw historyError;
-
-    // Rapor oluşturma işlemi (şimdilik mock)
-    const reportData = {
-      id: reportHistory.id,
-      template_name: template.template_name,
-      report_name: report_name || template.template_name,
-      status: 'completed',
-      generated_at: new Date().toISOString(),
-      download_url: `/api/reports/download/${reportHistory.id}`
-    };
-
-    // Geçmişi güncelle
-    await supabase
-      .from('report_history')
-      .update({
-        status: 'completed',
-        file_path: `/reports/${reportHistory.id}.${template.output_format}`
-      })
-      .eq('id', reportHistory.id);
-
-    res.json(reportData);
-  } catch (error) {
-    console.error('Rapor oluşturma error:', error);
-    res.status(500).json({ error: 'Rapor oluşturulamadı' });
-  }
-});
-
-// Rapor geçmişini listele
-app.get('/api/reports/history', async (req, res) => {
-  try {
-    const { limit = 50, offset = 0 } = req.query;
-    
-    const { data, error } = await supabase
-      .from('report_history')
-      .select(`
-        *,
-        report_templates(template_name, report_type)
-      `)
-      .order('generated_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) throw error;
-    res.json(data || []);
-  } catch (error) {
-    console.error('Rapor geçmişi error:', error);
-    res.status(500).json({ error: 'Rapor geçmişi yüklenemedi' });
-  }
-});
 
 // KPI tanımlarını listele
 app.get('/api/kpi/definitions', async (req, res) => {
@@ -7098,6 +6817,115 @@ app.get('/api/kpi/definitions', async (req, res) => {
   } catch (error) {
     console.error('KPI tanımları error:', error);
     res.status(500).json({ error: 'KPI tanımları yüklenemedi' });
+  }
+});
+
+// Kritik stok alarmlarını getir
+app.get('/api/dashboard/stock-alerts', async (req, res) => {
+  try {
+    // Stok hareketlerini al
+    const { data: stockMovements, error: stockError } = await supabase
+      .from('stok_hareketleri')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (stockError) throw stockError;
+
+    // Kritik stok seviyelerini tanımla (örnek değerler)
+    const criticalLevels = {
+      'TRX-1-BLACK-86-86': { critical: 5, minimum: 10, unit: 'adet' },
+      'TRX-1-BLACK-94-94': { critical: 3, minimum: 8, unit: 'adet' },
+      'TRX-1-GRAY-86-90': { critical: 4, minimum: 12, unit: 'adet' },
+      'TRX-1-GRAY-94-98': { critical: 2, minimum: 6, unit: 'adet' },
+      'TRX-2-BLACK-86-90': { critical: 6, minimum: 15, unit: 'adet' },
+      'TRX-2-BLACK-94-98': { critical: 3, minimum: 9, unit: 'adet' }
+    };
+
+    // Stok seviyelerini hesapla
+    const stockLevels = {};
+    stockMovements.forEach(movement => {
+      const productName = movement.urun_adi;
+      if (!stockLevels[productName]) {
+        stockLevels[productName] = 0;
+      }
+      
+      if (movement.hareket_tipi === 'giris') {
+        stockLevels[productName] += movement.miktar;
+      } else if (movement.hareket_tipi === 'cikis') {
+        stockLevels[productName] -= movement.miktar;
+      }
+    });
+
+    // Kritik stok alarmlarını oluştur
+    const alerts = [];
+    Object.keys(stockLevels).forEach(productName => {
+      const currentStock = Math.max(0, stockLevels[productName]);
+      const levels = criticalLevels[productName];
+      
+      if (levels) {
+        let priority = 'info';
+        if (currentStock <= levels.critical) {
+          priority = 'critical';
+        } else if (currentStock <= levels.minimum) {
+          priority = 'warning';
+        }
+
+        // Sadece kritik ve uyarı seviyelerinde alarm oluştur
+        if (priority !== 'info') {
+          // Kalan gün hesaplama (basit hesaplama)
+          const dailyUsage = Math.max(1, currentStock / 30); // Günde ortalama kullanım
+          const daysRemaining = Math.floor(currentStock / dailyUsage);
+          
+          // Önerilen sipariş miktarı
+          const recommendedOrder = Math.max(levels.minimum * 2, 20);
+
+          alerts.push({
+            id: `alert_${productName}_${Date.now()}`,
+            product_id: productName,
+            product_name: productName,
+            current_stock: currentStock,
+            critical_level: levels.critical,
+            minimum_level: levels.minimum,
+            unit: levels.unit,
+            priority: priority,
+            days_remaining: daysRemaining,
+            recommended_order: recommendedOrder,
+            supplier: 'Ana Tedarikçi', // Varsayılan tedarikçi
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+    });
+
+    // Önceliğe göre sırala (kritik önce)
+    alerts.sort((a, b) => {
+      const priorityOrder = { critical: 0, warning: 1, info: 2 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
+
+    res.json(alerts);
+  } catch (error) {
+    console.error('Kritik stok alarmları error:', error);
+    res.status(500).json({ error: 'Kritik stok alarmları yüklenemedi' });
+  }
+});
+
+// Stok alarmını kapat
+app.post('/api/dashboard/stock-alerts/:id/dismiss', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Gerçek uygulamada burada alarm veritabanından kapatılır
+    // Şimdilik sadece başarı mesajı döndürüyoruz
+    
+    res.json({ 
+      message: 'Alarm kapatıldı',
+      alert_id: id,
+      dismissed_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Alarm kapatma error:', error);
+    res.status(500).json({ error: 'Alarm kapatılamadı' });
   }
 });
 
@@ -7288,6 +7116,336 @@ app.get('/api/dashboard/statistics', async (req, res) => {
     res.status(500).json({ error: 'İstatistikler yüklenemedi' });
   }
 });
+
+// ==================== GELİŞMİŞ DASHBOARD API ENDPOINT'LERİ ====================
+
+// Dashboard için gelişmiş istatistikler
+app.get('/api/dashboard/advanced-stats', async (req, res) => {
+  try {
+    const { period = '7d' } = req.query;
+    
+    // Tarih aralığını hesapla
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    switch (period) {
+      case '1d':
+        startDate.setDate(endDate.getDate() - 1);
+        break;
+      case '7d':
+        startDate.setDate(endDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(endDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(endDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 7);
+    }
+
+    console.log('Dashboard API - Tarih aralığı:', {
+      start: startDate.toISOString(),
+      end: endDate.toISOString()
+    });
+
+    // Test sorgusu - production_states tablosundan
+    const testResult = await supabase
+      .from('production_states')
+      .select('id, is_completed, completed_at, produced_quantity, product_name, operator_name')
+      .limit(5);
+    
+    console.log('Test sorgusu sonucu:', testResult);
+
+    // Önce production_states tablosunu sorgula (operatör verileri burada)
+    let productionsResult = await supabase
+      .from('production_states')
+      .select('id, order_id, product_code, product_name, target_quantity, produced_quantity, is_active, is_completed, start_time, last_update_time, completed_at, operator_id, operator_name, production_data, created_at, updated_at');
+    
+    console.log('Production states result:', productionsResult);
+    
+    // Eğer production_states'te veri yoksa, production_history'yi dene
+    if (!productionsResult.data || productionsResult.data.length === 0) {
+      console.log('Production states boş, production_history deniyorum...');
+      productionsResult = await supabase
+        .from('production_history')
+        .select('id, completed_at, produced_quantity, product_name, operator_name')
+        .gte('completed_at', startDate.toISOString())
+        .lte('completed_at', endDate.toISOString());
+      console.log('Production history result:', productionsResult);
+    }
+
+    const [qualityResult, ordersResult, materialsResult] = await Promise.all([
+      
+      supabase
+        .from('quality_checks')
+        .select('id, result, check_time, production_id')
+        .gte('check_time', startDate.toISOString())
+        .lte('check_time', endDate.toISOString()),
+      
+      supabase
+        .from('order_management')
+        .select('id, status, order_date, delivery_date, total_amount')
+        .gte('order_date', startDate.toISOString())
+        .lte('order_date', endDate.toISOString()),
+      
+      supabase
+        .from('stok_hareketleri')
+        .select('id, hareket_tipi, miktar, created_at')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+    ]);
+
+    const productions = productionsResult.data || [];
+    const qualityChecks = qualityResult.data || [];
+    const orders = ordersResult.data || [];
+    const materials = materialsResult.data || [];
+
+    console.log('Dashboard API - Sonuçlar:', {
+      productions: productions.length,
+      qualityChecks: qualityChecks.length,
+      orders: orders.length,
+      materials: materials.length
+    });
+
+    // Günlük üretim trendi
+    const dailyProduction = {};
+    productions.forEach(p => {
+      const date = new Date(p.completed_at).toISOString().split('T')[0];
+      if (!dailyProduction[date]) {
+        dailyProduction[date] = { count: 0, quantity: 0 };
+      }
+      dailyProduction[date].count++;
+      dailyProduction[date].quantity += p.produced_quantity || 0;
+    });
+    
+    // Test verisi oluşturma kaldırıldı - sadece gerçek veri göster
+
+    // Kalite trendi
+    const dailyQuality = {};
+    qualityChecks.forEach(q => {
+      const date = new Date(q.check_time).toISOString().split('T')[0];
+      if (!dailyQuality[date]) {
+        dailyQuality[date] = { total: 0, passed: 0 };
+      }
+      dailyQuality[date].total++;
+      if (q.result === 'pass') {
+        dailyQuality[date].passed++;
+      }
+    });
+    
+    // Test verisi oluşturma kaldırıldı - sadece gerçek veri göster
+
+    // Operatör performansı
+    const operatorStats = {};
+    productions.forEach(p => {
+      if (p.operator_name) {
+        if (!operatorStats[p.operator_name]) {
+          operatorStats[p.operator_name] = { total: 0, completed: 0, quantity: 0 };
+        }
+        operatorStats[p.operator_name].total++;
+        operatorStats[p.operator_name].quantity += p.produced_quantity || 0;
+        if (p.is_completed === true) {
+          operatorStats[p.operator_name].completed++;
+        }
+      }
+    });
+
+    // Veri kaynağını belirle
+    const hasRealProductionData = productions.length > 0;
+    const hasRealQualityData = qualityChecks.length > 0;
+    const dataSource = hasRealProductionData ? 'real' : 'mock';
+    
+    const advancedStats = {
+      period: period,
+      date_range: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
+      },
+      data_source: dataSource,
+      is_mock_data: !hasRealProductionData,
+    production: {
+      total_productions: productions.length,
+      completed_productions: productions.filter(p => p.status === 'completed').length,
+      total_quantity: productions.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
+        daily_trend: Object.keys(dailyProduction).map(date => ({
+          date,
+          count: dailyProduction[date].count,
+          quantity: dailyProduction[date].quantity
+        })).sort((a, b) => new Date(a.date) - new Date(b.date))
+      },
+      quality: {
+        total_checks: qualityChecks.length,
+        pass_rate: qualityChecks.length > 0 ? 
+          (qualityChecks.filter(q => q.result === 'pass').length / qualityChecks.length * 100).toFixed(2) : 0,
+        daily_trend: Object.keys(dailyQuality).map(date => ({
+          date,
+          pass_rate: dailyQuality[date].total > 0 ? 
+            (dailyQuality[date].passed / dailyQuality[date].total * 100).toFixed(2) : 0
+        })).sort((a, b) => new Date(a.date) - new Date(b.date))
+      },
+      orders: {
+        total_orders: orders.length,
+        completed_orders: orders.filter(o => o.status === 'completed').length,
+        total_value: orders.reduce((sum, o) => sum + (o.total_amount || 0), 0),
+        average_value: orders.length > 0 ? 
+          (orders.reduce((sum, o) => sum + (o.total_amount || 0), 0) / orders.length).toFixed(2) : 0
+      },
+      materials: {
+        total_movements: materials.length,
+        incoming: materials.filter(m => m.hareket_tipi === 'giris').length,
+        outgoing: materials.filter(m => m.hareket_tipi === 'cikis').length,
+        total_quantity: materials.reduce((sum, m) => sum + (m.miktar || 0), 0)
+      },
+    operators: Object.keys(operatorStats).map(opName => ({
+      operator_name: opName,
+      total_productions: operatorStats[opName].total,
+      completed_productions: operatorStats[opName].completed,
+      completion_rate: operatorStats[opName].total > 0 ? 
+        (operatorStats[opName].completed / operatorStats[opName].total * 100).toFixed(2) : 0,
+      total_quantity: operatorStats[opName].quantity
+    }))
+    };
+
+    res.json(advancedStats);
+  } catch (error) {
+    console.error('Gelişmiş dashboard istatistikleri hatası:', error);
+    res.status(500).json({ error: 'İstatistikler yüklenemedi' });
+  }
+});
+
+// Real-time dashboard güncellemeleri
+app.get('/api/dashboard/realtime', async (req, res) => {
+  try {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    
+    const [activeProductions, recentQuality, recentNotifications] = await Promise.all([
+      supabase
+        .from('active_productions')
+        .select('id, product_name, planned_quantity, produced_quantity, status, assigned_operator, start_time')
+        .eq('status', 'active')
+        .order('start_time', { ascending: false }),
+      
+      supabase
+        .from('quality_checks')
+        .select('id, result, check_time, production_id')
+        .gte('check_time', oneHourAgo.toISOString())
+        .order('check_time', { ascending: false })
+        .limit(10),
+      
+      supabase
+        .from('notifications')
+        .select('id, title, message, priority, created_at, is_read')
+        .gte('created_at', oneHourAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(10)
+    ]);
+
+    // Sistem hatalarını dinamik olarak kontrol et
+    const systemErrors = [];
+    
+    // Veritabanı bağlantı hatası kontrolü
+    try {
+      const testQuery = await supabase
+        .from('production_states')
+        .select('id')
+        .limit(1);
+      
+      if (testQuery.error) {
+        systemErrors.push({
+          id: 'error_db_' + Date.now(),
+          title: 'Veritabanı Bağlantı Hatası',
+          message: testQuery.error.message,
+          priority: 'critical',
+          created_at: now.toISOString(),
+          is_read: false,
+          type: 'system_error'
+        });
+      }
+    } catch (error) {
+      systemErrors.push({
+        id: 'error_db_' + Date.now(),
+        title: 'Veritabanı Bağlantı Hatası',
+        message: error.message,
+        priority: 'critical',
+        created_at: now.toISOString(),
+        is_read: false,
+        type: 'system_error'
+      });
+    }
+    
+    // API endpoint hatası kontrolü
+    try {
+      const testApi = await supabase
+        .from('production_states')
+        .select('id, operator_name, is_completed')
+        .limit(1);
+      
+      if (testApi.error) {
+        systemErrors.push({
+          id: 'error_api_' + Date.now(),
+          title: 'API Endpoint Hatası',
+          message: testApi.error.message,
+          priority: 'high',
+          created_at: now.toISOString(),
+          is_read: false,
+          type: 'system_error'
+        });
+      }
+    } catch (error) {
+      systemErrors.push({
+        id: 'error_api_' + Date.now(),
+        title: 'API Endpoint Hatası',
+        message: error.message,
+        priority: 'high',
+        created_at: now.toISOString(),
+        is_read: false,
+        type: 'system_error'
+      });
+    }
+
+    // Mevcut bildirimlerle sistem hatalarını birleştir
+    const allNotifications = [...(recentNotifications.data || []), ...systemErrors]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 10);
+
+    const realtimeData = {
+      timestamp: now.toISOString(),
+      active_productions: activeProductions.data || [],
+      recent_quality_checks: recentQuality.data || [],
+      recent_notifications: allNotifications,
+      system_status: {
+        database_connected: !!supabase,
+        last_update: now.toISOString()
+      }
+    };
+
+    res.json(realtimeData);
+  } catch (error) {
+    console.error('Real-time dashboard hatası:', error);
+    res.status(500).json({ error: 'Real-time veriler yüklenemedi' });
+  }
+});
+
+// Dashboard widget'ı sil
+app.delete('/api/dashboard/widgets/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('dashboard_widgets')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Widget silme hatası:', error);
+    res.status(500).json({ error: 'Widget silinemedi' });
+  }
+});
+
+
 
 // Server başlatma - moved to bottom with real-time server
 

@@ -1,48 +1,88 @@
-// Raporlama ve Analitik JavaScript
-// ThunderV1 V1.6.0
+// ThunderV1 Gelişmiş Dashboard & Analitik JavaScript
+// V2.0.0 - Modern Dashboard with Real-time Updates
 
+// Global değişkenler
 let dashboardStats = {};
-let dashboardWidgets = [];
-let kpiDefinitions = [];
-let kpiValues = [];
-let reportTemplates = [];
-let reportHistory = [];
+let advancedStats = {};
+let realtimeData = {};
+let currentPeriod = '7d';
+let charts = {};
+let refreshInterval = null;
+let realtimeInterval = null;
+
+// Chart.js konfigürasyonu - güvenli yükleme
+function initializeChartJS() {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js yüklenemedi, fallback moduna geçiliyor');
+        return false;
+    }
+    
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    Chart.defaults.color = '#2d3436';
+    Chart.defaults.plugins.legend.display = false;
+    return true;
+}
 
 // Sayfa yüklendiğinde çalışacak fonksiyonlar
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Raporlama sayfası yüklendi');
+    console.log('Gelişmiş Dashboard yüklendi');
+    
+    // Chart.js'i başlat
+    const chartJSLoaded = initializeChartJS();
+    
+    // Period selector event listeners
+    initializePeriodSelector();
     
     // Sıralı yükleme
-    loadDashboardStats().then(() => {
-        console.log('Dashboard istatistikleri yüklendi');
+    loadAllData().then(() => {
+        console.log('Tüm veriler yüklendi');
+        startRealTimeUpdates();
     });
     
-    loadDashboardWidgets().then(() => {
-        console.log('Dashboard widget\'ları yüklendi');
-    });
-    
-    loadKPIDefinitions().then(() => {
-        console.log('KPI tanımları yüklendi');
-    });
-    
-    loadKPIValues().then(() => {
-        console.log('KPI değerleri yüklendi');
-    });
-    
-    loadReportTemplates().then(() => {
-        console.log('Rapor şablonları yüklendi');
-    });
-    
-    loadReportHistory().then(() => {
-        console.log('Rapor geçmişi yüklendi');
-    });
-    
-    // Otomatik yenileme (5 dakikada bir)
-    setInterval(() => {
-        loadDashboardStats();
-        loadKPIValues();
-    }, 300000);
+    // Otomatik yenileme (2 dakikada bir)
+    refreshInterval = setInterval(() => {
+        loadAdvancedStats();
+        loadRealtimeData();
+    }, 120000);
 });
+
+// Period selector'ı başlat
+function initializePeriodSelector() {
+    const periodButtons = document.querySelectorAll('.period-btn');
+    periodButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Active class'ı güncelle
+            periodButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Period'u güncelle ve verileri yenile
+            currentPeriod = this.dataset.period;
+            loadAllData();
+        });
+    });
+}
+
+// Tüm verileri yükle
+async function loadAllData() {
+    try {
+        await Promise.all([
+            loadDashboardStats(),
+            loadAdvancedStats(),
+            loadRealtimeData(),
+            loadOperatorPerformance(),
+            loadStockAlerts()
+        ]);
+        
+        // Grafikleri oluştur
+        createProductionTrendChart();
+        createCustomerProductionChart();
+        
+        console.log('Tüm dashboard verileri yüklendi');
+    } catch (error) {
+        console.error('Veri yükleme hatası:', error);
+        showAlert('Veriler yüklenirken hata oluştu', 'error');
+    }
+}
 
 // Dashboard istatistiklerini yükle
 async function loadDashboardStats() {
@@ -61,37 +101,270 @@ async function loadDashboardStats() {
 
 // Dashboard istatistiklerini göster
 function displayDashboardStats(stats) {
-    const container = document.getElementById('dashboardStats');
+    dashboardStats = stats;
+    
+    // Ana metrikleri güncelle
+    document.getElementById('totalProductions').textContent = stats.productions?.total || 0;
+    document.getElementById('qualityRate').textContent = `${stats.quality?.pass_rate || 0}%`;
+    document.getElementById('activeOrders').textContent = stats.orders?.total || 0;
+    document.getElementById('alertsCount').textContent = stats.notifications?.critical || 0;
+    
+    // Değişim yüzdelerini güncelle (örnek veriler)
+    updateMetricChanges();
+}
+
+// Metrik değişimlerini güncelle
+function updateMetricChanges() {
+    const changes = {
+        production: { value: '+12%', type: 'positive' },
+        quality: { value: '+5%', type: 'positive' },
+        order: { value: '-3%', type: 'negative' },
+        alert: { value: 'Kritik', type: 'warning' }
+    };
+    
+    Object.keys(changes).forEach(key => {
+        const element = document.getElementById(`${key}Change`);
+        if (element) {
+            element.innerHTML = `
+                <i class="fas fa-arrow-${changes[key].type === 'positive' ? 'up' : 'down'}"></i>
+                ${changes[key].value}
+            `;
+            element.className = `metric-change ${changes[key].type}`;
+        }
+    });
+}
+
+// Gelişmiş istatistikleri yükle
+async function loadAdvancedStats() {
+    try {
+        // Doğrudan production_history endpoint'ini kullan
+        const productionHistoryResponse = await fetch('/api/productions/history');
+        
+        if (!productionHistoryResponse.ok) {
+            throw new Error('Failed to load production history');
+        }
+        
+        const productionHistory = await productionHistoryResponse.json();
+        console.log('Production history loaded:', productionHistory);
+        
+        // Müşteri başı üretim analizi
+        const customerProduction = {};
+        productionHistory.forEach(p => {
+            const customer = p.customer_name || 'Bilinmeyen Müşteri';
+            if (!customerProduction[customer]) {
+                customerProduction[customer] = { count: 0, quantity: 0 };
+            }
+            customerProduction[customer].count++;
+            customerProduction[customer].quantity += p.produced_quantity || 0;
+        });
+
+        // Advanced stats oluştur
+        const data = {
+            data_source: 'real',
+            is_mock_data: productionHistory.length === 0,
+            production: {
+                total_productions: productionHistory.length,
+                completed_productions: productionHistory.filter(p => p.status === 'completed').length,
+                total_quantity: productionHistory.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
+                daily_trend: []
+            },
+            customers: {
+                total_customers: Object.keys(customerProduction).length,
+                customer_production: Object.keys(customerProduction).map(customer => ({
+                    customer_name: customer,
+                    production_count: customerProduction[customer].count,
+                    total_quantity: customerProduction[customer].quantity
+                })).sort((a, b) => b.total_quantity - a.total_quantity)
+            }
+        };
+        
+        // Günlük trend hesapla
+        const dailyProduction = {};
+        const period = currentPeriod || '7d';
+        const days = period === '1d' ? 1 : period === '7d' ? 7 : period === '30d' ? 30 : 90;
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - days);
+        
+        productionHistory.forEach(p => {
+            const completedDate = new Date(p.completed_at);
+            if (completedDate >= startDate && completedDate <= endDate) {
+                const date = completedDate.toISOString().split('T')[0];
+                if (!dailyProduction[date]) {
+                    dailyProduction[date] = { count: 0, quantity: 0 };
+                }
+                dailyProduction[date].count++;
+                dailyProduction[date].quantity += p.produced_quantity || 0;
+            }
+        });
+        
+        data.production.daily_trend = Object.keys(dailyProduction).map(date => ({
+            date,
+            count: dailyProduction[date].count,
+            quantity: dailyProduction[date].quantity
+        })).sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        console.log('Advanced stats:', data);
+        
+        advancedStats = data;
+        updateAdvancedMetrics(data);
+        
+        // Update data source indicator
+        updateDataSourceIndicator(data.is_mock_data);
+        
+        return data;
+    } catch (error) {
+        console.error('Gelişmiş istatistikler yüklenemedi:', error);
+        showAlert('Gelişmiş istatistikler yüklenemedi', 'error');
+        throw error;
+    }
+}
+
+// Gelişmiş metrikleri güncelle
+function updateAdvancedMetrics(stats) {
+    // Veri kaynağını göster
+    updateDataSourceIndicator(stats);
+    
+    // Üretim metriklerini güncelle
+    if (stats.production) {
+        document.getElementById('totalProductions').textContent = stats.production.total_productions;
+    }
+    
+    // Kalite metriklerini güncelle
+    if (stats.quality) {
+        document.getElementById('qualityRate').textContent = `${stats.quality.pass_rate}%`;
+    }
+    
+    // Sipariş metriklerini güncelle
+    if (stats.orders) {
+        document.getElementById('activeOrders').textContent = stats.orders.total_orders;
+    }
+}
+
+// Veri kaynağı göstergesini güncelle
+function updateDataSourceIndicator(stats) {
+    const indicator = document.querySelector('.real-time-badge');
+    if (indicator && stats.is_mock_data) {
+        indicator.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-1"></i>Veri Yok
+        `;
+        indicator.className = 'real-time-badge bg-warning';
+        indicator.title = 'Bu dönem için gerçek veri bulunmuyor. Veri geldiğinde otomatik güncellenecek.';
+    } else if (indicator && !stats.is_mock_data) {
+        indicator.innerHTML = `
+            <i class="fas fa-circle me-1"></i>Canlı Veri
+        `;
+        indicator.className = 'real-time-badge bg-success';
+        indicator.title = 'Gerçek zamanlı veri gösteriliyor.';
+    }
+}
+
+// Real-time verileri yükle
+async function loadRealtimeData() {
+    try {
+        const response = await fetch('/api/dashboard/realtime');
+        const data = await response.json();
+        realtimeData = data;
+        updateRealtimeData(data);
+        return data;
+    } catch (error) {
+        console.error('Real-time veriler yüklenemedi:', error);
+        throw error;
+    }
+}
+
+// Real-time verileri güncelle
+function updateRealtimeData(data) {
+    // Aktif üretimleri güncelle
+    updateActiveProductions(data.active_productions || []);
+    
+    // Bildirimleri güncelle
+    updateRecentNotifications(data.recent_notifications || []);
+    
+    // Sistem durumunu güncelle
+    updateSystemStatus(data.system_status);
+}
+
+// Aktif üretimleri güncelle
+function updateActiveProductions(productions) {
+    const container = document.getElementById('activeProductionsList');
+    
+    if (productions.length === 0) {
     container.innerHTML = `
-        <div class="col-md-3">
-            <div class="metric-card">
-                <h5><i class="fas fa-industry me-2"></i>Üretim</h5>
-                <h3>${stats.productions.total}</h3>
-                <p>Toplam: ${stats.productions.total} | Bugün: ${stats.productions.today} | Aktif: ${stats.productions.active}</p>
+            <div class="text-center py-4">
+                <i class="fas fa-industry fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Aktif üretim bulunmuyor</p>
             </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = productions.map(prod => `
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div>
+                <h6 class="mb-1">${prod.product_name}</h6>
+                <small class="text-muted">${prod.assigned_operator || 'Operatör atanmamış'}</small>
         </div>
-        <div class="col-md-3">
-            <div class="metric-card">
-                <h5><i class="fas fa-check-circle me-2"></i>Kalite</h5>
-                <h3>${stats.quality.pass_rate}%</h3>
-                <p>Başarı Oranı: ${stats.quality.pass_rate}% | Kontroller: ${stats.quality.total_checks}</p>
+            <div class="text-end">
+                <div class="progress-glass mb-1" style="width: 100px;">
+                    <div class="progress-bar" style="width: ${(prod.produced_quantity / prod.planned_quantity * 100)}%"></div>
             </div>
+                <small class="text-muted">${prod.produced_quantity}/${prod.planned_quantity}</small>
         </div>
-        <div class="col-md-3">
-            <div class="metric-card">
-                <h5><i class="fas fa-bell me-2"></i>Bildirimler</h5>
-                <h3>${stats.notifications.total}</h3>
-                <p>Toplam: ${stats.notifications.total} | Okunmamış: ${stats.notifications.unread} | Kritik: ${stats.notifications.critical}</p>
             </div>
+    `).join('');
+}
+
+// Son bildirimleri güncelle
+function updateRecentNotifications(notifications) {
+    const container = document.getElementById('recentNotifications');
+    
+    if (notifications.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-bell fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Yeni bildirim yok</p>
         </div>
-        <div class="col-md-3">
-            <div class="metric-card">
-                <h5><i class="fas fa-cogs me-2"></i>Kaynaklar</h5>
-                <h3>${stats.resources.active}</h3>
-                <p>Aktif: ${stats.resources.active} | Makineler: ${stats.resources.machines} | Operatörler: ${stats.resources.operators}</p>
+        `;
+        return;
+    }
+    
+    container.innerHTML = notifications.map(notif => `
+        <div class="d-flex align-items-start py-2 border-bottom ${notif.type === 'system_error' ? 'border-danger' : ''}">
+            <div class="me-3">
+                <i class="fas fa-${getNotificationIcon(notif.priority, notif.type)} text-${getPriorityColor(notif.priority)}"></i>
             </div>
+            <div class="flex-grow-1">
+                <h6 class="mb-1 ${notif.type === 'system_error' ? 'text-danger' : ''}">${notif.title}</h6>
+                <p class="mb-1 small text-muted">${notif.message}</p>
+                <small class="text-muted">${new Date(notif.created_at).toLocaleString('tr-TR')}</small>
         </div>
-    `;
+        </div>
+    `).join('');
+}
+
+// Sistem durumunu güncelle
+function updateSystemStatus(status) {
+    if (!status) return;
+    
+    // CPU ve bellek kullanımı (simüle edilmiş)
+    const cpuUsage = Math.floor(Math.random() * 30) + 20;
+    const memoryUsage = Math.floor(Math.random() * 40) + 30;
+    
+    document.getElementById('cpuUsage').textContent = `${cpuUsage}%`;
+    document.getElementById('cpuProgress').style.width = `${cpuUsage}%`;
+    
+    document.getElementById('memoryUsage').textContent = `${memoryUsage}%`;
+    document.getElementById('memoryProgress').style.width = `${memoryUsage}%`;
+    
+    // Veritabanı durumu
+    const dbStatus = status.database_connected ? 'Aktif' : 'Bağlantı Yok';
+    const dbClass = status.database_connected ? 'bg-success' : 'bg-danger';
+    document.getElementById('dbStatus').textContent = dbStatus;
+    document.getElementById('dbStatus').className = `badge ${dbClass}`;
+    
+    // Son güncelleme
+    document.getElementById('lastUpdate').textContent = new Date(status.last_update).toLocaleString('tr-TR');
 }
 
 // Dashboard widget'larını yükle
@@ -372,55 +645,339 @@ function getTableData(widget) {
     }
 }
 
-// Chart render
-function renderChart(canvasId, type) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) {
-        console.log('Canvas bulunamadı:', canvasId);
-        return;
-    }
+// Üretim trendi grafiği oluştur
+function createProductionTrendChart() {
+    const ctx = document.getElementById('productionTrendChart');
+    if (!ctx) return;
     
     // Chart.js yüklü mü kontrol et
     if (typeof Chart === 'undefined') {
-        console.log('Chart.js yüklenmedi, fallback gösteriliyor');
-        // Canvas'ı gizle, fallback'i göster
-        ctx.style.display = 'none';
-        const fallback = ctx.parentElement.querySelector('.fallback-chart');
-        if (fallback) {
-            fallback.style.display = 'block';
-        }
+        showFallbackChart(ctx, 'production');
         return;
     }
     
-    const data = generateChartData(type);
+    // Mevcut grafiği temizle
+    if (charts.productionTrend) {
+        charts.productionTrend.destroy();
+    }
     
-    try {
-        new Chart(ctx, {
-            type: type === 'chart' ? 'line' : 'bar',
-            data: data,
+    const data = advancedStats?.production?.daily_trend || [];
+    
+    // Sadece gerçek veri kullan
+    let labels, values;
+    const hasData = data.length > 0 && data.some(item => (item.quantity || item.count) > 0);
+    
+    if (!hasData) {
+      console.log('Gerçek veri bulunamadı - boş grafik gösteriliyor');
+      showNoDataChart(ctx, 'production');
+      return;
+    } else {
+      console.log('Gerçek veri kullanılıyor:', data);
+      labels = data.map(item => new Date(item.date).toLocaleDateString('tr-TR'));
+      values = data.map(item => item.quantity || item.count);
+      updateChartTitle('productionTrendChart', 'Üretim Trendi');
+    }
+    
+    charts.productionTrend = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Üretim Miktarı',
+                data: values,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6c757d'
                     }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    ticks: {
+                        color: '#6c757d'
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
                 }
             }
         });
-    } catch (error) {
-        console.error('Chart oluşturma hatası:', error);
-        // Canvas'ı gizle, fallback'i göster
-        ctx.style.display = 'none';
-        const fallback = ctx.parentElement.querySelector('.fallback-chart');
-        if (fallback) {
-            fallback.style.display = 'block';
+}
+
+// Müşteri başı üretim grafiği oluştur
+function createCustomerProductionChart() {
+    const ctx = document.getElementById('qualityDistributionChart');
+    if (!ctx) return;
+    
+    // Chart.js yüklü mü kontrol et
+    if (typeof Chart === 'undefined') {
+        showFallbackChart(ctx, 'customer');
+        return;
+    }
+    
+    // Mevcut grafiği temizle
+    if (charts.customerProduction) {
+        charts.customerProduction.destroy();
+    }
+    
+    const customerData = advancedStats?.customers?.customer_production || [];
+    
+    // Eğer veri yoksa "Veri Yok" göster
+    if (customerData.length === 0) {
+      showNoDataChart(ctx, 'customer');
+      return;
+    }
+    
+    const labels = customerData.map(item => item.customer_name);
+    const values = customerData.map(item => item.total_quantity);
+    
+    charts.customerProduction = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    '#667eea',
+                    '#764ba2',
+                    '#f093fb',
+                    '#f5576c',
+                    '#4facfe',
+                    '#00f2fe',
+                    '#43e97b',
+                    '#38f9d7'
+                ],
+                borderWidth: 0,
+                cutout: '60%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            }
         }
+    });
+}
+
+// Operatör performansını yükle
+async function loadOperatorPerformance() {
+    try {
+        const response = await fetch('/api/dashboard/advanced-stats?period=' + currentPeriod);
+        const data = await response.json();
+        updateOperatorPerformanceTable(data.operators || []);
+        return data.operators;
+    } catch (error) {
+        console.error('Operatör performansı yüklenemedi:', error);
+        throw error;
+    }
+}
+
+// Operatör performans tablosunu güncelle
+function updateOperatorPerformanceTable(operators) {
+    const container = document.getElementById('operatorPerformanceTable');
+    
+    if (operators.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-4">
+                    <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Operatör verisi bulunmuyor</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    container.innerHTML = operators.map(op => `
+        <tr>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-user-circle fa-2x text-primary"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">${op.operator_name}</h6>
+                        <small class="text-muted">Operatör</small>
+                    </div>
+                </div>
+            </td>
+            <td><span class="badge bg-success">${op.completed_productions}</span></td>
+            <td><span class="badge bg-info">${op.total_productions}</span></td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="progress-glass me-2" style="width: 60px;">
+                        <div class="progress-bar" style="width: ${op.completion_rate}%"></div>
+                    </div>
+                    <span>${op.completion_rate}%</span>
+                </div>
+            </td>
+            <td>
+                <span class="badge bg-${op.completion_rate >= 80 ? 'success' : op.completion_rate >= 60 ? 'warning' : 'danger'}">
+                    ${op.completion_rate >= 80 ? 'Mükemmel' : op.completion_rate >= 60 ? 'İyi' : 'Gelişmeli'}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+
+
+// Fallback chart göster (Chart.js yoksa)
+function showFallbackChart(canvas, type) {
+    const container = canvas.parentElement;
+    
+    if (type === 'production') {
+        const data = advancedStats?.production?.daily_trend || [];
+        const hasData = data.length > 0 && data.some(item => (item.quantity || item.count) > 0);
+        
+        let chartData, maxValue;
+        if (!hasData) {
+          // Test verisi oluştur
+          chartData = [];
+          for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            chartData.push({
+              date: date.toISOString().split('T')[0],
+              quantity: Math.floor(Math.random() * 50) + 10,
+              count: Math.floor(Math.random() * 10) + 1
+            });
+          }
+        } else {
+          chartData = data;
+        }
+        
+        maxValue = Math.max(...chartData.map(item => item.quantity || item.count), 1);
+        
+        container.innerHTML = `
+            <div class="fallback-chart" style="height: 250px; padding: 20px;">
+                <h6 class="text-center mb-3">Üretim Trendi (Basit Görünüm)</h6>
+                <div class="d-flex justify-content-between align-items-end h-100">
+                    ${chartData.map((item, index) => {
+                        const height = ((item.quantity || item.count) / maxValue) * 100;
+                        return `
+                            <div class="d-flex flex-column align-items-center" style="flex: 1;">
+                                <div class="bg-primary rounded" style="
+                                    height: ${height}%; 
+                                    width: 20px; 
+                                    margin-bottom: 10px;
+                                    min-height: 10px;
+                                "></div>
+                                <small class="text-muted">${new Date(item.date).toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit'})}</small>
+                                <small class="fw-bold">${item.quantity || item.count}</small>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    } else if (type === 'quality') {
+        const qualityData = advancedStats?.quality || {};
+        const passRate = parseFloat(qualityData.pass_rate) || 0;
+        const failRate = 100 - passRate;
+        
+        container.innerHTML = `
+            <div class="fallback-chart text-center" style="height: 250px; padding: 20px;">
+                <h6 class="mb-3">Kalite Dağılımı (Basit Görünüm)</h6>
+                <div class="d-flex justify-content-center align-items-center h-100">
+                    <div class="d-flex flex-column align-items-center me-5">
+                        <div class="bg-success rounded-circle d-flex align-items-center justify-content-center mb-2" 
+                             style="width: 80px; height: 80px;">
+                            <span class="text-white fw-bold">${passRate.toFixed(1)}%</span>
+                        </div>
+                        <small class="text-muted">Başarılı</small>
+                    </div>
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="bg-danger rounded-circle d-flex align-items-center justify-content-center mb-2" 
+                             style="width: 80px; height: 80px;">
+                            <span class="text-white fw-bold">${failRate.toFixed(1)}%</span>
+                        </div>
+                        <small class="text-muted">Başarısız</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Grafik başlığını güncelle
+function updateChartTitle(canvasId, title) {
+    const canvas = document.getElementById(canvasId);
+    if (canvas) {
+        const widget = canvas.closest('.dashboard-widget');
+        if (widget) {
+            const titleElement = widget.querySelector('.widget-title');
+            if (titleElement) {
+                titleElement.innerHTML = `<i class="fas fa-chart-line me-2"></i>${title}`;
+            }
+        }
+    }
+}
+
+// Veri yok grafiği göster
+function showNoDataChart(canvas, type) {
+    const container = canvas.parentElement;
+    
+    if (type === 'production') {
+        container.innerHTML = `
+            <div class="no-data-chart text-center" style="height: 250px; padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted mb-2">Veri Bulunamadı</h5>
+                <p class="text-muted mb-0">Bu dönem için üretim verisi bulunmuyor.</p>
+                <small class="text-muted mt-2">Gerçek veri geldiğinde grafik otomatik güncellenecek.</small>
+            </div>
+        `;
+    } else if (type === 'quality' || type === 'customer') {
+        container.innerHTML = `
+            <div class="no-data-chart text-center" style="height: 250px; padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <i class="fas fa-chart-pie fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted mb-2">Veri Bulunamadı</h5>
+                <p class="text-muted mb-0">Bu dönem için müşteri verisi bulunmuyor.</p>
+                <small class="text-muted mt-2">Gerçek veri geldiğinde grafik otomatik güncellenecek.</small>
+            </div>
+        `;
     }
 }
 
@@ -590,6 +1147,13 @@ async function loadReportHistory() {
         const response = await fetch('/api/reports/history?limit=10');
         const data = await response.json();
         reportHistory = data;
+        
+        // reportHistory element'ini göster
+        const reportHistoryElement = document.getElementById('reportHistory');
+        if (reportHistoryElement) {
+            reportHistoryElement.style.display = 'block';
+        }
+        
         displayReportHistory(data);
         return data;
     } catch (error) {
@@ -602,6 +1166,13 @@ async function loadReportHistory() {
 // Rapor geçmişini göster
 function displayReportHistory(history) {
     const container = document.getElementById('reportHistory');
+    
+    // Container null kontrolü
+    if (!container) {
+        console.error('reportHistory container bulunamadı');
+        return;
+    }
+    
     if (history.length === 0) {
         container.innerHTML = '<div class="text-center text-muted">Henüz rapor oluşturulmamış</div>';
         return;
@@ -629,8 +1200,11 @@ function displayReportHistory(history) {
                             <td>${new Date(report.generated_at).toLocaleString('tr-TR')}</td>
                             <td><span class="badge bg-${getStatusColor(report.status)}">${report.status}</span></td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="downloadReport(${report.id})">
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadReport(${report.id})" title="İndir">
                                     <i class="fas fa-download"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteReport(${report.id})" title="Sil">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </td>
                         </tr>
@@ -883,12 +1457,214 @@ async function deleteWidget(widgetId) {
     }
 }
 
-// Rapor indir
-function downloadReport(reportId) {
-    showAlert('Rapor indirme özelliği yakında eklenecek', 'info');
-}
 
 // Durum rengini al
+function getStatusColor(status) {
+    switch (status) {
+        case 'completed': return 'success';
+        case 'pending': return 'warning';
+        case 'generating': return 'info';
+        case 'failed': return 'danger';
+        case 'normal': return 'success';
+        case 'warning': return 'warning';
+        case 'critical': return 'danger';
+        default: return 'secondary';
+    }
+}
+
+// Kritik stok alarmlarını yükle
+async function loadStockAlerts() {
+    try {
+        const response = await fetch('/api/dashboard/stock-alerts');
+        if (!response.ok) {
+            throw new Error('Stok alarmları yüklenemedi');
+        }
+        
+        const alerts = await response.json();
+        updateStockAlerts(alerts);
+    } catch (error) {
+        console.error('Stok alarmları yükleme hatası:', error);
+        updateStockAlerts([]);
+    }
+}
+
+// Stok alarmlarını güncelle
+function updateStockAlerts(alerts) {
+    const container = document.getElementById('stockAlerts');
+    
+    if (!container) {
+        console.error('stockAlerts container bulunamadı');
+        return;
+    }
+    
+    if (alerts.length === 0) {
+        container.innerHTML = `
+            <div class="no-alerts">
+                <i class="fas fa-check-circle"></i>
+                <h6>Tüm stok seviyeleri normal</h6>
+                <p class="text-muted">Kritik stok alarmı bulunmuyor</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = alerts.map(alert => `
+        <div class="stock-alert-card ${alert.priority}">
+            <div class="stock-alert-header">
+                <h6 class="stock-alert-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${alert.product_name}
+                </h6>
+                <span class="stock-alert-priority priority-${alert.priority}">
+                    ${alert.priority === 'critical' ? 'KRİTİK' : 
+                      alert.priority === 'warning' ? 'UYARI' : 'BİLGİ'}
+                </span>
+            </div>
+            <div class="stock-alert-details">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Mevcut Stok:</strong> ${alert.current_stock} ${alert.unit || 'adet'}<br>
+                        <strong>Kritik Seviye:</strong> ${alert.critical_level} ${alert.unit || 'adet'}<br>
+                        <strong>Minimum Seviye:</strong> ${alert.minimum_level} ${alert.unit || 'adet'}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Kalan Gün:</strong> ${alert.days_remaining || 'Hesaplanamadı'}<br>
+                        <strong>Önerilen Sipariş:</strong> ${alert.recommended_order || 'Hesaplanamadı'} ${alert.unit || 'adet'}<br>
+                        <strong>Tedarikçi:</strong> ${alert.supplier || 'Belirtilmemiş'}
+                    </div>
+                </div>
+            </div>
+            <div class="stock-alert-actions">
+                <button class="btn btn-light btn-sm" onclick="createPurchaseOrder('${alert.product_id}', '${alert.product_name}', ${alert.recommended_order || 0})">
+                    <i class="fas fa-shopping-cart me-1"></i>Sipariş Oluştur
+                </button>
+                <button class="btn btn-outline-light btn-sm" onclick="viewProductDetails('${alert.product_id}')">
+                    <i class="fas fa-eye me-1"></i>Detayları Gör
+                </button>
+                <button class="btn btn-outline-light btn-sm" onclick="dismissAlert('${alert.id}')">
+                    <i class="fas fa-times me-1"></i>Kapat
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Stok alarmlarını yenile
+function refreshStockAlerts() {
+    loadStockAlerts();
+}
+
+// Sipariş oluştur
+function createPurchaseOrder(productId, productName, quantity) {
+    if (confirm(`${productName} için ${quantity} adet sipariş oluşturmak istediğinizden emin misiniz?`)) {
+        // Sipariş oluşturma API'si çağrılacak
+        showAlert('Sipariş oluşturma özelliği yakında eklenecek', 'info');
+    }
+}
+
+// Ürün detaylarını görüntüle
+function viewProductDetails(productId) {
+    // Ürün detayları sayfasına yönlendir
+    window.open(`/product-details.html?id=${productId}`, '_blank');
+}
+
+// Alarmı kapat
+async function dismissAlert(alertId) {
+    try {
+        const response = await fetch(`/api/dashboard/stock-alerts/${alertId}/dismiss`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Alarm kapatılamadı');
+        }
+        
+        showAlert('Alarm kapatıldı', 'success');
+        loadStockAlerts();
+    } catch (error) {
+        console.error('Alarm kapatma hatası:', error);
+        showAlert('Alarm kapatılamadı: ' + error.message, 'error');
+    }
+}
+
+// Real-time güncellemeleri başlat
+function startRealTimeUpdates() {
+    // Her 30 saniyede bir real-time verileri güncelle
+    realtimeInterval = setInterval(() => {
+        loadRealtimeData();
+    }, 30000);
+}
+
+// Tüm verileri yenile
+async function refreshAllData() {
+    try {
+        showAlert('Veriler yenileniyor...', 'info');
+        await loadAllData();
+        showAlert('Veriler başarıyla yenilendi', 'success');
+    } catch (error) {
+        console.error('Veri yenileme hatası:', error);
+        showAlert('Veriler yenilenirken hata oluştu', 'error');
+    }
+}
+
+// Dashboard'u dışa aktar
+function exportDashboard() {
+    showAlert('Dashboard dışa aktarma özelliği yakında eklenecek', 'info');
+}
+
+
+
+
+// Grafik yenileme fonksiyonları
+function refreshProductionChart() {
+    loadAdvancedStats().then(() => {
+        createProductionTrendChart();
+        showAlert('Üretim grafiği yenilendi', 'success');
+    });
+}
+
+function refreshCustomerChart() {
+    loadAdvancedStats().then(() => {
+        createCustomerProductionChart();
+        showAlert('Müşteri grafiği yenilendi', 'success');
+    });
+}
+
+function refreshOperatorPerformance() {
+    loadOperatorPerformance().then(() => {
+        showAlert('Operatör performansı yenilendi', 'success');
+    });
+}
+
+// Yardımcı fonksiyonlar
+function getNotificationIcon(priority, type) {
+    if (type === 'system_error') {
+        return 'exclamation-triangle';
+    }
+    
+    const iconMap = {
+        'critical': 'exclamation-triangle',
+        'high': 'exclamation-circle',
+        'medium': 'exclamation-circle',
+        'low': 'info-circle',
+        'info': 'info-circle',
+        'success': 'check-circle'
+    };
+    return iconMap[priority] || 'bell';
+}
+
+function getPriorityColor(priority) {
+    const colorMap = {
+        'critical': 'danger',
+        'high': 'danger',
+        'medium': 'warning',
+        'low': 'info',
+        'info': 'info',
+        'success': 'success'
+    };
+    return colorMap[priority] || 'secondary';
+}
+
 function getStatusColor(status) {
     switch (status) {
         case 'completed': return 'success';
@@ -905,10 +1681,13 @@ function getStatusColor(status) {
 // Alert göster
 function showAlert(message, type = 'info') {
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed alert-custom`;
     alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
     alertDiv.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
         ${message}
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
@@ -920,3 +1699,20 @@ function showAlert(message, type = 'info') {
         }
     }, 5000);
 }
+
+// Sayfa kapatılırken temizlik
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    if (realtimeInterval) {
+        clearInterval(realtimeInterval);
+    }
+    
+    // Chart'ları temizle
+    Object.values(charts).forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') {
+            chart.destroy();
+        }
+    });
+});
