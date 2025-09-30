@@ -39,11 +39,11 @@ document.addEventListener('DOMContentLoaded', function() {
         startRealTimeUpdates();
     });
     
-    // Otomatik yenileme (10 saniyede bir - gerçek zamanlı)
+    // Otomatik yenileme (15 dakikada bir)
     refreshInterval = setInterval(() => {
         console.log('🔄 Veri güncelleniyor...');
         loadAllData();
-    }, 10000);
+    }, 900000); // 15 dakika = 900000 ms
 });
 
 // Period selector'ı başlat
@@ -1602,10 +1602,10 @@ async function dismissAlert(alertId) {
 
 // Real-time güncellemeleri başlat
 function startRealTimeUpdates() {
-    // Her 30 saniyede bir real-time verileri güncelle
+    // Her 15 dakikada bir real-time verileri güncelle
     realtimeInterval = setInterval(() => {
         loadRealtimeData();
-    }, 30000);
+    }, 900000); // 15 dakika = 900000 ms
 }
 
 // Tüm verileri yenile

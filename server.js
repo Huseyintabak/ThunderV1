@@ -7210,6 +7210,16 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       orders: orders.length,
       materials: materials.length
     });
+    
+    // Order durumlarını detaylı logla
+    const orderStatuses = {};
+    orders.forEach(order => {
+      orderStatuses[order.status] = (orderStatuses[order.status] || 0) + 1;
+    });
+    console.log('Order durumları:', orderStatuses);
+    
+    const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered');
+    console.log('Tamamlanan siparişler:', completedOrders.length);
 
     // Günlük üretim trendi - production_states ve order_management'ten
     const dailyProduction = {};
