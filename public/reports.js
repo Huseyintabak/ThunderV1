@@ -39,11 +39,11 @@ document.addEventListener('DOMContentLoaded', function() {
         startRealTimeUpdates();
     });
     
-    // Otomatik yenileme (2 dakikada bir)
+    // Otomatik yenileme (10 saniyede bir - gerçek zamanlı)
     refreshInterval = setInterval(() => {
-        loadAdvancedStats();
-        loadRealtimeData();
-    }, 120000);
+        console.log('🔄 Veri güncelleniyor...');
+        loadAllData();
+    }, 10000);
 });
 
 // Period selector'ı başlat
@@ -65,6 +65,8 @@ function initializePeriodSelector() {
 // Tüm verileri yükle
 async function loadAllData() {
     try {
+        console.log('📊 Tüm veriler yükleniyor...');
+        
         await Promise.all([
             loadDashboardStats(),
             loadAdvancedStats(),
@@ -73,13 +75,17 @@ async function loadAllData() {
             loadStockAlerts()
         ]);
         
-        // Grafikleri oluştur
+        // Grafikleri güncelle
         createProductionTrendChart();
         createCustomerProductionChart();
         
-        console.log('Tüm dashboard verileri yüklendi');
+        console.log('✅ Tüm veriler başarıyla yüklendi');
+        
+        // Real-time indicator'ı güncelle
+        updateRealTimeIndicator();
+        
     } catch (error) {
-        console.error('Veri yükleme hatası:', error);
+        console.error('❌ Veri yükleme hatası:', error);
         showAlert('Veriler yüklenirken hata oluştu', 'error');
     }
 }
