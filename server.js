@@ -1328,22 +1328,43 @@ app.put('/api/productions/:id', async (req, res) => {
 // BOM (Bill of Materials) Reader Fonksiyonu
 async function getBOM(productId, productType) {
   try {
+    console.log(`🔍 BOM sorgusu başlatılıyor - Product ID: ${productId}, Type: ${productType}`);
+    
     const { data, error } = await supabase
       .from('urun_agaci')
-      .select('alt_urun_id, alt_urun_tipi, gerekli_miktar')
+      .select('alt_urun_id, alt_urun_tipi, gerekli_miktar, aktif')
       .eq('ana_urun_id', productId)
       .eq('ana_urun_tipi', productType)
       .eq('aktif', true);  // ✅ AKTIF FİLTRESİ EKLENDİ
       
     if (error) {
-      console.error('BOM okuma hatası:', error);
+      console.error('❌ BOM okuma hatası:', error);
       throw error;
     }
     
+    console.log(`📊 BOM sorgu sonucu - Toplam kayıt: ${data?.length || 0}`);
     console.log(`🌳 BOM sorgusu tamamlandı: ${data?.length || 0} malzeme - Ürün ${productId} (${productType}):`, data);
+    
+    // Debug: Eğer 0 malzeme bulunursa, aktif olmayan kayıtları da kontrol et
+    if (!data || data.length === 0) {
+      console.log(`⚠️ Aktif BOM kaydı bulunamadı, tüm kayıtları kontrol ediliyor...`);
+      
+      const { data: allData, error: allError } = await supabase
+        .from('urun_agaci')
+        .select('alt_urun_id, alt_urun_tipi, gerekli_miktar, aktif')
+        .eq('ana_urun_id', productId)
+        .eq('ana_urun_tipi', productType);
+        
+      if (!allError && allData) {
+        console.log(`📋 Tüm BOM kayıtları (aktif/pasif): ${allData.length} kayıt`, allData);
+        const activeCount = allData.filter(item => item.aktif === true).length;
+        console.log(`✅ Aktif kayıt sayısı: ${activeCount}, Pasif kayıt sayısı: ${allData.length - activeCount}`);
+      }
+    }
+    
     return data || [];
   } catch (error) {
-    console.error('getBOM error:', error);
+    console.error('❌ getBOM error:', error);
     return [];
   }
 }
