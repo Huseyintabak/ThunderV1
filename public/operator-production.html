@@ -1990,10 +1990,26 @@
                 showBarcodeStatus('Malzeme kontrolü yapılıyor...', 'info');
                 
                 try {
-                    // Ürün ID'sini al (production'dan veya modal'dan)
-                    const productId = production.product_id || document.getElementById('modalProductionId')?.textContent;
+                    // Ürün ID'sini al - önce modal'dan, sonra production'dan
+                    let productId = document.getElementById('modalProductionId')?.textContent;
                     
-                    if (!productId) {
+                    // Eğer modal'da yoksa, production'dan al ama dikkatli ol
+                    if (!productId || productId === 'N/A') {
+                        // production.product_id muhtemelen plan_id olabilir, gerçek product_id'yi bul
+                        if (production.product_details && production.product_details.length > 0) {
+                            productId = production.product_details[0].id;
+                        } else if (production.product_id && production.product_id !== production.plan_id) {
+                            // Eğer product_id plan_id'den farklıysa, product_id kullan
+                            productId = production.product_id;
+                        } else {
+                            // Son çare: modal'dan veya production'dan
+                            productId = production.product_id;
+                        }
+                    }
+                    
+                    console.log('🔍 Product ID belirlendi:', productId, 'Plan ID:', production.plan_id);
+                    
+                    if (!productId || productId === 'N/A') {
                         showBarcodeStatus('Ürün ID bulunamadı!', 'danger');
                         return;
                     }
