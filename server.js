@@ -1510,7 +1510,7 @@ app.post('/api/productions/:id/complete', async (req, res) => {
         
         res.json({ 
             success: true,
-            production: data[0],
+            production: data && data.length > 0 ? data[0] : null,
             stock_updated: true,
             materials_consumed: bom.length
         });
