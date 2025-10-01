@@ -1379,6 +1379,8 @@ async function updateMaterialStock(materialId, materialType, quantity) {
       })
       .eq('id', materialId);
       
+    console.log(`Stok güncelleme sonucu - Tablo: ${tableName}, ID: ${materialId}, Hata:`, updateError);
+      
     if (updateError) {
       console.error('Stok güncelleme hatası:', updateError);
       throw updateError;
