@@ -1332,14 +1332,15 @@ async function getBOM(productId, productType) {
       .from('urun_agaci')
       .select('alt_urun_id, alt_urun_tipi, gerekli_miktar')
       .eq('ana_urun_id', productId)
-      .eq('ana_urun_tipi', productType);
+      .eq('ana_urun_tipi', productType)
+      .eq('aktif', true);  // ✅ AKTIF FİLTRESİ EKLENDİ
       
     if (error) {
       console.error('BOM okuma hatası:', error);
       throw error;
     }
     
-    console.log(`BOM okundu - Ürün ${productId} (${productType}):`, data);
+    console.log(`🌳 BOM sorgusu tamamlandı: ${data?.length || 0} malzeme - Ürün ${productId} (${productType}):`, data);
     return data || [];
   } catch (error) {
     console.error('getBOM error:', error);
