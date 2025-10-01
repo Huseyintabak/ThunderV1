@@ -7921,6 +7921,15 @@ app.put('/api/active-productions/:id/complete', async (req, res) => {
     const { id } = req.params;
     const { status, completed_time } = req.body;
     
+    // Önce active_production detaylarını al
+    const { data: productionData, error: fetchError } = await supabase
+      .from('active_productions')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
     const updateData = {
       status: status || 'completed',
       completed_time: completed_time || new Date().toISOString(),
@@ -7934,6 +7943,70 @@ app.put('/api/active-productions/:id/complete', async (req, res) => {
       .select();
       
     if (error) throw error;
+    
+    // STOK GÜNCELLEME SİSTEMİ - Üretim tamamlandığında stokları güncelle
+    try {
+      console.log(`🔄 Stok güncelleme başlatılıyor - Üretim ID: ${id}`);
+      
+      // Ürün bilgilerini al
+      const productId = productionData.product_id;
+      const productType = productionData.product_type || 'nihai';
+      const producedQuantity = productionData.produced_quantity || productionData.planned_quantity || 1;
+      
+      console.log(`📦 Ürün bilgileri - ID: ${productId}, Tip: ${productType}, Miktar: ${producedQuantity}`);
+      
+      // BOM'u oku
+      const bom = await getBOM(productId, productType);
+      console.log(`📋 BOM okundu - ${bom.length} malzeme bulundu`);
+      
+      if (bom.length === 0) {
+        console.log('⚠️ BOM bulunamadı, stok güncellemesi atlanıyor');
+      } else {
+        // Her malzeme için stok güncellemesi yap
+        for (const material of bom) {
+          const materialId = material.alt_urun_id;
+          const materialType = material.alt_urun_tipi;
+          const requiredQuantity = (material.gerekli_miktar || 1) * producedQuantity;
+          
+          console.log(`🔧 Malzeme güncelleniyor - ID: ${materialId}, Tip: ${materialType}, Miktar: ${requiredQuantity}`);
+          
+          // Stok güncelle
+          await updateMaterialStock(materialId, materialType, -requiredQuantity);
+          
+          // Stok hareketi oluştur
+          await createStockMovement({
+            material_id: materialId,
+            material_type: materialType,
+            movement_type: 'production_consumption',
+            quantity: -requiredQuantity,
+            reference_id: id,
+            reference_type: 'production',
+            notes: `Üretim ${id} - ${productionData.product_name || 'N/A'} üretimi`
+          });
+        }
+        
+        // Nihai ürün stoğunu artır
+        console.log(`✅ Nihai ürün stoğu artırılıyor - ID: ${productId}, Miktar: ${producedQuantity}`);
+        await updateMaterialStock(productId, productType, producedQuantity);
+        
+        // Nihai ürün için stok hareketi oluştur
+        await createStockMovement({
+          material_id: productId,
+          material_type: productType,
+          movement_type: 'production_output',
+          quantity: producedQuantity,
+          reference_id: id,
+          reference_type: 'production',
+          notes: `Üretim ${id} - ${productionData.product_name || 'N/A'} üretimi`
+        });
+        
+        console.log(`🎉 Stok güncelleme tamamlandı - Üretim ID: ${id}`);
+      }
+    } catch (stockError) {
+      console.error('❌ Stok güncelleme hatası:', stockError);
+      // Stok güncelleme hatası üretim tamamlanmasını engellemez
+    }
+    
     res.json(data[0]);
   } catch (error) {
     console.error('Üretim tamamlama hatası:', error);
