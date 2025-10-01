@@ -382,9 +382,13 @@ async function loadOperators() {
 
 async function loadNihaiProducts() {
     try {
-        const response = await fetch('/api/nihai-urunler');
+        console.log('🔍 Nihai ürünler yükleniyor...');
+        const response = await fetch('/api/nihai_urunler');
+        
         if (response.ok) {
             const products = await response.json();
+            console.log('✅ Nihai ürünler yüklendi:', products.length);
+            
             const productSelect = document.getElementById('productSelect');
             productSelect.innerHTML = '<option value="">Ürün seçiniz...</option>';
             
@@ -398,15 +402,22 @@ async function loadNihaiProducts() {
                 option.dataset.name = productName;
                 productSelect.appendChild(option);
             });
+            
+            console.log(`📦 ${products.length} adet nihai ürün dropdown'a eklendi`);
+        } else {
+            console.error('❌ API yanıt hatası:', response.status);
+            throw new Error(`API error: ${response.status}`);
         }
     } catch (error) {
         console.error('❌ Nihai ürünler yüklenemedi:', error);
-        // Mock ürün listesi
+        
+        // Fallback: Mock ürün listesi
+        console.log('🔄 Mock ürün listesi kullanılıyor...');
         const productSelect = document.getElementById('productSelect');
         productSelect.innerHTML = `
             <option value="">Ürün seçiniz...</option>
-            <option value="1" data-code="TRX-1" data-name="TRX Serisi Ürün">TRX-1 - TRX Serisi Ürün</option>
-            <option value="2" data-code="PRO-1" data-name="PRO Serisi Ürün">PRO-1 - PRO Serisi Ürün</option>
+            <option value="1" data-code="NIH_URUN_001" data-name="Nihai Ürün 1">NIH_URUN_001 - Nihai Ürün 1</option>
+            <option value="2" data-code="NIH_URUN_002" data-name="Nihai Ürün 2">NIH_URUN_002 - Nihai Ürün 2</option>
         `;
     }
 }
