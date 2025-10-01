@@ -2007,15 +2007,18 @@
                     
                     // Eğer modal'da yoksa, production'dan al ama dikkatli ol
                     if (!productId || productId === 'N/A') {
-                        // production.product_id muhtemelen plan_id olabilir, gerçek product_id'yi bul
-                        if (production.product_details && production.product_details.length > 0) {
-                            productId = production.product_details[0].id;
-                        } else if (production.product_id && production.product_id !== production.plan_id) {
-                            // Eğer product_id plan_id'den farklıysa, product_id kullan
+                        // window.selectedProduct'tan al (en güncel ve doğru veri)
+                        if (window.selectedProduct && window.selectedProduct.id) {
+                            productId = window.selectedProduct.id;
+                            console.log('✅ Product ID selectedProduct\'tan alındı:', productId);
+                        } else if (production.product_id) {
+                            // production.product_id kullan (veritabanından gelen doğru veri)
                             productId = production.product_id;
+                            console.log('✅ Product ID production.product_id\'den alındı:', productId);
                         } else {
                             // Son çare: modal'dan veya production'dan
                             productId = production.product_id;
+                            console.log('⚠️ Product ID son çare olarak alındı:', productId);
                         }
                     }
                     
