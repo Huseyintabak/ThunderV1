@@ -1311,7 +1311,19 @@
             
             const productionIdElement = document.getElementById('modalProductionId');
             if (productionIdElement) {
-                productionIdElement.textContent = product.production_id || 'N/A';
+                // Gerçek product ID'yi al - product_details'ten
+                let realProductId = 'N/A';
+                if (product.product_details && product.product_details.length > 0) {
+                    realProductId = product.product_details[0].id;
+                } else if (product.product_id && product.product_id !== product.plan_id) {
+                    // Eğer product_id plan_id'den farklıysa, product_id kullan
+                    realProductId = product.product_id;
+                } else {
+                    // Son çare: production_id
+                    realProductId = product.production_id || 'N/A';
+                }
+                productionIdElement.textContent = realProductId;
+                console.log('🔧 Modal Production ID set:', realProductId, 'Plan ID:', product.plan_id);
             }
             
             const plannedQuantityElement = document.getElementById('modalPlannedQuantity');
