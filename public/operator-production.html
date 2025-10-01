@@ -1256,7 +1256,15 @@
             console.log('Seçilen ürün:', product);
             
             // Seçilen ürün bilgisini global değişkende sakla (barkod kontrolü için)
-            window.selectedProduct = product;
+            // Product ID'yi doğru şekilde set et
+            if (product.id) {
+                window.selectedProduct = {
+                    ...product,
+                    id: product.id  // Product ID'yi doğru şekilde set et
+                };
+            } else {
+                window.selectedProduct = product;
+            }
             
             // currentProductionId'yi set et
             currentProductionId = product.production_id;
@@ -1526,7 +1534,9 @@
                                                     planned_quantity: production.planned_quantity,
                                                     produced_quantity: production.produced_quantity,
                                                     assigned_operator: production.assigned_operator || 'Atanmamış',
-                                                    status: production.status || 'active'
+                                                    status: production.status || 'active',
+                                                    // Product ID'yi doğru şekilde set et
+                                                    id: product.id  // Bu Product ID 1241 olmalı
                                                 });
                                             });
                                         }
