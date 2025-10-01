@@ -10663,7 +10663,7 @@ app.get('/api/bom/:product_id/:product_type', async (req, res) => {
     const formattedBOM = bomData.map(item => ({
       alt_urun_id: item.alt_urun_id,
       alt_urun_tipi: item.alt_urun_tipi,
-      gerekli_miktar: item.miktar || 1.0,
+      gerekli_miktar: item.gerekli_miktar || 1.0,
       birim: item.birim || 'adet',
       urun_adi: `Malzeme ${item.alt_urun_id}`
     }));
