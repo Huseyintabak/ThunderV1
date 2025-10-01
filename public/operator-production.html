@@ -2032,6 +2032,12 @@
                         }
                     }
                     
+                    // Eğer hala yanlış ID alındıysa, window.selectedProduct'ı zorla kullan
+                    if (productId === '182' && window.selectedProduct && window.selectedProduct.id) {
+                        productId = window.selectedProduct.id;
+                        console.log('🔧 Product ID düzeltildi:', productId);
+                    }
+                    
                     console.log('🔍 Product ID belirlendi:', productId, 'Plan ID:', production.plan_id);
                     
                     if (!productId || productId === 'N/A') {
