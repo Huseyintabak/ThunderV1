@@ -10584,12 +10584,27 @@ app.post('/api/stock/check', async (req, res) => {
       return;
     }
 
-    // Gerçek stok kontrolü
+    // Gerçek stok kontrolü - doğru tablolarla
+    let currentStock = 0;
+    let tableName = '';
+    
+    // Ürün tipine göre doğru tabloyu seç
+    if (product_type === 'hammadde') {
+      tableName = 'hammaddeler';
+    } else if (product_type === 'yarimamul') {
+      tableName = 'yarimamuller';
+    } else if (product_type === 'nihai') {
+      tableName = 'nihai_urunler';
+    } else {
+      res.status(400).json({ error: 'Geçersiz ürün tipi' });
+      return;
+    }
+
     const { data: stockData, error: stockError } = await supabase
-      .from('stok_hareketleri')
-      .select('*')
-      .eq('urun_id', product_id)
-      .eq('urun_tipi', product_type);
+      .from(tableName)
+      .select('miktar')
+      .eq('id', product_id)
+      .single();
 
     if (stockError) {
       console.error('Stok sorgulama hatası:', stockError);
@@ -10597,18 +10612,8 @@ app.post('/api/stock/check', async (req, res) => {
       return;
     }
 
-    // Stok hesaplama - düzeltilmiş
-    let currentStock = 0;
-    stockData.forEach(movement => {
-      if (movement.hareket_tipi === 'giris' || movement.hareket_tipi === 'uretim') {
-        currentStock += parseFloat(movement.miktar || 0);
-      } else if (movement.hareket_tipi === 'cikis' || movement.hareket_tipi === 'tuketim') {
-        currentStock -= parseFloat(movement.miktar || 0);
-      }
-    });
-
-    // Stok negatifse 0 yap
-    currentStock = Math.max(0, currentStock);
+    // Stok miktarını al
+    currentStock = parseFloat(stockData?.miktar || 0);
 
     const result = {
       available: currentStock,
@@ -10691,29 +10696,37 @@ app.post('/api/stock/consume', async (req, res) => {
       return;
     }
 
-    // Stok hareketi kaydet
-    const { data: stockMovement, error: stockError } = await supabase
-      .from('stok_hareketleri')
-      .insert({
-        urun_id: product_id,
-        urun_tipi: product_type,
-        hareket_tipi: 'tuketim',
-        miktar: quantity,
-        birim: 'adet',
-        referans_no: `PROD-${production_id}`,
-        aciklama: `Üretim tüketimi - Operatör: ${operator_id}`,
-        tarih: new Date().toISOString()
-      })
-      .select();
-
-    if (stockError) {
-      console.error('Stok hareketi kaydetme hatası:', stockError);
-      res.status(500).json({ error: 'Stok hareketi kaydedilemedi' });
+    // Doğru tabloyu seç ve stok düş
+    let tableName = '';
+    
+    if (product_type === 'hammadde') {
+      tableName = 'hammaddeler';
+    } else if (product_type === 'yarimamul') {
+      tableName = 'yarimamuller';
+    } else if (product_type === 'nihai') {
+      tableName = 'nihai_urunler';
+    } else {
+      res.status(400).json({ error: 'Geçersiz ürün tipi' });
       return;
     }
 
-    console.log('✅ Stok düşme tamamlandı:', stockMovement[0].id);
-    res.json({ success: true, message: 'Stok düşme tamamlandı', movement_id: stockMovement[0].id });
+    // Stok düş
+    const { data: updateResult, error: updateError } = await supabase
+      .from(tableName)
+      .update({ 
+        miktar: supabase.raw(`miktar - ${quantity}`)
+      })
+      .eq('id', product_id)
+      .select();
+
+    if (updateError) {
+      console.error('Stok düşme hatası:', updateError);
+      res.status(500).json({ error: 'Stok düşülemedi' });
+      return;
+    }
+
+    console.log('✅ Stok düşme tamamlandı:', updateResult[0]);
+    res.json({ success: true, message: 'Stok düşme tamamlandı', updated_stock: updateResult[0] });
   } catch (error) {
     console.error('Stok düşme hatası:', error);
     res.status(500).json({ error: 'Stok düşme yapılamadı' });
