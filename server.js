@@ -1501,7 +1501,10 @@ app.post('/api/productions/:id/complete', async (req, res) => {
         
         // 4. Üretilen ürün stoğunu artır
         const finalQuantity = produced_quantity || production.quantity;
-        await updateMaterialStock(production.product_id, production.product_type, finalQuantity);
+        console.log(`🏭 Nihai ürün stoğu artırılıyor - ID: ${production.product_id}, Tip: ${production.product_type}, Miktar: +${finalQuantity}`);
+        
+        const stockUpdateResult = await updateMaterialStock(production.product_id, production.product_type, finalQuantity);
+        console.log(`📦 Nihai ürün stok güncelleme sonucu:`, stockUpdateResult);
         
         // Stok hareketi kaydet (giriş)
         await createStockMovement(
@@ -1514,7 +1517,7 @@ app.post('/api/productions/:id/complete', async (req, res) => {
             `Üretim ${id} tamamlandı`
         );
         
-        console.log(`✅ Ürün stoğu artırıldı - ID: ${production.product_id}, Miktar: +${finalQuantity}`);
+        console.log(`✅ Nihai ürün stoğu başarıyla artırıldı - ID: ${production.product_id}, Miktar: +${finalQuantity}`);
         
         // 5. Production kaydını güncelle
         const { data, error } = await supabase
