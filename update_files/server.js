@@ -491,115 +491,17 @@ app.get('/api/nihai_urunler', async (req, res) => {
       const { data, error } = await supabase
         .from('nihai_urunler')
         .select('*')
+        .eq('aktif', true)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Supabase nihai_urunler error:', error);
-        console.log('Veritabanından nihai ürün verisi çekilemedi, mock data kullanılıyor');
-        
-        // Hata durumunda mock data döndür
-        const mockData = [
-          {
-            id: 1,
-            ad: "Nihai Ürün 1",
-            kod: "NIH_URUN_001",
-            miktar: 10,
-            birim: "adet",
-            satis_fiyati: 100.00,
-            aciklama: "Nihai ürün açıklaması",
-            kategori: "Nihai Ürün",
-            aktif: true,
-            barkod: "8690000003001",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          },
-          {
-            id: 2,
-            ad: "Nihai Ürün 2", 
-            kod: "NIH_URUN_002",
-            miktar: 5,
-            birim: "adet",
-            satis_fiyati: 150.00,
-            aciklama: "İkinci nihai ürün",
-            kategori: "Nihai Ürün",
-            aktif: true,
-            barkod: "8690000003002",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ];
-        
-        res.json(mockData);
+        res.status(500).json({ error: error.message });
         return;
       }
 
-      // Eğer veritabanında veri yoksa test verisi ekle
-      if (!data || data.length === 0) {
-        console.log('Veritabanında nihai ürün verisi bulunamadı, test verisi ekleniyor...');
-        
-        // Test verilerini veritabanına ekle
-        const testData = [
-          {
-            ad: "Nihai Ürün 1",
-            kod: "NIH_URUN_001",
-            miktar: 10,
-            birim: "adet",
-            satis_fiyati: 100.00,
-            aciklama: "Nihai ürün açıklaması",
-            kategori: "Nihai Ürün",
-            aktif: true,
-            barkod: "8690000003001"
-          },
-          {
-            ad: "Nihai Ürün 2", 
-            kod: "NIH_URUN_002",
-            miktar: 5,
-            birim: "adet",
-            satis_fiyati: 150.00,
-            aciklama: "İkinci nihai ürün",
-            kategori: "Nihai Ürün",
-            aktif: true,
-            barkod: "8690000003002"
-          }
-        ];
-        
-        try {
-          const { data: insertedData, error: insertError } = await supabase
-            .from('nihai_urunler')
-            .insert(testData)
-            .select();
-            
-          if (insertError) {
-            console.error('Test verisi ekleme hatası:', insertError);
-            // Hata durumunda mock data döndür
-            const mockData = testData.map((item, index) => ({
-              id: index + 1,
-              ...item,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }));
-            res.json(mockData);
-          } else {
-            console.log(`${insertedData.length} adet test nihai ürün verisi eklendi`);
-            res.json(insertedData);
-          }
-        } catch (insertError) {
-          console.error('Test verisi ekleme genel hatası:', insertError);
-          // Hata durumunda mock data döndür
-          const mockData = testData.map((item, index) => ({
-            id: index + 1,
-            ...item,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
-          res.json(mockData);
-        }
-      } else {
-        console.log(`Veritabanından ${data.length} adet nihai ürün verisi çekildi`);
-        res.json(data);
-      }
+      res.json(data || []);
     } else {
-      console.log('Supabase bağlantısı yok, mock data kullanılıyor');
       res.json(nihaiUrunler);
     }
   } catch (error) {
@@ -1321,241 +1223,15 @@ app.put('/api/productions/:id', async (req, res) => {
     }
 });
 
-// ========================================
-// STOK GÜNCELLEME SİSTEMİ - HELPER FUNCTIONS
-// ========================================
-
-// BOM (Bill of Materials) Reader Fonksiyonu
-async function getBOM(productId, productType) {
-  try {
-    console.log(`🔍 BOM sorgusu başlatılıyor - Product ID: ${productId}, Type: ${productType}`);
-    
-    const { data, error } = await supabase
-      .from('urun_agaci')
-      .select('alt_urun_id, alt_urun_tipi, gerekli_miktar, birim, aktif')
-      .eq('ana_urun_id', productId)
-      .eq('ana_urun_tipi', productType)
-      .eq('aktif', true);  // ✅ AKTIF FİLTRESİ EKLENDİ
-      
-    if (error) {
-      console.error('❌ BOM okuma hatası:', error);
-      throw error;
-    }
-    
-    console.log(`📊 BOM sorgu sonucu - Toplam kayıt: ${data?.length || 0}`);
-    console.log(`🌳 BOM sorgusu tamamlandı: ${data?.length || 0} malzeme - Ürün ${productId} (${productType}):`, data);
-    
-    // Debug: Eğer 0 malzeme bulunursa, aktif olmayan kayıtları da kontrol et
-    if (!data || data.length === 0) {
-      console.log(`⚠️ Aktif BOM kaydı bulunamadı, tüm kayıtları kontrol ediliyor...`);
-      
-      const { data: allData, error: allError } = await supabase
-        .from('urun_agaci')
-        .select('alt_urun_id, alt_urun_tipi, gerekli_miktar, aktif')
-        .eq('ana_urun_id', productId)
-        .eq('ana_urun_tipi', productType);
-        
-      if (!allError && allData) {
-        console.log(`📋 Tüm BOM kayıtları (aktif/pasif): ${allData.length} kayıt`, allData);
-        const activeCount = allData.filter(item => item.aktif === true).length;
-        console.log(`✅ Aktif kayıt sayısı: ${activeCount}, Pasif kayıt sayısı: ${allData.length - activeCount}`);
-      }
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('❌ getBOM error:', error);
-    return [];
-  }
-}
-
-// Malzeme Stoğu Güncelleme Fonksiyonu
-async function updateMaterialStock(materialId, materialType, quantity) {
-  try {
-    const tableName = materialType === 'hammadde' ? 'hammaddeler' : 
-                      materialType === 'yarimamul' ? 'yarimamuller' : 
-                      'nihai_urunler';
-    
-    // Önce mevcut stok miktarını al
-    const { data: currentData, error: fetchError } = await supabase
-      .from(tableName)
-      .select('miktar, kod, ad')
-      .eq('id', materialId)
-      .single();
-      
-    if (fetchError) {
-      console.error('Mevcut stok okuma hatası:', fetchError);
-      throw fetchError;
-    }
-    
-    const newQuantity = (parseFloat(currentData.miktar) || 0) + quantity;
-    
-    console.log(`Stok güncelleniyor - ${currentData.kod}: ${currentData.miktar} -> ${newQuantity} (${quantity > 0 ? '+' : ''}${quantity})`);
-    
-    // Stok miktarını güncelle
-    const { error: updateError } = await supabase
-      .from(tableName)
-      .update({ 
-        miktar: newQuantity,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', materialId);
-      
-    console.log(`Stok güncelleme sonucu - Tablo: ${tableName}, ID: ${materialId}, Hata:`, updateError);
-      
-    if (updateError) {
-      console.error('Stok güncelleme hatası:', updateError);
-      throw updateError;
-    }
-    
-    return { success: true, oldQuantity: currentData.miktar, newQuantity };
-  } catch (error) {
-    console.error('updateMaterialStock error:', error);
-    throw error;
-  }
-}
-
-// Stok Hareketi Kaydetme Fonksiyonu
-async function createStockMovement(materialId, materialType, movementType, quantity, unit, referenceNo, description) {
-  try {
-    const { error } = await supabase
-      .from('stok_hareketleri')
-      .insert({
-        urun_id: materialId,
-        urun_tipi: materialType,
-        hareket_tipi: movementType,
-        miktar: Math.abs(quantity),
-        birim: unit,
-        referans_no: referenceNo,
-        aciklama: description,
-        tarih: new Date().toISOString()
-      });
-      
-    if (error) {
-      console.error('Stok hareketi kaydetme hatası:', error);
-      throw error;
-    }
-    
-    console.log(`Stok hareketi kaydedildi - ${movementType}: ${quantity} ${unit}`);
-    return { success: true };
-  } catch (error) {
-    console.error('createStockMovement error:', error);
-    throw error;
-  }
-}
-
-// Production Complete - Stok Güncellemeli
 app.post('/api/productions/:id/complete', async (req, res) => {
     try {
         const { id } = req.params;
-        const { notes, produced_quantity } = req.body;
+        const { notes } = req.body;
         
         if (!supabase) {
             return res.status(500).json({ error: 'Supabase bağlantısı yok' });
         }
         
-        console.log(`🏭 Üretim tamamlanıyor - ID: ${id}, Miktar: ${produced_quantity}`);
-        
-        // 1. Production kaydını getir
-        const { data: production, error: fetchError } = await supabase
-            .from('productions')
-            .select('*')
-            .eq('id', id)
-            .single();
-            
-        if (fetchError || !production) {
-            console.error('Production bulunamadı:', fetchError);
-            return res.status(404).json({ error: 'Üretim bulunamadı' });
-        }
-        
-        console.log('Production bilgisi:', {
-            product_id: production.product_id,
-            product_type: production.product_type,
-            quantity: produced_quantity || production.quantity
-        });
-        
-        // 2. Doğru Product ID'yi belirle
-        let actualProductId = production.product_id;
-        let actualProductType = production.product_type;
-        
-        // Eğer production.product_id bir Plan ID ise, gerçek Product ID'yi bul
-        if (production.product_id && production.product_id > 1000) {
-            // Plan ID'den Order ID'yi al
-            const { data: plan, error: planError } = await supabase
-                .from('production_plans')
-                .select('order_id')
-                .eq('id', production.product_id)
-                .single();
-                
-            if (plan && plan.order_id) {
-                // Order ID'den Product Details'i al
-                const { data: order, error: orderError } = await supabase
-                    .from('order_management')
-                    .select('product_details')
-                    .eq('id', plan.order_id)
-                    .single();
-                    
-                if (order && order.product_details) {
-                    try {
-                        const productDetails = JSON.parse(order.product_details);
-                        if (productDetails && productDetails.length > 0) {
-                            actualProductId = parseInt(productDetails[0].id);
-                            actualProductType = 'nihai';
-                            console.log(`🔧 Product ID düzeltildi: ${production.product_id} -> ${actualProductId}`);
-                        }
-                    } catch (e) {
-                        console.error('Product details parse hatası:', e);
-                    }
-                }
-            }
-        }
-        
-        // 3. Ürün ağacını oku (BOM) - Doğru Product ID ile
-        const bom = await getBOM(actualProductId, actualProductType);
-        console.log(`BOM bulundu - ${bom.length} malzeme (Product ID: ${actualProductId})`);
-        
-        // 3. Malzeme stoklarını düş ve stok hareketlerini kaydet
-        for (const material of bom) {
-            const requiredQuantity = (produced_quantity || production.quantity) * material.gerekli_miktar;
-            
-            console.log(`Malzeme tüketiliyor - ID: ${material.alt_urun_id}, Tip: ${material.alt_urun_tipi}, Miktar: ${requiredQuantity}`);
-            
-            // Stok düş (negatif miktar)
-            await updateMaterialStock(material.alt_urun_id, material.alt_urun_tipi, -requiredQuantity);
-            
-            // Stok hareketi kaydet (çıkış)
-            await createStockMovement(
-                material.alt_urun_id,
-                material.alt_urun_tipi,
-                'tuketim',
-                requiredQuantity,
-                'adet',
-                `PROD-${id}`,
-                `Üretim ${id} için malzeme tüketimi`
-            );
-        }
-        
-        // 4. Üretilen ürün stoğunu artır - Doğru Product ID ile
-        const finalQuantity = produced_quantity || production.quantity;
-        console.log(`🏭 Nihai ürün stoğu artırılıyor - ID: ${actualProductId}, Tip: ${actualProductType}, Miktar: +${finalQuantity}`);
-        
-        const stockUpdateResult = await updateMaterialStock(actualProductId, actualProductType, finalQuantity);
-        console.log(`📦 Nihai ürün stok güncelleme sonucu:`, stockUpdateResult);
-        
-        // Stok hareketi kaydet (giriş) - Doğru Product ID ile
-        await createStockMovement(
-            actualProductId,
-            actualProductType,
-            'uretim',
-            finalQuantity,
-            'adet',
-            `PROD-${id}`,
-            `Üretim ${id} tamamlandı`
-        );
-        
-        console.log(`✅ Nihai ürün stoğu başarıyla artırıldı - ID: ${actualProductId}, Miktar: +${finalQuantity}`);
-        
-        // 5. Production kaydını güncelle
         const { data, error } = await supabase
             .from('productions')
             .update({
@@ -1568,15 +1244,7 @@ app.post('/api/productions/:id/complete', async (req, res) => {
             .select();
             
         if (error) throw error;
-        
-        console.log(`🎉 Üretim ${id} başarıyla tamamlandı - Stoklar güncellendi`);
-        
-        res.json({ 
-            success: true,
-            production: data && data.length > 0 ? data[0] : null,
-            stock_updated: true,
-            materials_consumed: bom.length
-        });
+        res.json(data[0]);
     } catch (error) {
         console.error('Production completion error:', error);
         res.status(500).json({ error: error.message });
@@ -7493,9 +7161,7 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
     // Önce production_states tablosunu sorgula (operatör verileri burada)
     let productionsResult = await supabase
       .from('production_states')
-      .select('id, order_id, product_code, product_name, target_quantity, produced_quantity, is_active, is_completed, start_time, last_update_time, completed_at, operator_id, operator_name, production_data, created_at, updated_at')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
+      .select('id, order_id, product_code, product_name, target_quantity, produced_quantity, is_active, is_completed, start_time, last_update_time, completed_at, operator_id, operator_name, production_data, created_at, updated_at');
     
     console.log('Production states result:', productionsResult);
     
@@ -7504,9 +7170,9 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       console.log('Production states boş, production_history deniyorum...');
       productionsResult = await supabase
         .from('production_history')
-        .select('id, completed_at, produced_quantity, product_name, operator_name, created_at')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
+        .select('id, completed_at, produced_quantity, product_name, operator_name')
+        .gte('completed_at', startDate.toISOString())
+        .lte('completed_at', endDate.toISOString());
       console.log('Production history result:', productionsResult);
     }
 
@@ -7520,8 +7186,9 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       
       supabase
         .from('order_management')
-        .select('*')
-        .limit(10),
+        .select('id, status, order_date, delivery_date, total_amount')
+        .gte('order_date', startDate.toISOString())
+        .lte('order_date', endDate.toISOString()),
       
       supabase
         .from('stok_hareketleri')
@@ -7532,98 +7199,25 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
 
     const productions = productionsResult.data || [];
     const qualityChecks = qualityResult.data || [];
-    const allOrders = ordersResult.data || [];
+    const orders = ordersResult.data || [];
     const materials = materialsResult.data || [];
-    
-    // Order_management tablosu kontrolü
-    console.log('Order_management sorgu sonucu:', {
-      error: ordersResult.error,
-      data: ordersResult.data,
-      count: ordersResult.count,
-      status: ordersResult.status
-    });
-    
-    // Order'ları tarih aralığına göre filtrele
-    const orders = allOrders.filter(order => {
-      const orderDate = order.order_date || order.created_at || order.updated_at;
-      if (!orderDate) return false;
-      
-      const orderDateObj = new Date(orderDate);
-      return orderDateObj >= startDate && orderDateObj <= endDate;
-    });
 
     console.log('Dashboard API - Sonuçlar:', {
       productions: productions.length,
       qualityChecks: qualityChecks.length,
-      allOrders: allOrders.length,
       orders: orders.length,
       materials: materials.length
     });
-    
-    // Order durumlarını detaylı logla
-    console.log('Tüm order\'lar:', allOrders.slice(0, 3)); // İlk 3 order'ı göster
-    console.log('Filtrelenmiş order\'lar:', orders.slice(0, 3)); // İlk 3 filtrelenmiş order'ı göster
-    
-    const orderStatuses = {};
-    orders.forEach(order => {
-      orderStatuses[order.status] = (orderStatuses[order.status] || 0) + 1;
-    });
-    console.log('Order durumları:', orderStatuses);
-    
-    const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered');
-    console.log('Tamamlanan siparişler:', completedOrders.length);
 
-    // Günlük üretim trendi - production_states ve order_management'ten
+    // Günlük üretim trendi
     const dailyProduction = {};
-    
-    // Production_states'ten gelen veriler
     productions.forEach(p => {
-      const dateField = p.completed_at || p.created_at || p.last_update_time;
-      if (!dateField) return; // Tarih alanı yoksa atla
-      
-      const date = new Date(dateField).toISOString().split('T')[0];
+      const date = new Date(p.completed_at).toISOString().split('T')[0];
       if (!dailyProduction[date]) {
         dailyProduction[date] = { count: 0, quantity: 0 };
       }
       dailyProduction[date].count++;
       dailyProduction[date].quantity += p.produced_quantity || 0;
-    });
-    
-    // Order_management'ten gelen tamamlanan siparişler
-    orders.forEach(order => {
-      if (order.status === 'completed' || order.status === 'delivered') {
-        const dateField = order.completed_at || order.delivery_date || order.order_date;
-        if (!dateField) return;
-        
-        const date = new Date(dateField).toISOString().split('T')[0];
-        if (!dailyProduction[date]) {
-          dailyProduction[date] = { count: 0, quantity: 0 };
-        }
-        
-        // Product_details'ten toplam miktarı hesapla
-        let totalQuantity = 0;
-        if (order.product_details) {
-          try {
-            const productDetails = typeof order.product_details === 'string' 
-              ? JSON.parse(order.product_details) 
-              : order.product_details;
-            
-            if (Array.isArray(productDetails)) {
-              totalQuantity = productDetails.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
-              console.log(`Order ${order.id} product_details miktarı:`, totalQuantity);
-            }
-          } catch (e) {
-            console.log('Product details parse error:', e);
-          }
-        }
-        
-        // Order'ın kendi quantity'sini de ekle
-        const orderQuantity = parseInt(order.quantity) || 0;
-        console.log(`Order ${order.id} quantity:`, orderQuantity, 'product_details:', totalQuantity);
-        
-        dailyProduction[date].count++;
-        dailyProduction[date].quantity += totalQuantity;
-      }
     });
     
     // Test verisi oluşturma kaldırıldı - sadece gerçek veri göster
@@ -7658,30 +7252,10 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       }
     });
 
-    // Veri kaynağını belirle - hem production_states hem de order_management'ten
-    const hasRealProductionData = productions.length > 0 || completedOrders.length > 0;
+    // Veri kaynağını belirle
+    const hasRealProductionData = productions.length > 0;
     const hasRealQualityData = qualityChecks.length > 0;
     const dataSource = hasRealProductionData ? 'real' : 'mock';
-    
-    // Toplam üretim sayısını hesapla (production_states + completed orders)
-    const totalProductionCount = productions.length + completedOrders.length;
-    const totalProductionQuantity = productions.reduce((sum, p) => sum + (p.produced_quantity || 0), 0) +
-      completedOrders.reduce((sum, order) => {
-        let quantity = 0;
-        if (order.product_details) {
-          try {
-            const productDetails = typeof order.product_details === 'string' 
-              ? JSON.parse(order.product_details) 
-              : order.product_details;
-            if (Array.isArray(productDetails)) {
-              quantity = productDetails.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
-            }
-          } catch (e) {
-            console.log('Product details parse error:', e);
-          }
-        }
-        return sum + quantity;
-      }, 0);
     
     const advancedStats = {
       period: period,
@@ -7692,9 +7266,9 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
       data_source: dataSource,
       is_mock_data: !hasRealProductionData,
     production: {
-      total_productions: totalProductionCount,
-      completed_productions: completedOrders.length,
-      total_quantity: totalProductionQuantity,
+      total_productions: productions.length,
+      completed_productions: productions.filter(p => p.status === 'completed').length,
+      total_quantity: productions.reduce((sum, p) => sum + (p.produced_quantity || 0), 0),
         daily_trend: Object.keys(dailyProduction).map(date => ({
           date,
           count: dailyProduction[date].count,
@@ -7982,15 +7556,6 @@ app.put('/api/active-productions/:id/complete', async (req, res) => {
     const { id } = req.params;
     const { status, completed_time } = req.body;
     
-    // Önce active_production detaylarını al
-    const { data: productionData, error: fetchError } = await supabase
-      .from('active_productions')
-      .select('*')
-      .eq('id', id)
-      .single();
-      
-    if (fetchError) throw fetchError;
-    
     const updateData = {
       status: status || 'completed',
       completed_time: completed_time || new Date().toISOString(),
@@ -8004,70 +7569,6 @@ app.put('/api/active-productions/:id/complete', async (req, res) => {
       .select();
       
     if (error) throw error;
-    
-    // STOK GÜNCELLEME SİSTEMİ - Üretim tamamlandığında stokları güncelle
-    try {
-      console.log(`🔄 Stok güncelleme başlatılıyor - Üretim ID: ${id}`);
-      
-      // Ürün bilgilerini al
-      const productId = productionData.product_id;
-      const productType = productionData.product_type || 'nihai';
-      const producedQuantity = productionData.produced_quantity || productionData.planned_quantity || 1;
-      
-      console.log(`📦 Ürün bilgileri - ID: ${productId}, Tip: ${productType}, Miktar: ${producedQuantity}`);
-      
-      // BOM'u oku
-      const bom = await getBOM(productId, productType);
-      console.log(`📋 BOM okundu - ${bom.length} malzeme bulundu`);
-      
-      if (bom.length === 0) {
-        console.log('⚠️ BOM bulunamadı, stok güncellemesi atlanıyor');
-      } else {
-        // Her malzeme için stok güncellemesi yap
-        for (const material of bom) {
-          const materialId = material.alt_urun_id;
-          const materialType = material.alt_urun_tipi;
-          const requiredQuantity = (material.gerekli_miktar || 1) * producedQuantity;
-          
-          console.log(`🔧 Malzeme güncelleniyor - ID: ${materialId}, Tip: ${materialType}, Miktar: ${requiredQuantity}`);
-          
-          // Stok güncelle
-          await updateMaterialStock(materialId, materialType, -requiredQuantity);
-          
-          // Stok hareketi oluştur
-          await createStockMovement({
-            material_id: materialId,
-            material_type: materialType,
-            movement_type: 'production_consumption',
-            quantity: -requiredQuantity,
-            reference_id: id,
-            reference_type: 'production',
-            notes: `Üretim ${id} - ${productionData.product_name || 'N/A'} üretimi`
-          });
-        }
-        
-        // Nihai ürün stoğunu artır
-        console.log(`✅ Nihai ürün stoğu artırılıyor - ID: ${productId}, Miktar: ${producedQuantity}`);
-        await updateMaterialStock(productId, productType, producedQuantity);
-        
-        // Nihai ürün için stok hareketi oluştur
-        await createStockMovement({
-          material_id: productId,
-          material_type: productType,
-          movement_type: 'production_output',
-          quantity: producedQuantity,
-          reference_id: id,
-          reference_type: 'production',
-          notes: `Üretim ${id} - ${productionData.product_name || 'N/A'} üretimi`
-        });
-        
-        console.log(`🎉 Stok güncelleme tamamlandı - Üretim ID: ${id}`);
-      }
-    } catch (stockError) {
-      console.error('❌ Stok güncelleme hatası:', stockError);
-      // Stok güncelleme hatası üretim tamamlanmasını engellemez
-    }
-    
     res.json(data[0]);
   } catch (error) {
     console.error('Üretim tamamlama hatası:', error);
@@ -10623,27 +10124,12 @@ app.post('/api/stock/check', async (req, res) => {
       return;
     }
 
-    // Gerçek stok kontrolü - doğru tablolarla
-    let currentStock = 0;
-    let tableName = '';
-    
-    // Ürün tipine göre doğru tabloyu seç
-    if (product_type === 'hammadde') {
-      tableName = 'hammaddeler';
-    } else if (product_type === 'yarimamul') {
-      tableName = 'yarimamuller';
-    } else if (product_type === 'nihai') {
-      tableName = 'nihai_urunler';
-    } else {
-      res.status(400).json({ error: 'Geçersiz ürün tipi' });
-      return;
-    }
-
+    // Gerçek stok kontrolü
     const { data: stockData, error: stockError } = await supabase
-      .from(tableName)
-      .select('miktar')
-      .eq('id', product_id)
-      .single();
+      .from('stok_hareketleri')
+      .select('*')
+      .eq('urun_id', product_id)
+      .eq('urun_tipi', product_type);
 
     if (stockError) {
       console.error('Stok sorgulama hatası:', stockError);
@@ -10651,8 +10137,15 @@ app.post('/api/stock/check', async (req, res) => {
       return;
     }
 
-    // Stok miktarını al
-    currentStock = parseFloat(stockData?.miktar || 0);
+    // Stok hesaplama
+    let currentStock = 0;
+    stockData.forEach(movement => {
+      if (movement.hareket_tipi === 'giris' || movement.hareket_tipi === 'uretim') {
+        currentStock += parseFloat(movement.miktar);
+      } else if (movement.hareket_tipi === 'cikis' || movement.hareket_tipi === 'tuketim') {
+        currentStock -= parseFloat(movement.miktar);
+      }
+    });
 
     const result = {
       available: currentStock,
@@ -10710,7 +10203,7 @@ app.get('/api/bom/:product_id/:product_type', async (req, res) => {
     const formattedBOM = bomData.map(item => ({
       alt_urun_id: item.alt_urun_id,
       alt_urun_tipi: item.alt_urun_tipi,
-      gerekli_miktar: item.gerekli_miktar || 1.0,
+      gerekli_miktar: item.miktar || 1.0,
       birim: item.birim || 'adet',
       urun_adi: `Malzeme ${item.alt_urun_id}`
     }));
@@ -10735,52 +10228,29 @@ app.post('/api/stock/consume', async (req, res) => {
       return;
     }
 
-    // Doğru tabloyu seç ve stok düş
-    let tableName = '';
-    
-    if (product_type === 'hammadde') {
-      tableName = 'hammaddeler';
-    } else if (product_type === 'yarimamul') {
-      tableName = 'yarimamuller';
-    } else if (product_type === 'nihai') {
-      tableName = 'nihai_urunler';
-    } else {
-      res.status(400).json({ error: 'Geçersiz ürün tipi' });
-      return;
-    }
-
-    // Önce mevcut stoku al
-    const { data: currentStock, error: stockError } = await supabase
-      .from(tableName)
-      .select('miktar')
-      .eq('id', product_id)
-      .single();
-
-    if (stockError) {
-      console.error('Stok sorgulama hatası:', stockError);
-      res.status(500).json({ error: 'Stok sorgulanamadı' });
-      return;
-    }
-
-    const newStock = parseFloat(currentStock.miktar || 0) - parseFloat(quantity);
-
-    // Stok düş
-    const { data: updateResult, error: updateError } = await supabase
-      .from(tableName)
-      .update({ 
-        miktar: newStock
+    // Stok hareketi kaydet
+    const { data: stockMovement, error: stockError } = await supabase
+      .from('stok_hareketleri')
+      .insert({
+        urun_id: product_id,
+        urun_tipi: product_type,
+        hareket_tipi: 'tuketim',
+        miktar: quantity,
+        birim: 'adet',
+        referans_no: `PROD-${production_id}`,
+        aciklama: `Üretim tüketimi - Operatör: ${operator_id}`,
+        tarih: new Date().toISOString()
       })
-      .eq('id', product_id)
       .select();
 
-    if (updateError) {
-      console.error('Stok düşme hatası:', updateError);
-      res.status(500).json({ error: 'Stok düşülemedi' });
+    if (stockError) {
+      console.error('Stok hareketi kaydetme hatası:', stockError);
+      res.status(500).json({ error: 'Stok hareketi kaydedilemedi' });
       return;
     }
 
-    console.log('✅ Stok düşme tamamlandı:', updateResult[0]);
-    res.json({ success: true, message: 'Stok düşme tamamlandı', updated_stock: updateResult[0] });
+    console.log('✅ Stok düşme tamamlandı:', stockMovement[0].id);
+    res.json({ success: true, message: 'Stok düşme tamamlandı', movement_id: stockMovement[0].id });
   } catch (error) {
     console.error('Stok düşme hatası:', error);
     res.status(500).json({ error: 'Stok düşme yapılamadı' });
@@ -10824,13 +10294,13 @@ app.post('/api/production/check-materials', async (req, res) => {
       
       materialChecks.push({
         material_id: material.alt_urun_id,
-        material_name: `Malzeme ${material.alt_urun_id}`,
+        material_name: material.urun_adi,
         material_type: material.alt_urun_tipi,
         required: requiredQuantity,
         available: stockCheck.available,
         sufficient: stockCheck.sufficient,
         shortage: stockCheck.shortage,
-        unit: material.birim || 'adet'
+        unit: material.birim
       });
       
       if (!stockCheck.sufficient) {

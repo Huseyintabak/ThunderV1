@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThunderV1 - Gelişmiş Dashboard & Analitik</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            --info-gradient: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            --dark-gradient: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --shadow-light: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            --shadow-hover: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--primary-gradient) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        .dashboard-container {
+            padding: 2rem 0;
+        }
+
+        .dashboard-header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-light);
+        }
+
+        .dashboard-widget {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-widget::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .dashboard-widget:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .dashboard-widget:hover::before {
+            transform: scaleX(1);
+        }
+        
+        /* Scroll stilleri */
+        #recentNotifications::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #recentNotifications::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        #recentNotifications::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.6);
+            border-radius: 3px;
+        }
+        
+        #recentNotifications::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.8);
+        }
+
+        .metric-card {
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: scale(0);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover::before {
+            transform: scale(1);
+        }
+
+        .metric-card.success { background: var(--success-gradient); }
+        .metric-card.warning { background: var(--warning-gradient); }
+        .metric-card.danger { background: var(--danger-gradient); }
+        .metric-card.info { background: var(--info-gradient); }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .metric-change {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+
+        .metric-change.positive { color: #00b894; }
+        .metric-change.negative { color: #e17055; }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+
+        .chart-container canvas {
+            border-radius: 10px;
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .widget-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3436;
+            margin: 0;
+        }
+
+        .widget-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #2d3436;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .kpi-card {
+            background: var(--success-gradient);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .report-card {
+            background: var(--warning-gradient);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .report-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-indicator.online { background: #00b894; }
+        .status-indicator.offline { background: #e17055; }
+        .status-indicator.warning { background: #fdcb6e; }
+
+        .real-time-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #00b894;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert-custom {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            box-shadow: var(--shadow-light);
+        }
+
+        .table-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .table-glass th {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #2d3436;
+            font-weight: 600;
+        }
+
+        .table-glass td {
+            border: none;
+            color: #2d3436;
+        }
+
+        .table-glass tbody tr:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .progress-glass {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-glass .progress-bar {
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 120px;
+            height: 60px;
+            margin: 0 auto;
+        }
+
+        .gauge-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.3s ease;
+        }
+
+        .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3436;
+        }
+
+        .filter-bar {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-light);
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .period-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #2d3436;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .period-btn.active {
+            background: var(--primary-gradient);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .period-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .period-btn.active:hover {
+            background: var(--primary-gradient);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem 0;
+            }
+            
+            .dashboard-widget {
+                padding: 1rem;
+            }
+            
+            .metric-value {
+                font-size: 2rem;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+        }
+
+        /* Kritik Stok Alarmları */
+        .stock-alert-card {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            border: 1px solid #ff5252;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stock-alert-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .stock-alert-card.warning {
+            background: linear-gradient(135deg, #ffa726, #ffb74d);
+            border-color: #ff9800;
+            box-shadow: 0 4px 15px rgba(255, 167, 38, 0.3);
+        }
+
+        .stock-alert-card.info {
+            background: linear-gradient(135deg, #42a5f5, #64b5f6);
+            border-color: #2196f3;
+            box-shadow: 0 4px 15px rgba(66, 165, 245, 0.3);
+        }
+
+        .stock-alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .stock-alert-title {
+            font-weight: 600;
+            color: white;
+            margin: 0;
+        }
+
+        .stock-alert-priority {
+            padding: 0.25rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .priority-critical {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .priority-warning {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .priority-info {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .stock-alert-details {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+
+        .stock-alert-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .stock-alert-actions .btn {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .no-alerts {
+            text-align: center;
+            padding: 2rem;
+            color: #6c757d;
+        }
+
+        .no-alerts i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-bolt me-2"></i>Thunder V1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-home me-1"></i>Ana Sayfa
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="production.html">
+                            <i class="fas fa-industry me-1"></i>Üretim
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="reports.html">
+                            <i class="fas fa-chart-bar me-1"></i>Raporlama
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid dashboard-container">
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="fas fa-chart-line me-3"></i>Gelişmiş Dashboard & Analitik
+                    </h1>
+                    <p class="mb-0 text-muted">Gerçek zamanlı üretim verileri ve performans analizi</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex align-items-center justify-content-end gap-3">
+                        <div class="status-indicator online"></div>
+                        <span class="text-muted">Sistem Aktif</span>
+                        <div class="real-time-badge">
+                            <i class="fas fa-circle me-1"></i>Canlı
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h6 class="mb-2"><i class="fas fa-filter me-2"></i>Zaman Aralığı</h6>
+                    <div class="period-selector">
+                        <button class="period-btn active" data-period="1d">Son 24 Saat</button>
+                        <button class="period-btn" data-period="7d">Son 7 Gün</button>
+                        <button class="period-btn" data-period="30d">Son 30 Gün</button>
+                        <button class="period-btn" data-period="90d">Son 90 Gün</button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-glass me-2" onclick="refreshAllData()">
+                        <i class="fas fa-sync-alt me-1"></i>Yenile
+                    </button>
+                    <button class="btn btn-glass" onclick="exportDashboard()">
+                        <i class="fas fa-download me-1"></i>Dışa Aktar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ana Metrikler -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card success">
+                    <div class="metric-value" id="totalProductions">-</div>
+                    <div class="metric-label">Toplam Üretim</div>
+                    <div class="metric-change positive" id="productionChange">
+                        <i class="fas fa-arrow-up"></i>+12%
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card info">
+                    <div class="metric-value" id="qualityRate">-</div>
+                    <div class="metric-label">Kalite Oranı</div>
+                    <div class="metric-change positive" id="qualityChange">
+                        <i class="fas fa-arrow-up"></i>+5%
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card warning">
+                    <div class="metric-value" id="activeOrders">-</div>
+                    <div class="metric-label">Aktif Siparişler</div>
+                    <div class="metric-change negative" id="orderChange">
+                        <i class="fas fa-arrow-down"></i>-3%
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card danger">
+                    <div class="metric-value" id="alertsCount">-</div>
+                    <div class="metric-label">Uyarılar</div>
+                    <div class="metric-change" id="alertChange">
+                        <i class="fas fa-exclamation-triangle"></i>Kritik
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafikler ve Analizler -->
+        <div class="row mb-4">
+            <div class="col-lg-8 mb-4">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-chart-line me-2"></i>Üretim Trendi
+                        </h5>
+                        <div class="widget-actions">
+                            <button class="btn btn-glass btn-sm" onclick="refreshProductionChart()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="productionTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-users me-2"></i>Müşteri Başı Üretim
+                        </h5>
+                        <div class="widget-actions">
+                            <button class="btn btn-glass btn-sm" onclick="refreshCustomerChart()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="qualityDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Veriler -->
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-4">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-industry me-2"></i>Aktif Üretimler
+                        </h5>
+                        <div class="widget-actions">
+                            <span class="badge bg-success">Canlı</span>
+                        </div>
+                    </div>
+                    <div id="activeProductionsList">
+                        <div class="text-center py-4">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2 text-muted">Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-bell me-2"></i>Son Bildirimler
+                        </h5>
+                        <div class="widget-actions">
+                            <span class="badge bg-warning">10</span>
+                        </div>
+                    </div>
+                    <div id="recentNotifications" style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                        <div class="text-center py-4">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2 text-muted">Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI ve Performans Metrikleri -->
+        <div class="row mb-4">
+            <div class="col-lg-8 mb-4">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-chart-bar me-2"></i>Operatör Performansı
+                        </h5>
+                        <div class="widget-actions">
+                            <button class="btn btn-glass btn-sm" onclick="refreshOperatorPerformance()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-glass">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Operatör</th>
+                                    <th>Tamamlanan</th>
+                                    <th>Toplam</th>
+                                    <th>Başarı Oranı</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="operatorPerformanceTable">
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Yükleniyor...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-tachometer-alt me-2"></i>Sistem Durumu
+                        </h5>
+                        <div class="widget-actions">
+                            <span class="status-indicator online"></span>
+                        </div>
+                    </div>
+                    <div id="systemStatus">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>CPU Kullanımı</span>
+                                <span id="cpuUsage">-</span>
+                            </div>
+                            <div class="progress-glass">
+                                <div class="progress-bar" style="width: 0%" id="cpuProgress"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Bellek Kullanımı</span>
+                                <span id="memoryUsage">-</span>
+                            </div>
+                            <div class="progress-glass">
+                                <div class="progress-bar" style="width: 0%" id="memoryProgress"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Veritabanı Bağlantısı</span>
+                                <span class="badge bg-success" id="dbStatus">Aktif</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Son Güncelleme</span>
+                                <span id="lastUpdate">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kritik Stok Alarmları -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h5 class="widget-title">
+                            <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Kritik Stok Alarmları
+                        </h5>
+                        <div class="widget-actions">
+                            <button class="btn btn-glass btn-sm" onclick="refreshStockAlerts()">
+                                <i class="fas fa-sync-alt me-1"></i>Yenile
+                            </button>
+                        </div>
+                    </div>
+                    <div id="stockAlerts">
+                        <div class="text-center py-4">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2 text-muted">Stok seviyeleri kontrol ediliyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rapor Yönetimi -->
+    </div>
+
+    <!-- Widget Ekleme Modal -->
+    <div class="modal fade" id="addWidgetModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Widget Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="widgetForm">
+                        <div class="mb-3">
+                            <label class="form-label">Widget Adı</label>
+                            <input type="text" class="form-control" id="widgetName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Widget Türü</label>
+                            <select class="form-control" id="widgetType" required>
+                                <option value="chart">Grafik</option>
+                                <option value="table">Tablo</option>
+                                <option value="metric">Metrik</option>
+                                <option value="gauge">Gauge</option>
+                                <option value="progress">İlerleme</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Başlık</label>
+                            <input type="text" class="form-control" id="widgetTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Veri Kaynağı</label>
+                            <input type="text" class="form-control" id="dataSource" placeholder="/api/endpoint">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="addWidget()">Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Ekleme Modal -->
+    <div class="modal fade" id="addKPIModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni KPI Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="kpiForm">
+                        <div class="mb-3">
+                            <label class="form-label">KPI Adı</label>
+                            <input type="text" class="form-control" id="kpiName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Kategori</label>
+                            <select class="form-control" id="kpiCategory" required>
+                                <option value="production">Üretim</option>
+                                <option value="quality">Kalite</option>
+                                <option value="efficiency">Verimlilik</option>
+                                <option value="financial">Mali</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Hedef Değer</label>
+                            <input type="number" class="form-control" id="targetValue" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Birim</label>
+                            <input type="text" class="form-control" id="kpiUnit" placeholder="adet, %, gün">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="addKPI()">Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="reports.js"></script>
+</body>
+</html>

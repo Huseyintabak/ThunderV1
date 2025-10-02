@@ -1,0 +1,40 @@
+# ===========================================
+# SERVER CONFIGURATION
+# ===========================================
+PORT=3000
+NODE_ENV=development
+HOST=0.0.0.0
+
+# ===========================================
+# SUPABASE CONFIGURATION (Gerçek Değerler)
+# ===========================================
+SUPABASE_URL=https://beynxlogttkrrkejvftz.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJleW54bG9ndHRrcnJrZWp2ZnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODk5MDcsImV4cCI6MjA3MzA2NTkwN30.04vv-EjQd92MtrprRAtpeEtEYQRjizMmC8I9e885miE
+
+# Supabase Service Role Key (Supabase Dashboard'dan alın)
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# ===========================================
+# SECURITY CONFIGURATION
+# ===========================================
+# Güçlü şifreler oluşturun
+JWT_SECRET=your_super_secure_jwt_secret_key_here_2024
+SESSION_SECRET=your_super_secure_session_secret_key_here_2024
+
+# ===========================================
+# DATABASE CONFIGURATION (Opsiyonel)
+# ===========================================
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=thunder_production
+DB_USER=thunder_user
+DB_PASSWORD=your_secure_db_password
+
+# ===========================================
+# FEATURE FLAGS
+# ===========================================
+ENABLE_REAL_TIME=true
+ENABLE_NOTIFICATIONS=true
+ENABLE_AUDIT_LOG=true
+DEBUG=false
+

@@ -2075,7 +2075,7 @@
                         let warningMessage = 'Yetersiz malzeme! Üretim yapılamaz.\n\n';
                         materialCheck.materials.forEach(material => {
                             if (!material.sufficient) {
-                                warningMessage += `❌ ${material.material_name}: ${material.required} ${material.unit} gerekli, ${material.available} ${material.unit} mevcut\n`;
+                                warningMessage += `❌ ${material.material_name}: ${material.required} ${material.unit} gerekli, ${material.available || '0'} ${material.unit} mevcut\n`;
                             }
                         });
                         
