@@ -10710,11 +10710,26 @@ app.post('/api/stock/consume', async (req, res) => {
       return;
     }
 
+    // Önce mevcut stoku al
+    const { data: currentStock, error: stockError } = await supabase
+      .from(tableName)
+      .select('miktar')
+      .eq('id', product_id)
+      .single();
+
+    if (stockError) {
+      console.error('Stok sorgulama hatası:', stockError);
+      res.status(500).json({ error: 'Stok sorgulanamadı' });
+      return;
+    }
+
+    const newStock = parseFloat(currentStock.miktar || 0) - parseFloat(quantity);
+
     // Stok düş
     const { data: updateResult, error: updateError } = await supabase
       .from(tableName)
       .update({ 
-        miktar: supabase.raw(`miktar - ${quantity}`)
+        miktar: newStock
       })
       .eq('id', product_id)
       .select();
