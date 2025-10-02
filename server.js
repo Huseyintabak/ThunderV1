@@ -10597,15 +10597,18 @@ app.post('/api/stock/check', async (req, res) => {
       return;
     }
 
-    // Stok hesaplama
+    // Stok hesaplama - düzeltilmiş
     let currentStock = 0;
     stockData.forEach(movement => {
       if (movement.hareket_tipi === 'giris' || movement.hareket_tipi === 'uretim') {
-        currentStock += parseFloat(movement.miktar);
+        currentStock += parseFloat(movement.miktar || 0);
       } else if (movement.hareket_tipi === 'cikis' || movement.hareket_tipi === 'tuketim') {
-        currentStock -= parseFloat(movement.miktar);
+        currentStock -= parseFloat(movement.miktar || 0);
       }
     });
+
+    // Stok negatifse 0 yap
+    currentStock = Math.max(0, currentStock);
 
     const result = {
       available: currentStock,
