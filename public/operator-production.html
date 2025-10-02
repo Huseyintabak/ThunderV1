@@ -2038,6 +2038,12 @@
                         console.log('🔧 Product ID düzeltildi:', productId);
                     }
                     
+                    // Eğer hala yanlış ID alındıysa, window.selectedProduct'ı zorla kullan
+                    if (window.selectedProduct && window.selectedProduct.id) {
+                        productId = window.selectedProduct.id;
+                        console.log('🔧 Product ID zorla düzeltildi:', productId);
+                    }
+                    
                     console.log('🔍 Product ID belirlendi:', productId, 'Plan ID:', production.plan_id);
                     
                     if (!productId || productId === 'N/A') {
