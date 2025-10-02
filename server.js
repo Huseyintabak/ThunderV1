@@ -1474,9 +1474,45 @@ app.post('/api/productions/:id/complete', async (req, res) => {
             quantity: produced_quantity || production.quantity
         });
         
-        // 2. Ürün ağacını oku (BOM)
-        const bom = await getBOM(production.product_id, production.product_type);
-        console.log(`BOM bulundu - ${bom.length} malzeme`);
+        // 2. Doğru Product ID'yi belirle
+        let actualProductId = production.product_id;
+        let actualProductType = production.product_type;
+        
+        // Eğer production.product_id bir Plan ID ise, gerçek Product ID'yi bul
+        if (production.product_id && production.product_id > 1000) {
+            // Plan ID'den Order ID'yi al
+            const { data: plan, error: planError } = await supabase
+                .from('production_plans')
+                .select('order_id')
+                .eq('id', production.product_id)
+                .single();
+                
+            if (plan && plan.order_id) {
+                // Order ID'den Product Details'i al
+                const { data: order, error: orderError } = await supabase
+                    .from('order_management')
+                    .select('product_details')
+                    .eq('id', plan.order_id)
+                    .single();
+                    
+                if (order && order.product_details) {
+                    try {
+                        const productDetails = JSON.parse(order.product_details);
+                        if (productDetails && productDetails.length > 0) {
+                            actualProductId = parseInt(productDetails[0].id);
+                            actualProductType = 'nihai';
+                            console.log(`🔧 Product ID düzeltildi: ${production.product_id} -> ${actualProductId}`);
+                        }
+                    } catch (e) {
+                        console.error('Product details parse hatası:', e);
+                    }
+                }
+            }
+        }
+        
+        // 3. Ürün ağacını oku (BOM) - Doğru Product ID ile
+        const bom = await getBOM(actualProductId, actualProductType);
+        console.log(`BOM bulundu - ${bom.length} malzeme (Product ID: ${actualProductId})`);
         
         // 3. Malzeme stoklarını düş ve stok hareketlerini kaydet
         for (const material of bom) {
@@ -1499,17 +1535,17 @@ app.post('/api/productions/:id/complete', async (req, res) => {
             );
         }
         
-        // 4. Üretilen ürün stoğunu artır
+        // 4. Üretilen ürün stoğunu artır - Doğru Product ID ile
         const finalQuantity = produced_quantity || production.quantity;
-        console.log(`🏭 Nihai ürün stoğu artırılıyor - ID: ${production.product_id}, Tip: ${production.product_type}, Miktar: +${finalQuantity}`);
+        console.log(`🏭 Nihai ürün stoğu artırılıyor - ID: ${actualProductId}, Tip: ${actualProductType}, Miktar: +${finalQuantity}`);
         
-        const stockUpdateResult = await updateMaterialStock(production.product_id, production.product_type, finalQuantity);
+        const stockUpdateResult = await updateMaterialStock(actualProductId, actualProductType, finalQuantity);
         console.log(`📦 Nihai ürün stok güncelleme sonucu:`, stockUpdateResult);
         
-        // Stok hareketi kaydet (giriş)
+        // Stok hareketi kaydet (giriş) - Doğru Product ID ile
         await createStockMovement(
-            production.product_id,
-            production.product_type,
+            actualProductId,
+            actualProductType,
             'uretim',
             finalQuantity,
             'adet',
@@ -1517,7 +1553,7 @@ app.post('/api/productions/:id/complete', async (req, res) => {
             `Üretim ${id} tamamlandı`
         );
         
-        console.log(`✅ Nihai ürün stoğu başarıyla artırıldı - ID: ${production.product_id}, Miktar: +${finalQuantity}`);
+        console.log(`✅ Nihai ürün stoğu başarıyla artırıldı - ID: ${actualProductId}, Miktar: +${finalQuantity}`);
         
         // 5. Production kaydını güncelle
         const { data, error } = await supabase
